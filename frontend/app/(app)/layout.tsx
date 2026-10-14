@@ -1,13 +1,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import Link from "next/link";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/components/app-sidebar";
 import { HeaderTitle } from "@/components/header-title";
+import { Icon3D } from "@/components/kinetics-ui";
 import { RetryErrorBoundary } from "@/components/retry-error";
 import { serverGetMe, type SessionUser } from "@/lib/api";
 
@@ -49,29 +47,43 @@ export default async function ProtectedLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar
-        canReadUsers={canReadUsers}
-        canReadRoles={canReadRoles}
-        canReadAudit={canReadAudit}
-        username={user.username}
-        roleLabel={user.isRoot ? "root" : (user.roles[0] ?? "user")}
-      />
-      <SidebarInset className="app-shell">
-        <header className="sticky top-0 z-[995] border-b border-border bg-[#08090a]/90 px-4 backdrop-blur-md md:px-6 lg:px-8">
-          <div className="mx-auto flex h-14 min-w-0 w-full max-w-[1440px] items-center justify-between gap-4">
+      <div className="relative flex min-h-screen w-full flex-col bg-[#08090a] text-[#f7f8f8]">
+        {/* Top Header */}
+        <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#08090a]/80 px-4 backdrop-blur-xl md:px-6 lg:px-8 transition-all">
+          <div className="mx-auto flex h-14 min-w-0 w-full max-w-[1500px] items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <SidebarTrigger className="-ml-1.5" />
-              <Separator orientation="vertical" className="h-4" />
+              <Link href="/archives" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+                <Icon3D name="shield" size="xs" />
+                <span className="font-semibold text-sm tracking-tight text-[#f7f8f8]">Archive</span>
+              </Link>
+              <Separator orientation="vertical" className="h-4 bg-white/[0.08]" />
               <HeaderTitle />
+            </div>
+            <div className="flex items-center gap-3 font-mono text-xs text-[#8a8f98]">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-white/[0.08] bg-white/[0.02] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]">
+                <span className="size-1.5 rounded-full bg-[#00ba7c] shadow-[0_0_6px_#00ba7c] animate-pulse" />
+                Vault Online
+              </span>
             </div>
           </div>
         </header>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden px-4 py-6 md:px-6 lg:px-8">
-          <div className="mx-auto flex min-h-0 min-w-0 w-full max-w-[1440px] flex-1 flex-col">
+
+        {/* Main Content Area with bottom clearance for floating dock */}
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden px-4 pt-6 pb-28 md:px-6 lg:px-8">
+          <div className="mx-auto flex min-h-0 min-w-0 w-full max-w-[1500px] flex-1 flex-col">
             {children}
           </div>
-        </div>
-      </SidebarInset>
+        </main>
+
+        {/* Bottom Clear Glass Animated Island Dock */}
+        <AppSidebar
+          canReadUsers={canReadUsers}
+          canReadRoles={canReadRoles}
+          canReadAudit={canReadAudit}
+          username={user.username}
+          roleLabel={user.isRoot ? "root" : (user.roles[0] ?? "user")}
+        />
+      </div>
     </SidebarProvider>
   );
 }
