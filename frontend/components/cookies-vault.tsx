@@ -44,47 +44,34 @@ let cachedDomainsSnapshot: {
 const cachedDomainLogsMap = new Map<string, CookieDomainLogItem[]>();
 
 export function CookiesVault() {
-  const [allDomains, setAllDomains] = useState<CookieDomainSummary[]>(
-    () => cachedDomainsSnapshot?.allDomains ?? [],
-  );
-  const [totalDomains, setTotalDomains] = useState(
-    () => cachedDomainsSnapshot?.totalDomains ?? 0,
-  );
-  const [totalLogs, setTotalLogs] = useState(
-    () => cachedDomainsSnapshot?.totalLogs ?? 0,
-  );
-  const [totalCookies, setTotalCookies] = useState(
-    () => cachedDomainsSnapshot?.totalCookies ?? 0,
-  );
-  const [isLoadingDomains, setIsLoadingDomains] = useState(
-    () => cachedDomainsSnapshot === null,
-  );
+  const [loadedDomains, setLoadedDomains] = useState<CookieDomainSummary[]>([]);
+  const [filteredCount, setFilteredCount] = useState<number>(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingDomains, setIsLoadingDomains] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [domainQuery, setDomainQuery] = useState("");
+  const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(600);
 
-  const [selectedDomain, setSelectedDomain] =
-    useState<CookieDomainSummary | null>(
-      () => cachedDomainsSnapshot?.allDomains[0] ?? null,
-    );
-  const [logs, setLogs] = useState<CookieDomainLogItem[]>(() => {
-    const first = cachedDomainsSnapshot?.allDomains[0]?.domain;
-    return first ? (cachedDomainLogsMap.get(first) ?? []) : [];
-  });
+  const [totalDomains, setTotalDomains] = useState(0);
+  const [totalLogs, setTotalLogs] = useState(0);
+  const [totalCookies, setTotalCookies] = useState(0);
+
+  const [selectedDomain, setSelectedDomain] = useState<CookieDomainSummary | null>(null);
+  const [logs, setLogs] = useState<CookieDomainLogItem[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [logQuery, setLogQuery] = useState("");
 
-  const [selectedLog, setSelectedLog] = useState<CookieDomainLogItem | null>(
-    () => {
-      const first = cachedDomainsSnapshot?.allDomains[0]?.domain;
-      const initialLogs = first ? cachedDomainLogsMap.get(first) : undefined;
-      return initialLogs && initialLogs.length > 0 ? initialLogs[0] : null;
-    },
-  );
+  const [selectedLog, setSelectedLog] = useState<CookieDomainLogItem | null>(null);
   const [viewFormat, setViewFormat] = useState<"netscape" | "json">("netscape");
   const [wrapLines, setWrapLines] = useState(true);
   const [randomCountInput, setRandomCountInput] = useState("100");
   const [isReindexing, setIsReindexing] = useState(false);
 
   const logsReqRef = useRef(0);
+  const domainsAbortRef = useRef<AbortController | null>(null);
+  const searchTimerRef = useRef<number | undefined>(undefined);
+  const domainsContainerRef = useRef<HTMLDivElement>(null);
 
   const loadDomainLogs = useCallback(
     async (domainObj: CookieDomainSummary, forceRefresh = false) => {
@@ -115,65 +102,90 @@ export function CookiesVault() {
     [],
   );
 
-  const loadDomains = useCallback(
-    async (forceRefresh = false) => {
-      if (!forceRefresh && cachedDomainsSnapshot !== null) {
-        setAllDomains(cachedDomainsSnapshot.allDomains);
-        setTotalDomains(cachedDomainsSnapshot.totalDomains);
-        setTotalLogs(cachedDomainsSnapshot.totalLogs);
-        setTotalCookies(cachedDomainsSnapshot.totalCookies);
-        setIsLoadingDomains(false);
-        if (cachedDomainsSnapshot.allDomains.length > 0) {
-          void loadDomainLogs(cachedDomainsSnapshot.allDomains[0], false);
-        }
-        return;
+  const fetchDomains = useCallback(
+    async (q: string, offset: number, append: boolean) => {
+      if (!append) {
+        domainsAbortRef.current?.abort();
+        const ctrl = new AbortController();
+        domainsAbortRef.current = ctrl;
       }
+      if (offset === 0) setIsLoadingDomains(true);
+      else setIsLoadingMore(true);
 
-      setIsLoadingDomains(true);
-      const res = await browserListCookieDomains("");
-      setIsLoadingDomains(false);
-      if (res.ok) {
-        cachedDomainsSnapshot = {
-          allDomains: res.data.domains,
-          totalDomains: res.data.totalDomains,
-          totalLogs: res.data.totalLogs,
-          totalCookies: res.data.totalCookies,
-        };
-        setAllDomains(res.data.domains);
-        setTotalDomains(res.data.totalDomains);
-        setTotalLogs(res.data.totalLogs);
-        setTotalCookies(res.data.totalCookies);
-        if (res.data.domains.length > 0) {
-          void loadDomainLogs(res.data.domains[0], forceRefresh);
+      try {
+        const res = await browserListCookieDomains(
+          q,
+          150,
+          offset,
+          domainsAbortRef.current?.signal,
+        );
+        if (res.ok) {
+          setTotalDomains(res.data.totalDomains);
+          setTotalLogs(res.data.totalLogs);
+          setTotalCookies(res.data.totalCookies);
+          setFilteredCount(res.data.filteredCount ?? res.data.totalDomains);
+          setHasMore(res.data.hasMore ?? false);
+
+          if (append) {
+            setLoadedDomains((prev) => [...prev, ...res.data.domains]);
+          } else {
+            setLoadedDomains(res.data.domains);
+            setScrollTop(0);
+            if (domainsContainerRef.current) {
+              domainsContainerRef.current.scrollTop = 0;
+            }
+            if (res.data.domains.length > 0) {
+              void loadDomainLogs(res.data.domains[0], false);
+            }
+          }
         }
-      } else {
-        toast.error(res.error?.message ?? "Failed to load cookie domains.");
+      } catch {
+        // Aborted or network error
+      } finally {
+        setIsLoadingDomains(false);
+        setIsLoadingMore(false);
       }
     },
     [loadDomainLogs],
   );
 
   useEffect(() => {
-    void loadDomains(false);
-  }, [loadDomains]);
+    void fetchDomains("", 0, false);
+    return () => {
+      domainsAbortRef.current?.abort();
+    };
+  }, [fetchDomains]);
 
-  // Instant 0ms client-side domain filtering (capped to 300 rendered rows for 60fps UI)
-  const domains = useMemo(() => {
-    const q = domainQuery.trim().toLowerCase();
-    if (!q) {
-      return allDomains.slice(0, 300);
-    }
-    const matches: CookieDomainSummary[] = [];
-    for (let i = 0; i < allDomains.length; i++) {
-      const d = allDomains[i];
-      if (d.domain.toLowerCase().includes(q)) {
-        matches.push(d);
-        if (matches.length >= 300) break;
-      }
-    }
-    return matches;
-  }, [allDomains, domainQuery]);
+  const handleDomainSearch = (val: string) => {
+    setDomainQuery(val);
+    window.clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = window.setTimeout(() => {
+      void fetchDomains(val, 0, false);
+    }, 200);
+  };
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const t = e.currentTarget;
+    setScrollTop(t.scrollTop);
+    if (t.clientHeight !== containerHeight) {
+      setContainerHeight(t.clientHeight);
+    }
+    if (hasMore && !isLoadingMore && !isLoadingDomains && t.scrollTop + t.clientHeight >= t.scrollHeight - 350) {
+      void fetchDomains(domainQuery, loadedDomains.length, true);
+    }
+  };
+
+  // Virtual windowing calculations (every-uuid style)
+  const ROW_HEIGHT = 52;
+  const OVERSCAN = 6;
+  const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
+  const endIndex = Math.min(
+    loadedDomains.length,
+    Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + OVERSCAN,
+  );
+  const visibleDomains = loadedDomains.slice(startIndex, endIndex);
+  const paddingTop = startIndex * ROW_HEIGHT;
+  const paddingBottom = Math.max(0, (loadedDomains.length - endIndex) * ROW_HEIGHT);
   // Instant 0ms client-side log filtering by path/IP
   const filteredLogs = useMemo(() => {
     const q = logQuery.trim().toLowerCase();
@@ -186,16 +198,7 @@ export function CookiesVault() {
     );
   }, [logs, logQuery]);
 
-  const handleDomainSearch = (val: string) => {
-    setDomainQuery(val);
-    const q = val.trim().toLowerCase();
-    const firstMatch = q
-      ? allDomains.find((d) => d.domain.toLowerCase().includes(q))
-      : allDomains[0];
-    if (firstMatch && firstMatch.domain !== selectedDomain?.domain) {
-      void loadDomainLogs(firstMatch, false);
-    }
-  };
+
 
   const handleReindex = async () => {
     if (isReindexing) return;
@@ -209,12 +212,12 @@ export function CookiesVault() {
       toast.success(
         `Indexed cookies across ${res.data.reindexed} of ${res.data.total} archives.`,
       );
-      void loadDomains(true);
+      void fetchDomains("", 0, false);
     } else {
       toast.error(res.error?.message ?? "Reindexing failed.");
     }
   };
-  const topWebsite = selectedDomain?.domain ?? domains[0]?.domain ?? "—";
+  const topWebsite = selectedDomain?.domain ?? loadedDomains[0]?.domain ?? "—";
 
   const activeText = useMemo(() => {
     if (!selectedLog) return "";
@@ -393,9 +396,13 @@ export function CookiesVault() {
           <div className="flex flex-col gap-2 border-b border-[rgba(255,255,255,0.05)] p-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-[#d0d6e0]">
-                Websites ({domains.length})
+                Websites ({filteredCount > 0 ? filteredCount.toLocaleString() : totalDomains.toLocaleString()})
               </span>
-              <span className="text-[11px] text-[#62666d]">Root domains</span>
+              <span className="text-[11px] text-[#8a8f98] font-mono">
+                {loadedDomains.length < (filteredCount || totalDomains)
+                  ? `Loaded ${loadedDomains.length.toLocaleString()}`
+                  : "All loaded"}
+              </span>
             </div>
             <div className="relative">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-[#62666d]" />
@@ -403,22 +410,26 @@ export function CookiesVault() {
                 type="search"
                 value={domainQuery}
                 onChange={(e) => handleDomainSearch(e.target.value)}
-                placeholder="Search domain (chatgpt.com)…"
+                placeholder="Search all 1.2M websites…"
                 className="h-7 pl-7 text-xs"
               />
             </div>
           </div>
 
-          <div className="flex-1 divide-y divide-[rgba(255,255,255,0.04)] overflow-y-auto max-h-[600px]">
-            {isLoadingDomains ? (
+          <div
+            ref={domainsContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto max-h-[600px] divide-y divide-[rgba(255,255,255,0.04)]"
+          >
+            {isLoadingDomains && loadedDomains.length === 0 ? (
               <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8a8f98]">
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin text-emerald-400" />
                 Loading websites…
               </div>
-            ) : domains.length === 0 ? (
+            ) : loadedDomains.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
                 <p className="text-xs text-[#8a8f98]">
-                  No domain cookies indexed yet.
+                  {domainQuery ? `No websites match "${domainQuery}".` : "No domain cookies indexed yet."}
                 </p>
                 <Button
                   type="button"
@@ -435,38 +446,52 @@ export function CookiesVault() {
                 </Button>
               </div>
             ) : (
-              domains.map((dom) => {
-                const isActive = selectedDomain?.domain === dom.domain;
-                return (
-                  <button
-                    key={dom.domain}
-                    type="button"
-                    onClick={() => {
-                      setLogQuery("");
-                      void loadDomainLogs(dom, false);
-                    }}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors",
-                      isActive
-                        ? "bg-[rgba(255,255,255,0.07)] text-[#d0d6e0]"
-                        : "text-[#8a8f98] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#d0d6e0]",
-                    )}
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Globe className="size-3.5 shrink-0 text-[#62666d]" />
-                      <span className="truncate font-mono text-xs font-medium">
-                        {dom.domain}
-                      </span>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 font-mono text-[10px] text-[#8a8f98]"
+              <>
+                {paddingTop > 0 ? <div style={{ height: `${paddingTop}px` }} aria-hidden /> : null}
+
+                {visibleDomains.map((dom) => {
+                  const isActive = selectedDomain?.domain === dom.domain;
+                  return (
+                    <button
+                      key={dom.domain}
+                      type="button"
+                      style={{ height: `${ROW_HEIGHT}px` }}
+                      onClick={() => {
+                        setLogQuery("");
+                        void loadDomainLogs(dom, false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-2 px-3 text-left transition-colors cursor-pointer",
+                        isActive
+                          ? "bg-[rgba(255,255,255,0.08)] text-[#f7f8f8]"
+                          : "text-[#8a8f98] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#d0d6e0]"
+                      )}
                     >
-                      {dom.logCount}
-                    </Badge>
-                  </button>
-                );
-              })
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Globe className="size-3.5 shrink-0 text-[#62666d]" />
+                        <span className="truncate font-mono text-xs font-medium">
+                          {dom.domain}
+                        </span>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 font-mono text-[10px] text-[#8a8f98]"
+                      >
+                        {dom.logCount.toLocaleString()}
+                      </Badge>
+                    </button>
+                  );
+                })}
+
+                {paddingBottom > 0 ? <div style={{ height: `${paddingBottom}px` }} aria-hidden /> : null}
+
+                {isLoadingMore ? (
+                  <div className="flex items-center justify-center py-2.5 text-xs text-[#8a8f98] font-mono">
+                    <Loader2 className="size-3 animate-spin mr-1.5 text-emerald-400" />
+                    Streaming more websites…
+                  </div>
+                ) : null}
+              </>
             )}
           </div>
         </section>

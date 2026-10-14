@@ -770,19 +770,23 @@ type CookieDomainLogItem struct {
 	JSONText        string `json:"jsonText"`
 }
 
-// ListCookieDomains returns aggregated root domains and overall cookie statistics from the in-memory cache.
-func (s *Store) ListCookieDomains(ctx context.Context, query string, limit int) (
+// ListCookieDomains returns paginated aggregated root domains and overall cookie statistics from the in-memory cache.
+func (s *Store) ListCookieDomains(ctx context.Context, query string, limit, offset int) (
 	domains []CookieDomainSummary,
 	totalDomains int64,
 	totalLogs int64,
 	totalCookies int64,
+	filteredCount int,
 	err error,
 ) {
-	if limit <= 0 || limit > 10000 {
-		limit = 2000
+	if limit <= 0 || limit > 1000 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
 	}
 	if err := s.ensureCookieDomainsLoaded(ctx); err != nil {
-		return nil, 0, 0, 0, err
+		return nil, 0, 0, 0, 0, err
 	}
 
 	s.cookieCache.mu.RLock()
@@ -794,30 +798,41 @@ func (s *Store) ListCookieDomains(ctx context.Context, query string, limit int) 
 
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
-		if len(all) > limit {
-			domains = all[:limit]
-		} else {
-			domains = all
+		filteredCount = len(all)
+		if offset >= len(all) {
+			return []CookieDomainSummary{}, totalDomains, totalLogs, totalCookies, filteredCount, nil
 		}
+		end := offset + limit
+		if end > len(all) {
+			end = len(all)
+		}
+		domains = all[offset:end]
 		if domains == nil {
 			domains = []CookieDomainSummary{}
 		}
-		return domains, totalDomains, totalLogs, totalCookies, nil
+		return domains, totalDomains, totalLogs, totalCookies, filteredCount, nil
 	}
+
+	// In-memory filter across all 1.23M domains
+	matches := make([]CookieDomainSummary, 0, 256)
+	for _, d := range all {
+		if strings.Contains(strings.ToLower(d.Domain), q) {
+			matches = append(matches, d)
+		}
+	}
+	filteredCount = len(matches)
+	if offset >= len(matches) {
+		return []CookieDomainSummary{}, totalDomains, totalLogs, totalCookies, filteredCount, nil
+	}
+	end := offset + limit
+	if end > len(matches) {
+		end = len(matches)
+	}
+	domains = matches[offset:end]
 	if domains == nil {
 		domains = []CookieDomainSummary{}
 	}
-
-	domains = make([]CookieDomainSummary, 0, 64)
-	for _, d := range all {
-		if strings.Contains(strings.ToLower(d.Domain), q) {
-			domains = append(domains, d)
-			if len(domains) >= limit {
-				break
-			}
-		}
-	}
-	return domains, totalDomains, totalLogs, totalCookies, nil
+	return domains, totalDomains, totalLogs, totalCookies, filteredCount, nil
 }
 
 // ListLogsForCookieDomain returns the individual per-log stripped cookies for a domain, using an in-memory cache.

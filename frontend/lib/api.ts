@@ -211,6 +211,10 @@ export type CookieDomainsListResponse = {
   totalDomains: number;
   totalLogs: number;
   totalCookies: number;
+  filteredCount?: number;
+  hasMore?: boolean;
+  limit?: number;
+  offset?: number;
 };
 
 export type CookieDomainLogsResponse = {
@@ -557,10 +561,19 @@ export function browserGetStorageStats() {
   });
 }
 
-export function browserListCookieDomains(q?: string) {
-  const qs = q ? `?q=${encodeURIComponent(q)}` : "";
-  return request<CookieDomainsListResponse>(`/api/cookies${qs}`, {
+export function browserListCookieDomains(
+  q?: string,
+  limit = 100,
+  offset = 0,
+  signal?: AbortSignal,
+) {
+  const p = new URLSearchParams();
+  if (q && q.trim()) p.set("q", q.trim());
+  if (limit) p.set("limit", String(limit));
+  if (offset) p.set("offset", String(offset));
+  return request<CookieDomainsListResponse>(`/api/cookies?${p.toString()}`, {
     method: "GET",
+    signal,
   });
 }
 

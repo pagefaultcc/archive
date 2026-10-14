@@ -1007,18 +1007,36 @@ func (h *archiveHandlers) listCookies(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	limit := 100
+	if lStr := r.URL.Query().Get("limit"); lStr != "" {
+		if n, err := strconv.Atoi(lStr); err == nil && n > 0 && n <= 1000 {
+			limit = n
+		}
+	}
+	offset := 0
+	if oStr := r.URL.Query().Get("offset"); oStr != "" {
+		if n, err := strconv.Atoi(oStr); err == nil && n >= 0 {
+			offset = n
+		}
+	}
 
-	domains, totalDomains, totalLogs, totalCookies, err := h.Store.ListCookieDomains(r.Context(), q, 500)
+	domains, totalDomains, totalLogs, totalCookies, filteredCount, err := h.Store.ListCookieDomains(r.Context(), q, limit, offset)
 	if err != nil {
 		h.logInternal(r.Context(), "listing cookie domains failed", err)
 		WriteError(w, InternalServerError)
 		return
 	}
+	hasMore := (offset + len(domains)) < filteredCount
+
 	WriteJSON(w, http.StatusOK, map[string]any{
-		"domains":      domains,
-		"totalDomains": totalDomains,
-		"totalLogs":    totalLogs,
-		"totalCookies": totalCookies,
+		"domains":       domains,
+		"totalDomains":  totalDomains,
+		"totalLogs":     totalLogs,
+		"totalCookies":  totalCookies,
+		"filteredCount": filteredCount,
+		"hasMore":       hasMore,
+		"limit":         limit,
+		"offset":        offset,
 	})
 }
 
