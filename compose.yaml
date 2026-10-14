@@ -1,0 +1,114 @@
+name: archive
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    shm_size: 4g
+    command: ["postgres", "-c", "shared_buffers=1024MB", "-c", "work_mem=64MB", "-c", "maintenance_work_mem=512MB", "-c", "effective_cache_size=4096MB"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+  api:
+    build:
+      context: ./backend
+      target: production
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}?sslmode=disable
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
+      ROOT_USERNAME: ${ROOT_USERNAME:?ROOT_USERNAME is required}
+      ROOT_PASSWORD: ${ROOT_PASSWORD:?ROOT_PASSWORD is required}
+      ARCHIVE_STORAGE_DIR: /var/lib/archive/uploads
+    volumes:
+      - archive-data:/var/lib/archive/uploads
+    mem_limit: 10g
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+    environment:
+      INTERNAL_API_URL: http://api:8080
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/login"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  gateway:
+    image: caddy:2-alpine
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${APP_PORT:?APP_PORT is required}:3000"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+  postgres-test:
+    image: postgres:17-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_DB: archive_test
+      POSTGRES_USER: archive_test
+      POSTGRES_PASSWORD: archive_test_only
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U archive_test -d archive_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  api-test:
+    build:
+      context: ./backend
+      target: test
+    profiles: ["test"]
+    working_dir: /src
+    environment:
+      TEST_DATABASE_URL: postgresql://archive_test:archive_test_only@postgres-test:5432/archive_test?sslmode=disable
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    command: ["go", "test", "-p", "1", "./..."]
+
+  frontend-test:
+    build:
+      context: ./frontend
+      target: test
+    profiles: ["test"]
+    working_dir: /app
+    command: ["npm", "test", "--", "--run"]
+
+volumes:
+  postgres-data:
+  archive-data:

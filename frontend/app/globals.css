@@ -1,0 +1,385 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ------------------------------------------------------------------ */
+/* Kinetics spring easing tokens (https://kinetics.colorion.co/)       */
+/* ------------------------------------------------------------------ */
+:root {
+  --spring-easing: linear(
+    0, 0.0088 0.75%, 0.0362 1.65%, 0.1482 3.62%, 0.3256 6.03%, 0.4921 8.6%,
+    0.6392 11.28%, 0.7661 14.14%, 0.8747 17.24%, 0.9637 20.48%, 1.0334 23.89%,
+    1.0813 27.44%, 1.1077 31.15%, 1.1148 34.63%, 1.1047 38.68%, 1.0787 39.32%,
+    1.0612 41.05%, 1.0295 45.02%, 1.0086 49.09%, 0.9983 52.95%, 0.9961 56.95%,
+    0.9995 61.19%, 1.0037 65.79%, 1.0059 71.09%, 1.0052 77.31%, 1.0001 91.85%
+  );
+  --spring-duration: 520ms;
+  --spring-duration-fast: 260ms;
+}
+
+/*
+ * Linear DesignMD Color System — full-black/dark surfaces everywhere,
+ * #F7F8F8 / #FFFFFF text only.
+ */
+:root,
+.dark {
+  --radius: 8px;
+  --background: #08090a;
+  --foreground: #f7f8f8;
+  --card: #0f1011;
+  --card-foreground: #f7f8f8;
+  --popover: #0f1011;
+  --popover-foreground: #f7f8f8;
+  --primary: rgba(255, 255, 255, 0.05);
+  --primary-foreground: #f7f8f8;
+  --secondary: rgba(255, 255, 255, 0.03);
+  --secondary-foreground: #f7f8f8;
+  --muted: #18191a;
+  --muted-foreground: #8a8f98;
+  --accent: rgba(255, 255, 255, 0.05);
+  --accent-foreground: #ffffff;
+  --destructive: #f91880;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.05);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: rgba(255, 255, 255, 0.15);
+  --sidebar: #000000;
+  --sidebar-foreground: #f7f8f8;
+  --sidebar-primary: rgba(255, 255, 255, 0.05);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(255, 255, 255, 0.05);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.05);
+  --sidebar-ring: rgba(255, 255, 255, 0.15);
+  --accent-soft: rgba(255, 255, 255, 0.05);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --font-sans: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Berkeley Mono", var(--font-mono-code), "Monaco", "Courier New",
+    monospace;
+}
+
+html {
+  color-scheme: dark;
+  font-family: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: 0px;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 590;
+  line-height: 31.92px;
+  letter-spacing: 0px;
+  color: #ffffff;
+}
+
+h2 {
+  font-size: 20px;
+  font-weight: 590;
+  line-height: 26.6px;
+  letter-spacing: 0px;
+  color: #ffffff;
+}
+
+h3,
+[data-slot="card-title"] {
+  font-size: 16px;
+  font-weight: 590;
+  line-height: 24px;
+  letter-spacing: 0px;
+  color: #f7f8f8;
+}
+
+code,
+pre,
+.font-mono {
+  font-family: "Berkeley Mono", var(--font-mono-code), "Monaco", "Courier New",
+    monospace;
+  font-size: 13px;
+  line-height: 21px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Application shell                                                    */
+/* ------------------------------------------------------------------ */
+.app-shell {
+  min-height: 100svh;
+}
+
+.app-sidebar-brand {
+  color: var(--sidebar-foreground);
+  border-radius: 6px;
+  transition:
+    color var(--spring-duration-fast) var(--spring-easing),
+    background-color var(--spring-duration-fast) var(--spring-easing);
+}
+.app-sidebar-brand:hover {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.app-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: #8a8f98;
+  font-size: 14px;
+  font-weight: 510;
+  line-height: 21px;
+  border-radius: 6px;
+  transition:
+    color var(--spring-duration-fast) var(--spring-easing),
+    background-color var(--spring-duration-fast) var(--spring-easing);
+}
+.app-nav-link:hover {
+  color: #f7f8f8;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.app-nav-link:focus-visible {
+  outline: 2px solid var(--sidebar-ring);
+  outline-offset: 2px;
+}
+
+/* Microkit spotlight active rail — Linear #FFFFFF active state */
+.app-nav-active {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.app-nav-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: 0 -50%;
+  width: 2px;
+  height: 58%;
+  border-radius: 9999px;
+  background: #ffffff;
+  transition: height var(--spring-duration) var(--spring-easing);
+}
+.app-nav-active:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.app-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 20px 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-surface {
+  background-color: #0f1011;
+  color: #f7f8f8;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.app-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px 24px;
+  text-align: center;
+  border-radius: 8px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Kinetics spring motion (https://kinetics.colorion.co/)               */
+/* ------------------------------------------------------------------ */
+.spring-interactive {
+  transition:
+    transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 260ms ease;
+}
+.spring-interactive:hover {
+  transform: translateY(-1.5px) scale(1.02);
+}
+.spring-interactive:active {
+  transform: translateY(0px) scale(0.96);
+}
+
+.kinetics-card {
+  transition:
+    transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 220ms ease,
+    box-shadow 260ms ease;
+}
+.kinetics-card:hover {
+  transform: translateY(-3px) scale(1.005);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.7);
+}
+
+.kinetics-magnetic {
+  transition: transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+.kinetics-icon-tile {
+  transition:
+    transform 460ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 220ms ease,
+    background-color 220ms ease;
+}
+.kinetics-icon-float {
+  transition: transform 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+:hover > .kinetics-icon-tile,
+.kinetics-icon-tile:hover {
+  transform: translateY(-2px) scale(1.08) rotate(-4deg);
+  border-color: rgba(255, 255, 255, 0.16);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+:hover > .kinetics-icon-tile .kinetics-icon-float,
+.kinetics-icon-tile:hover .kinetics-icon-float {
+  transform: scale(1.12) rotate(-4deg);
+}
+
+.kinetics-counter {
+  transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.kinetics-counter-bump {
+  transform: scale(1.22) translateY(-5px);
+}
+
+.spring-enter {
+  animation: spring-enter 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.kinetics-stagger > * {
+  animation: spring-enter 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.kinetics-stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.kinetics-stagger > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.kinetics-stagger > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.kinetics-stagger > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+@keyframes spring-enter {
+  0% {
+    opacity: 0.96;
+    transform: translateY(10px) scale(0.975);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px) scale(1);
+  }
+}
+
+.kinetics-progress-fill {
+  background: linear-gradient(90deg, #4c8dff 0%, #7ab6ff 60%, #9ecbff 100%);
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.55);
+}
+.kinetics-progress-shimmer {
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.14) 50%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  animation: kinetics-shimmer 1.4s linear infinite;
+}
+@keyframes kinetics-shimmer {
+  0% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -90% 0;
+  }
+}
+.kinetics-pulse {
+  animation: kinetics-pulse 1.6s ease-in-out infinite;
+}
+@keyframes kinetics-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spring-interactive,
+  .spring-interactive:hover,
+  .spring-interactive:active,
+  .kinetics-card,
+  .kinetics-card:hover,
+  .kinetics-magnetic,
+  .kinetics-icon-tile,
+  .kinetics-icon-float,
+  .kinetics-counter,
+  .kinetics-counter-bump {
+    transform: none !important;
+    scale: none !important;
+    transition: none !important;
+  }
+  .spring-enter,
+  .kinetics-stagger > * {
+    animation: none !important;
+  }
+  .app-sidebar-brand,
+  .app-nav-link,
+  .app-nav-active::before {
+    transition: none !important;
+  }
+  .kinetics-progress-shimmer,
+  .kinetics-pulse {
+    animation: none !important;
+  }
+}

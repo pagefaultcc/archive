@@ -1,0 +1,7 @@
+.env
+*.log
+.DS_Store
+frontend/.next/
+frontend/node_modules/
+backend/bin/
+coverage/

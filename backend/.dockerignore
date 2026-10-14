@@ -1,0 +1,7 @@
+.env
+.env.*
+*.md
+Dockerfile
+.dockerignore
+tmp/
+*.test
