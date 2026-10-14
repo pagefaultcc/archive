@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -61,6 +63,7 @@ type Store struct {
 type cookieDomainCache struct {
 	mu           sync.RWMutex
 	populated    bool
+	loading      atomic.Bool
 	allDomains   []CookieDomainSummary
 	totalDomains int64
 	totalLogs    int64

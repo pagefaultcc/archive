@@ -1008,7 +1008,7 @@ func (h *archiveHandlers) listCookies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	domains, totalDomains, totalLogs, totalCookies, err := h.Store.ListCookieDomains(r.Context(), q, 10000)
+	domains, totalDomains, totalLogs, totalCookies, err := h.Store.ListCookieDomains(r.Context(), q, 500)
 	if err != nil {
 		h.logInternal(r.Context(), "listing cookie domains failed", err)
 		WriteError(w, InternalServerError)

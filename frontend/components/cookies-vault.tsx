@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowUpRight,
+  CheckCircle2,
   Copy,
   Download,
   FileCode,
@@ -21,6 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  browserAddValidationDomain,
+  browserAddValidationLog,
   browserListCookieDomainLogs,
   browserListCookieDomains,
   browserReindexAllArchives,
@@ -350,6 +353,27 @@ export function CookiesVault() {
                 </a>
               </Button>
             </div>
+
+            {/* Send All to Validator */}
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={async () => {
+                if (!selectedDomain) return;
+                toast.loading(`Sending ${selectedDomain.domain} to Validator…`, { id: "val-domain" });
+                const res = await browserAddValidationDomain(selectedDomain.domain, "chatgpt");
+                if (res.ok) {
+                  toast.success(res.data.message || `Queued ${selectedDomain.domain} to Validator!`, { id: "val-domain" });
+                } else {
+                  toast.error(res.error?.message ?? "Failed to send to validator", { id: "val-domain" });
+                }
+              }}
+              className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
+            >
+              <CheckCircle2 className="size-3" />
+              Send All to Validator
+            </Button>
           </div>
         </section>
       ) : null}
@@ -505,17 +529,38 @@ export function CookiesVault() {
                       </Badge>
                     </button>
 
-                    {/* Clickable path forwarding to Archive > File Viewer at that exact path */}
-                    <Link
-                      href={`/archives/${item.archiveId}?path=${encodeURIComponent(item.entryPath)}`}
-                      className="group inline-flex items-center gap-1 truncate font-mono text-[11px] text-[#62666d] hover:text-[#d0d6e0] hover:underline"
-                      title={`Open in Archive File Viewer: ${item.archiveFilename} → ${item.entryPath}`}
-                    >
-                      <span className="truncate">
-                        {item.archiveFilename} / {item.entryPath}
-                      </span>
-                      <ArrowUpRight className="size-3 shrink-0 opacity-70 group-hover:opacity-100" />
-                    </Link>
+                    <div className="flex items-center justify-between pt-0.5">
+                      {/* Clickable path forwarding to Archive > File Viewer at that exact path */}
+                      <Link
+                        href={`/archives/${item.archiveId}?path=${encodeURIComponent(item.entryPath)}`}
+                        className="group inline-flex items-center gap-1 truncate font-mono text-[11px] text-[#62666d] hover:text-[#d0d6e0] hover:underline"
+                        title={`Open in Archive File Viewer: ${item.archiveFilename} → ${item.entryPath}`}
+                      >
+                        <span className="truncate">
+                          {item.archiveFilename} / {item.entryPath}
+                        </span>
+                        <ArrowUpRight className="size-3 shrink-0 opacity-70 group-hover:opacity-100" />
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          toast.loading("Sending to Validator…", { id: `val-${item.id}` });
+                          const res = await browserAddValidationLog(item.id, "chatgpt");
+                          if (res.ok) {
+                            toast.success("Queued to Validator!", { id: `val-${item.id}` });
+                          } else {
+                            toast.error(res.error?.message ?? "Failed to queue log", { id: `val-${item.id}` });
+                          }
+                        }}
+                        title="Send this log to Cookie Validator"
+                        className="inline-flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors cursor-pointer shrink-0 ml-2"
+                      >
+                        <CheckCircle2 className="size-2.5" />
+                        Check
+                      </button>
+                    </div>
                   </div>
                 );
               })
@@ -592,6 +637,26 @@ export function CookiesVault() {
                     variant="outline"
                     size="xs"
                     onClick={async () => {
+                      if (!selectedLog) return;
+                      toast.loading("Sending log to Validator…", { id: `val-inspect-${selectedLog.id}` });
+                      const res = await browserAddValidationLog(selectedLog.id, "chatgpt");
+                      if (res.ok) {
+                        toast.success("Queued to Validator!", { id: `val-inspect-${selectedLog.id}` });
+                      } else {
+                        toast.error(res.error?.message ?? "Failed to queue log", { id: `val-inspect-${selectedLog.id}` });
+                      }
+                    }}
+                    className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
+                  >
+                    <CheckCircle2 className="size-3" />
+                    Send to Validator
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={async () => {
                       const ok = await copyToClipboard(selectedLog.netscapeText);
                       if (ok) {
                         toast.success(
@@ -601,6 +666,7 @@ export function CookiesVault() {
                         toast.error("Failed to copy cookies to clipboard.");
                       }
                     }}
+                    className="gap-1.5"
                   >
                     <Copy className="size-3" />
                     Copy (Netscape)

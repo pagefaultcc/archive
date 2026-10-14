@@ -305,5 +305,65 @@ func (h *AuthHandlers) logInternal(ctx context.Context, msg string, err error) {
 	h.Log.Error(msg, "request_id", RequestID(ctx), "error", err.Error())
 }
 
+type changePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
+// ChangePassword handles POST /api/auth/change-password.
+func (h *AuthHandlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	actor := mustActor(r)
+	if actor == nil {
+		WriteError(w, Unauthenticated)
+		return
+	}
+	var req changePasswordRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, err)
+		return
+	}
+	if req.CurrentPassword == "" {
+		WriteError(w, WithFields(map[string]string{"currentPassword": "Current password is required."}))
+		return
+	}
+	if len(req.NewPassword) < 8 || len(req.NewPassword) > 128 {
+		WriteError(w, WithFields(map[string]string{"newPassword": "New password must be between 8 and 128 characters."}))
+		return
+	}
+
+	// 1. Verify current password
+	hash, err := h.Store.GetUserPasswordHash(r.Context(), actor.ID)
+	if err != nil {
+		h.logInternal(r.Context(), "loading user password hash failed", err)
+		WriteError(w, InternalServerError)
+		return
+	}
+	ok, err := auth.Verify([]byte(req.CurrentPassword), hash)
+	if err != nil || !ok {
+		WriteError(w, WithFields(map[string]string{"currentPassword": "Incorrect current password."}))
+		return
+	}
+
+	// 2. Hash new password
+	newHash, err := auth.Hash([]byte(req.NewPassword), auth.DefaultParams)
+	if err != nil {
+		h.logInternal(r.Context(), "hashing new password failed", err)
+		WriteError(w, InternalServerError)
+		return
+	}
+
+	// 3. Update database
+	if err := h.Store.ChangeOwnPassword(r.Context(), actor.ID, newHash); err != nil {
+		h.logInternal(r.Context(), "updating password failed", err)
+		WriteError(w, InternalServerError)
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]string{
+		"status":  "ok",
+		"message": "Password changed successfully.",
+	})
+}
+
 // constantTimeEqual preserves constant-time comparison for token digests.
 var _ = subtle.ConstantTimeCompare

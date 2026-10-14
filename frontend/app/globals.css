@@ -354,6 +354,23 @@ pre,
   }
 }
 
+/* Apple-style subtle tab page transition */
+@keyframes appleTabEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.998);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.apple-tab-enter {
+  animation: appleTabEnter 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .spring-interactive,
   .spring-interactive:hover,

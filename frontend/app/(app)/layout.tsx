@@ -70,7 +70,7 @@ export default async function ProtectedLayout({
 
         {/* Main Content Area with bottom clearance for floating dock */}
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden px-4 pt-6 pb-28 md:px-6 lg:px-8">
-          <div className="mx-auto flex min-h-0 min-w-0 w-full max-w-[1500px] flex-1 flex-col">
+          <div className="apple-tab-enter mx-auto flex min-h-0 min-w-0 w-full max-w-[1500px] flex-1 flex-col">
             {children}
           </div>
         </main>

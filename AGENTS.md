@@ -209,3 +209,23 @@ docker build --target production --build-arg BUILD_ID=$(date +%s) -t archive-api
   - Animated floating glass pill tooltip above the hovered icon with smooth fade-in and slide-up.
   - Active route indicator with neon green ambient dot underneath.
   - Compact circular user avatar with upward glass dropdown menu.
+
+### F. Cookie Validator & User Account Settings
+- **Validator Architecture (`/validator`):**
+  - **Migration 011:** Creates `cookie_validation_items` table with service selector, domain, cookie counts, raw netscape text, and check status (`not_checked`, `valid`, `not_valid`).
+  - **One-Click Enqueueing from Cookies:** Users can send an entire domain or individual logs directly to Validator from the Cookies explorer (`/cookies`).
+  - **Custom Cookie Paste:** Users can manually paste raw Netscape/JSON cookies into the checker.
+  - **Export Valid:** Directly download all verified valid session cookies as a Netscape `.txt` file.
+- **User Account Settings (`UserMenu`):**
+  - Clicking the user profile avatar opens an instant upward dropdown menu with a dedicated "User Settings" option.
+  - Opens a clear-glass dialog allowing the user to view account details, change passwords (`POST /api/auth/change-password` with Argon2id re-hashing and constant-time old password verification), and view active session badges.
+
+### G. Route Transition Physics & Instant-Interaction Invariants
+- **Apple-Style Tab Route Transitions:**
+  - Switching between main tabs (`/archives`, `/search`, `/cookies`, `/validator`, `/channels`, `/settings`) triggers `.apple-tab-enter` (200ms `cubic-bezier(0.16, 1, 0.3, 1)` fade + 6px upward slide).
+- **ZERO Animation Rule for Tactical Interactions:**
+  - **NEVER animate log selection:** Clicking through individual log files in Cookies, Search, or Validator updates the code viewer **instantly** (`transition-none`) with zero layout shift or delay.
+  - **NEVER animate profile logout menu:** The profile avatar dropdown menu uses `transition-none` so clicking the user avatar and selecting logout is instant with zero sluggishness.
+- **Non-Blocking Cookies Fetch:**
+  - `ListCookieDomains` limit is capped at 500 (UI renders 300) to keep JSON payloads small (~30 KB) and parse in <2ms.
+  - In `ensureCookieDomainsLoaded`, a single-flight `atomic.Bool` (`loading`) prevents multiple concurrent 7.1M-row table scans on cold restarts.

@@ -682,21 +682,17 @@ func (s *Store) SaveArchiveCookieDomains(ctx context.Context, archiveID string, 
 	return nil
 }
 
-// InvalidateCookieCache clears the in-memory cookie domain and log cache and warms it asynchronously.
+// InvalidateCookieCache clears the in-memory domain logs cache and refreshes domains asynchronously.
 func (s *Store) InvalidateCookieCache() {
-	s.cookieCache.mu.Lock()
-	s.cookieCache.populated = false
-	s.cookieCache.allDomains = nil
-	s.cookieCache.totalDomains = 0
-	s.cookieCache.totalLogs = 0
-	s.cookieCache.totalCookies = 0
-	s.cookieCache.domainLogs = nil
-	s.cookieCache.mu.Unlock()
+	s.cookieCache.logsMu.Lock()
+	s.cookieCache.domainLogs = make(map[string][]CookieDomainLogItem)
+	s.cookieCache.logsMu.Unlock()
 
+	// Asynchronously warm without setting allDomains to nil
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		_, _, _, _, _ = s.ListCookieDomains(ctx, "", 500)
+		_ = s.ensureCookieDomainsLoaded(ctx)
 	}()
 }
 
@@ -709,6 +705,11 @@ func (s *Store) ensureCookieDomainsLoaded(ctx context.Context) error {
 	}
 	s.cookieCache.mu.RUnlock()
 
+	// Single-flight guard: only 1 background loader runs at a time
+	if !s.cookieCache.loading.CompareAndSwap(false, true) {
+		return nil
+	}
+	defer s.cookieCache.loading.Store(false)
 
 
 	rows, err := s.pool.Query(ctx, `

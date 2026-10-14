@@ -185,6 +185,34 @@ func (s *Store) ResetPassword(ctx context.Context, actorID, targetID, passwordHa
 	return s.GetUser(ctx, targetID)
 }
 
+// ChangeOwnPassword updates the user's password hash and records an audit row without revoking the current session.
+func (s *Store) ChangeOwnPassword(ctx context.Context, userID, newHash string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning password update transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	target, username, _, err := txUser(ctx, tx, userID)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2`, newHash, target); err != nil {
+		return err
+	}
+	if err := txAudit(ctx, tx, userID, "user.password_changed", "user", target, map[string]any{"username": username}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// GetUserPasswordHash returns the stored password hash for authentication verification.
+func (s *Store) GetUserPasswordHash(ctx context.Context, userID string) (string, error) {
+	var hash string
+	err := s.pool.QueryRow(ctx, `SELECT password_hash FROM users WHERE id = $1 AND deleted_at IS NULL`, userID).Scan(&hash)
+	return hash, err
+}
+
 // SetSuspended suspends or reactivates a live user, revoking sessions on
 // suspension, in one transaction with an audit row.
 func (s *Store) SetSuspended(ctx context.Context, actorID, targetID string, suspended bool) (PublicUser, error) {

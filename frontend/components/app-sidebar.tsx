@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Archive,
+  CheckCircle2,
   Cookie,
   Radio,
   ScrollText,
@@ -42,6 +43,7 @@ export function AppSidebar({
     { href: "/archives", label: "Archives", icon: Archive },
     { href: "/search", label: "Search", icon: Search },
     { href: "/cookies", label: "Cookies", icon: Cookie },
+    { href: "/validator", label: "Validator", icon: CheckCircle2 },
     { href: "/channels", label: "Channels", icon: Radio },
   ];
 

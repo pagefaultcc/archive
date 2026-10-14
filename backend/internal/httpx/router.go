@@ -40,11 +40,13 @@ func NewRouter(st *store.Store, origin *config.URL, log *slog.Logger) http.Handl
 
 	// me (no permission).
 	mux.Handle("GET /api/auth/me", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(authH.Me))))
+	mux.Handle("POST /api/auth/change-password", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(authH.ChangePassword))))
 
 	// Archives: any authenticated active session may list, upload, browse,
 	// and unlock; deletion additionally requires ownership or a delete
 	archives := newArchiveHandlers(st, log)
 	channels := newChannelHandlers(st, log)
+	validator := newValidatorHandlers(st, log)
 	archives.startSweeper(context.Background())
 	mux.Handle("GET /api/archives", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(archives.list))))
 	mux.Handle("POST /api/archives", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(archives.upload))))
@@ -83,6 +85,15 @@ func NewRouter(st *store.Store, origin *config.URL, log *slog.Logger) http.Handl
 	mux.Handle("POST /api/channels/queue", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(channels.enqueueBatch))))
 	mux.Handle("GET /api/channels/queue", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(channels.getQueueStatus))))
 	mux.Handle("DELETE /api/channels/queue", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(channels.clearQueue))))
+
+	// Cookie Validator.
+	mux.Handle("GET /api/validator", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(validator.list))))
+	mux.Handle("POST /api/validator/domain", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(validator.addDomain))))
+	mux.Handle("POST /api/validator/log", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(validator.addLog))))
+	mux.Handle("POST /api/validator/custom", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(validator.addCustom))))
+	mux.Handle("POST /api/validator/check", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(validator.check))))
+	mux.Handle("DELETE /api/validator", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(validator.clear))))
+	mux.Handle("GET /api/validator/export", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(validator.export))))
 	// Users.
 	mux.Handle("GET /api/users", RequireOrigin(origin, authH.SessionMiddleware(
 		authH.RequirePermission("users:read", users.list))))
