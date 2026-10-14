@@ -233,6 +233,12 @@ export function CookiesVault() {
     return Number.isFinite(n) && n > 0 ? n : 100;
   }, [randomCountInput]);
 
+  const isSupportedDomain = Boolean(
+    selectedDomain &&
+      (selectedDomain.domain === "openai.com" ||
+        selectedDomain.domain.endsWith(".openai.com"))
+  );
+
   return (
     <div className="flex flex-1 flex-col gap-5 spring-enter">
       {/* Top Modular Summary Strip — Websites & Domain-Separated Logs */}
@@ -354,26 +360,28 @@ export function CookiesVault() {
               </Button>
             </div>
 
-            {/* Send All to Validator */}
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={async () => {
-                if (!selectedDomain) return;
-                toast.loading(`Sending ${selectedDomain.domain} to Validator…`, { id: "val-domain" });
-                const res = await browserAddValidationDomain(selectedDomain.domain, "chatgpt");
-                if (res.ok) {
-                  toast.success(res.data.message || `Queued ${selectedDomain.domain} to Validator!`, { id: "val-domain" });
-                } else {
-                  toast.error(res.error?.message ?? "Failed to send to validator", { id: "val-domain" });
-                }
-              }}
-              className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
-            >
-              <CheckCircle2 className="size-3" />
-              Send All to Validator
-            </Button>
+            {/* Send All to Validator — only shown for supported services (OpenAI) */}
+            {isSupportedDomain ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={async () => {
+                  if (!selectedDomain) return;
+                  toast.loading(`Sending ${selectedDomain.domain} to Validator…`, { id: "val-domain" });
+                  const res = await browserAddValidationDomain(selectedDomain.domain, "chatgpt");
+                  if (res.ok) {
+                    toast.success(res.data.message || `Queued ${selectedDomain.domain} to Validator!`, { id: "val-domain" });
+                  } else {
+                    toast.error(res.error?.message ?? "Failed to send to validator", { id: "val-domain" });
+                  }
+                }}
+                className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
+              >
+                <CheckCircle2 className="size-3" />
+                Send All to Validator
+              </Button>
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -542,24 +550,29 @@ export function CookiesVault() {
                         <ArrowUpRight className="size-3 shrink-0 opacity-70 group-hover:opacity-100" />
                       </Link>
 
-                      <button
-                        type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          toast.loading("Sending to Validator…", { id: `val-${item.id}` });
-                          const res = await browserAddValidationLog(item.id, "chatgpt");
-                          if (res.ok) {
-                            toast.success("Queued to Validator!", { id: `val-${item.id}` });
-                          } else {
-                            toast.error(res.error?.message ?? "Failed to queue log", { id: `val-${item.id}` });
-                          }
-                        }}
-                        title="Send this log to Cookie Validator"
-                        className="inline-flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors cursor-pointer shrink-0 ml-2"
-                      >
-                        <CheckCircle2 className="size-2.5" />
-                        Check
-                      </button>
+                      {/* Check button only shown for supported services (OpenAI) */}
+                      {item.domain === "openai.com" ||
+                      item.domain.endsWith(".openai.com") ||
+                      item.entryPath.toLowerCase().includes("openai") ? (
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            toast.loading("Sending to Validator…", { id: `val-${item.id}` });
+                            const res = await browserAddValidationLog(item.id, "chatgpt");
+                            if (res.ok) {
+                              toast.success("Queued to Validator!", { id: `val-${item.id}` });
+                            } else {
+                              toast.error(res.error?.message ?? "Failed to queue log", { id: `val-${item.id}` });
+                            }
+                          }}
+                          title="Send this log to Cookie Validator"
+                          className="inline-flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors cursor-pointer shrink-0 ml-2"
+                        >
+                          <CheckCircle2 className="size-2.5" />
+                          Check
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -632,25 +645,30 @@ export function CookiesVault() {
                     </button>
                   </div>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="xs"
-                    onClick={async () => {
-                      if (!selectedLog) return;
-                      toast.loading("Sending log to Validator…", { id: `val-inspect-${selectedLog.id}` });
-                      const res = await browserAddValidationLog(selectedLog.id, "chatgpt");
-                      if (res.ok) {
-                        toast.success("Queued to Validator!", { id: `val-inspect-${selectedLog.id}` });
-                      } else {
-                        toast.error(res.error?.message ?? "Failed to queue log", { id: `val-inspect-${selectedLog.id}` });
-                      }
-                    }}
-                    className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
-                  >
-                    <CheckCircle2 className="size-3" />
-                    Send to Validator
-                  </Button>
+                  {/* Send to Validator in Inspector — only for supported domain */}
+                  {selectedLog &&
+                  (selectedLog.domain === "openai.com" ||
+                    selectedLog.domain.endsWith(".openai.com")) ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={async () => {
+                        if (!selectedLog) return;
+                        toast.loading("Sending log to Validator…", { id: `val-inspect-${selectedLog.id}` });
+                        const res = await browserAddValidationLog(selectedLog.id, "chatgpt");
+                        if (res.ok) {
+                          toast.success("Queued to Validator!", { id: `val-inspect-${selectedLog.id}` });
+                        } else {
+                          toast.error(res.error?.message ?? "Failed to queue log", { id: `val-inspect-${selectedLog.id}` });
+                        }
+                      }}
+                      className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
+                    >
+                      <CheckCircle2 className="size-3" />
+                      Send to Validator
+                    </Button>
+                  ) : null}
 
                   <Button
                     type="button"

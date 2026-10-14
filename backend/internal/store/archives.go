@@ -402,7 +402,7 @@ func (s *Store) GetArchiveEntryForRead(
 		       e.size_bytes, e.packed_bytes, e.crc32, e.encrypted, e.modified_at
 		FROM archives a
 		JOIN archive_entries e ON e.archive_id = a.id
-		WHERE a.id = $1 AND e.path = $2
+		WHERE a.id = $1 AND lower(e.path) = lower($2)
 	`, archiveID, entryPath).Scan(
 		&archiveFilename, &storagePath, &format, &archivePassword,
 		&entry.ID, &entry.Path, &entry.ParentPath, &entry.Name, &entry.IsDir,
@@ -799,7 +799,13 @@ func (s *Store) ListCookieDomains(ctx context.Context, query string, limit int) 
 		} else {
 			domains = all
 		}
+		if domains == nil {
+			domains = []CookieDomainSummary{}
+		}
 		return domains, totalDomains, totalLogs, totalCookies, nil
+	}
+	if domains == nil {
+		domains = []CookieDomainSummary{}
 	}
 
 	domains = make([]CookieDomainSummary, 0, 64)
@@ -987,6 +993,42 @@ func (s *Store) SearchArchiveEntries(ctx context.Context, f SearchFilters) ([]Ar
 	}
 	if f.Offset < 0 {
 		f.Offset = 0
+	}
+
+	// Instant fast-path for blank initial load: avoids 15-second disk sort across 6.3M rows
+	if f.Query == "" && f.FileName == "" && f.FileType == "" && f.MinSizeBytes == 0 && f.MaxSizeBytes == 0 && f.ArchiveID == "" {
+		var countTotal int64
+		_ = s.pool.QueryRow(ctx, `SELECT reltuples::bigint FROM pg_class WHERE relname = 'archive_entries'`).Scan(&countTotal)
+
+		rows, err := s.pool.Query(ctx, `
+			SELECT e.id, e.archive_id, a.filename, e.path, e.name, 
+			       e.size_bytes, e.packed_bytes, e.crc32, e.encrypted, e.modified_at
+			FROM archive_entries e
+			JOIN archives a ON a.id = e.archive_id
+			WHERE e.is_dir = false
+			ORDER BY e.id DESC
+			LIMIT $1 OFFSET $2;
+		`, f.Limit, f.Offset)
+		if err != nil {
+			return nil, 0, fmt.Errorf("searching archive entries: %w", err)
+		}
+		defer rows.Close()
+
+		var results []ArchiveSearchResult
+		for rows.Next() {
+			var r ArchiveSearchResult
+			if err := rows.Scan(
+				&r.ID, &r.ArchiveID, &r.ArchiveFilename, &r.Path, &r.Name,
+				&r.SizeBytes, &r.PackedBytes, &r.CRC32, &r.Encrypted, &r.ModifiedAt,
+			); err != nil {
+				return nil, 0, err
+			}
+			results = append(results, r)
+		}
+		if results == nil {
+			results = []ArchiveSearchResult{}
+		}
+		return results, countTotal, rows.Err()
 	}
 
 	whereClauses := []string{"e.is_dir = false"}

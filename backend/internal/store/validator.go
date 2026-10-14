@@ -182,6 +182,13 @@ func (s *Store) AddValidationDomain(ctx context.Context, domain, service string)
 			inserted++
 		}
 	}
+
+	// Automatically run validation immediately in background
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		_, _ = s.CheckValidationItems(bgCtx, service, nil)
+	}()
 	return inserted, nil
 }
 
@@ -212,6 +219,13 @@ func (s *Store) AddValidationLog(ctx context.Context, logID int64, service strin
 		VALUES ($1, $2, $3, $4, $5, $6, $7, 'not_checked')
 		RETURNING id::text;
 	`, service, domain, archiveID, filename, entryPath, cookieCount, netscapeText).Scan(&insertedID)
+	if err == nil && insertedID != "" {
+		go func() {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			_, _ = s.CheckValidationItems(bgCtx, service, []string{insertedID})
+		}()
+	}
 	return insertedID, err
 }
 
@@ -223,7 +237,7 @@ func (s *Store) AddValidationCustom(ctx context.Context, domain, service, cookie
 	}
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	if domain == "" {
-		domain = "chatgpt.com"
+		domain = "openai.com"
 	}
 
 	cookieText = sanitizePGText(strings.TrimSpace(cookieText))
@@ -246,9 +260,15 @@ func (s *Store) AddValidationCustom(ctx context.Context, domain, service, cookie
 		VALUES ($1, $2, 'Manual Entry', 'custom/cookies.txt', $3, $4, 'not_checked')
 		RETURNING id::text;
 	`, service, domain, count, cookieText).Scan(&insertedID)
+	if err == nil && insertedID != "" {
+		go func() {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			_, _ = s.CheckValidationItems(bgCtx, service, []string{insertedID})
+		}()
+	}
 	return insertedID, err
 }
-
 // CheckValidationItems runs validation check on items (simulated/placeholder checker).
 func (s *Store) CheckValidationItems(ctx context.Context, service string, ids []string) (int, error) {
 	service = strings.ToLower(strings.TrimSpace(service))
@@ -294,22 +314,26 @@ func (s *Store) CheckValidationItems(ctx context.Context, service string, ids []
 	batch := &pgx.Batch{}
 
 	for _, it := range items {
-		// Evaluator logic:
-		// Checks for key auth tokens or non-empty valid Netscape cookie structure
 		status := "valid"
 		errMsg := ""
 
 		lowerText := strings.ToLower(it.text)
-		hasSessionToken := strings.Contains(lowerText, "session") ||
-			strings.Contains(lowerText, "token") ||
-			strings.Contains(lowerText, "auth") ||
-			strings.Contains(lowerText, "__secure") ||
-			strings.Contains(lowerText, "cf_clearance") ||
-			it.count >= 2
+		// Specifically check for auth.openai.com cookies and session tokens
+		hasAuthOpenAI := strings.Contains(lowerText, "auth.openai.com") || strings.Contains(lowerText, ".auth.openai.com")
+		hasSessionToken := strings.Contains(lowerText, "__secure-next-auth.session-token") ||
+			strings.Contains(lowerText, "session-token") ||
+			strings.Contains(lowerText, "oai-did") ||
+			strings.Contains(lowerText, "sess-")
 
-		if len(it.text) < 10 || !hasSessionToken {
+		if hasAuthOpenAI && hasSessionToken {
+			status = "valid"
+			errMsg = ""
+		} else if !hasAuthOpenAI {
 			status = "not_valid"
-			errMsg = "No active session tokens or auth cookies detected in payload"
+			errMsg = "Missing auth.openai.com session token"
+		} else {
+			status = "not_valid"
+			errMsg = "Malformed or expired auth.openai.com token"
 		}
 
 		batch.Queue(`

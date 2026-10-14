@@ -59,12 +59,7 @@ export default async function ProtectedLayout({
               <Separator orientation="vertical" className="h-4 bg-white/[0.08]" />
               <HeaderTitle />
             </div>
-            <div className="flex items-center gap-3 font-mono text-xs text-[#8a8f98]">
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-white/[0.08] bg-white/[0.02] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]">
-                <span className="size-1.5 rounded-full bg-[#00ba7c] shadow-[0_0_6px_#00ba7c] animate-pulse" />
-                Vault Online
-              </span>
-            </div>
+
           </div>
         </header>
 

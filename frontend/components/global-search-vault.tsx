@@ -86,8 +86,7 @@ export function GlobalSearchVault() {
   const [results, setResults] = useState<ArchiveSearchResult[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [searchDurationMs, setSearchDurationMs] = useState<number | null>(null);
-  const [isSearching, startSearchTransition] = useTransition();
-
+  const [isSearching, setIsSearching] = useState(false);
   const [selectedResult, setSelectedResult] =
     useState<ArchiveSearchResult | null>(null);
   const [preview, setPreview] = useState<ArchiveFilePreview | null>(null);
@@ -156,25 +155,32 @@ export function GlobalSearchVault() {
 
   const previewReqRef = useRef(0);
   const searchTimerRef = useRef<number | undefined>(undefined);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   const executeSearch = useCallback(
-    (overrideParams?: Partial<SearchParams>) => {
-      startSearchTransition(async () => {
-        const t0 = performance.now();
-        const minBytes = minSizeKB ? Number(minSizeKB) * 1024 : undefined;
-        const maxBytes = maxSizeKB ? Number(maxSizeKB) * 1024 : undefined;
+    async (overrideParams?: Partial<SearchParams>) => {
+      searchAbortRef.current?.abort();
+      const ctrl = new AbortController();
+      searchAbortRef.current = ctrl;
 
-        const params: SearchParams = {
-          q: q.trim() || undefined,
-          name: fileName.trim() || undefined,
-          type: fileType.trim() || undefined,
-          minSize: minBytes,
-          maxSize: maxBytes,
-          limit: 100,
-          ...overrideParams,
-        };
+      setIsSearching(true);
+      const t0 = performance.now();
+      const minBytes = minSizeKB ? Number(minSizeKB) * 1024 : undefined;
+      const maxBytes = maxSizeKB ? Number(maxSizeKB) * 1024 : undefined;
 
+      const params: SearchParams = {
+        q: q.trim() || undefined,
+        name: fileName.trim() || undefined,
+        type: fileType.trim() || undefined,
+        minSize: minBytes,
+        maxSize: maxBytes,
+        limit: 100,
+        ...overrideParams,
+      };
+
+      try {
         const res = await browserSearchArchiveEntries(params);
+        if (ctrl.signal.aborted) return;
         const dt = Math.round(performance.now() - t0);
         setSearchDurationMs(dt);
 
@@ -189,13 +195,22 @@ export function GlobalSearchVault() {
         } else {
           toast.error(res.error?.message ?? "Search failed. Check your regex syntax.");
         }
-      });
+      } catch {
+        // Aborted or network error
+      } finally {
+        if (!ctrl.signal.aborted) {
+          setIsSearching(false);
+        }
+      }
     },
     [fileName, fileType, maxSizeKB, minSizeKB, q],
   );
 
   useEffect(() => {
     executeSearch();
+    return () => {
+      searchAbortRef.current?.abort();
+    };
   }, [executeSearch]);
 
   const openFilePreview = useCallback(
