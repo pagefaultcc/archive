@@ -523,16 +523,21 @@ func (h *archiveHandlers) delete(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.removeNamedLink(item.Filename)
-	storagePath, err := h.Store.DeleteArchive(r.Context(), id, actor.ID)
-	if err != nil {
-		h.writeArchiveStoreError(w, r, err)
-		return
-	}
-	if storagePath != "" {
-		if err := os.Remove(storagePath); err != nil && !os.IsNotExist(err) {
-			h.logInternal(r.Context(), "archive file removal failed", err)
+	_ = h.Store.MarkArchiveDeleting(r.Context(), id)
+
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		storagePath, err := h.Store.DeleteArchive(bgCtx, id, actor.ID)
+		if err != nil {
+			h.Log.Error("background archive delete failed", "archive_id", id, "error", err.Error())
+			return
 		}
-	}
+		if storagePath != "" {
+			_ = os.Remove(storagePath)
+		}
+	}()
+
 	WriteNoContent(w)
 }
 

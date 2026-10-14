@@ -49,6 +49,7 @@ type channelHandlers struct {
 	StorageDir    string
 	queueMu       sync.RWMutex
 	activeItems   map[string]*telegramQueueItem
+	activeCancels map[string]context.CancelFunc
 	pendingQueue  []*telegramQueueItem
 	completedList []*telegramQueueItem
 	wakeWorker    chan struct{}
@@ -64,6 +65,7 @@ func newChannelHandlers(st *store.Store, log *slog.Logger) *channelHandlers {
 		Log:           log,
 		StorageDir:    dir,
 		activeItems:   make(map[string]*telegramQueueItem),
+		activeCancels: make(map[string]context.CancelFunc),
 		wakeWorker:    make(chan struct{}, 1),
 		completedList: make([]*telegramQueueItem, 0, 50),
 		pendingQueue:  make([]*telegramQueueItem, 0, 100),
@@ -823,9 +825,34 @@ func (h *channelHandlers) clearQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.queueMu.Lock()
+	// Terminate all actively downloading subprocesses immediately
+	for id, cancel := range h.activeCancels {
+		cancel()
+		delete(h.activeCancels, id)
+	}
+	h.activeItems = make(map[string]*telegramQueueItem)
 	h.pendingQueue = nil
 	h.completedList = nil
 	h.queueMu.Unlock()
+
+	// Clean up any orphaned temp files on disk
+	go func() {
+		matches, _ := filepath.Glob(filepath.Join(h.StorageDir, "tg-download-*"))
+		for _, m := range matches {
+			_ = os.Remove(m)
+		}
+		tmpMatches, _ := filepath.Glob(filepath.Join(os.TempDir(), "tg-download-*"))
+		for _, m := range tmpMatches {
+			_ = os.Remove(m)
+		}
+		downMatches, _ := filepath.Glob(filepath.Join(os.TempDir(), "archive-downloads", "*.zip"))
+		for _, m := range downMatches {
+			_ = os.Remove(m)
+		}
+	}()
+
+	// Invalidate and reload cookie cache
+	h.Store.InvalidateCookieCache()
 
 	WriteJSON(w, http.StatusOK, map[string]any{"status": "ok", "cleared": true})
 }
@@ -866,6 +893,15 @@ func (h *channelHandlers) processQueueItem(item *telegramQueueItem) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
+	h.queueMu.Lock()
+	h.activeCancels[item.ID] = cancel
+	h.queueMu.Unlock()
+
+	defer func() {
+		h.queueMu.Lock()
+		delete(h.activeCancels, item.ID)
+		h.queueMu.Unlock()
+	}()
 	set, err := h.Store.GetTelegramSettings(ctx)
 	if err != nil || !set.IsConfigured {
 		h.queueMu.Lock()

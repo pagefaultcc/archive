@@ -994,23 +994,21 @@ export function ArchivesVault({
                   variant="ghost"
                   aria-label={`Delete ${archive.filename}`}
                   className="rounded-[9999px] text-[#8a8f98] hover:text-[#f91880]"
-                  disabled={isDeletingId === archive.id}
                   onClick={async () => {
-                    setIsDeletingId(archive.id);
-                    const result = await browserDeleteArchive(archive.id);
-                    setIsDeletingId(null);
+                    const targetId = archive.id;
+                    const targetName = archive.filename;
+                    // Instant optimistic removal from UI
+                    setArchives((prev) => prev.filter((a) => a.id !== targetId));
+                    toast.success(`Deleted "${targetName}". Cleaning up in background...`);
+
+                    const result = await browserDeleteArchive(targetId);
                     if (!result.ok) {
-                      setGeneralError(
+                      toast.error(
                         result.error?.message ??
-                          "Delete failed. Check your connection and try again.",
+                          "Delete failed. Restoring list...",
                       );
-                      return;
+                      router.refresh();
                     }
-                    setArchives((prev) =>
-                      prev.filter((a) => a.id !== archive.id),
-                    );
-                    toast.success("Archive deleted.");
-                    router.refresh();
                   }}
                 >
                   {isDeletingId === archive.id ? (

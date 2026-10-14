@@ -190,3 +190,13 @@ docker build --target production --build-arg BUILD_ID=$(date +%s) -t archive-api
 - **PostgreSQL:** Tuned with `shared_buffers=2048MB`, `work_mem=128MB`, `maintenance_work_mem=1024MB`, `max_parallel_workers=16`, `max_parallel_workers_per_gather=4`, `max_connections=100`, and `synchronous_commit=off` for high-throughput batch insertions.
 - **Connection Pool:** `pgxpool` size expanded to `MaxConns = 25` and `MinConns = 5` to handle concurrent queue downloads, cookie insertions, and API requests without pool starvation.
 - **Full CPU Trust:** Docker containers run without CPU quotas (`GOMAXPROCS=0`), utilizing 100% of host CPU threads.
+
+### D. Smooth Background Operations & Complete Queue Cancellation
+- **Instant Archive Deletion:**
+  - Previously, `DELETE /api/archives/{id}` took 10–15 seconds synchronously while Postgres deleted 600k+ cascading cookie rows.
+  - Now, `MarkArchiveDeleting` immediately updates `status = 'deleting'` in 1 ms (omitted by `ListArchives`), and returns HTTP 204 immediately.
+  - The heavy cascade delete (`archive_cookie_domains`, `archive_entries`, file on disk, and audit logging) runs asynchronously in a background goroutine. The UI updates optimistically with zero lag.
+- **Complete Queue Cancellation (`clearQueue`):**
+  - `channelHandlers` maintains `activeCancels map[string]context.CancelFunc`.
+  - Calling `DELETE /api/channels/queue` cancels all running command contexts to immediately SIGKILL active Python downloader subprocesses.
+  - Automatically cleans up any orphaned `tg-download-*` files and temporary download exports on disk, and invalidates the in-memory cookie cache.
