@@ -75,7 +75,8 @@ func New(ctx context.Context, databaseURL string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parsing DATABASE_URL: %w", err)
 	}
-	cfg.MaxConns = 8
+	cfg.MaxConns = 25
+	cfg.MinConns = 5
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("connecting to database: %w", err)

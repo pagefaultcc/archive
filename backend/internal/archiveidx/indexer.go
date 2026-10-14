@@ -253,7 +253,19 @@ func verify(ctx context.Context, bin, filePath, password, targetEntry string) er
 }
 
 func run7zExec(ctx context.Context, bin string, args []string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, bin, args...)
+	finalArgs := make([]string, 0, len(args)+1)
+	hasMmt := false
+	for _, a := range args {
+		if strings.HasPrefix(a, "-mmt") {
+			hasMmt = true
+			break
+		}
+	}
+	if !hasMmt {
+		finalArgs = append(finalArgs, "-mmt=on")
+	}
+	finalArgs = append(finalArgs, args...)
+	cmd := exec.CommandContext(ctx, bin, finalArgs...)
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf

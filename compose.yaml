@@ -4,7 +4,7 @@ services:
   postgres:
     image: postgres:17-alpine
     shm_size: 4g
-    command: ["postgres", "-c", "shared_buffers=1024MB", "-c", "work_mem=64MB", "-c", "maintenance_work_mem=512MB", "-c", "effective_cache_size=4096MB"]
+    command: ["postgres", "-c", "shared_buffers=2048MB", "-c", "work_mem=128MB", "-c", "maintenance_work_mem=1024MB", "-c", "effective_cache_size=6144MB", "-c", "max_worker_processes=16", "-c", "max_parallel_workers=16", "-c", "max_parallel_workers_per_gather=4", "-c", "max_parallel_maintenance_workers=4", "-c", "max_connections=100", "-c", "synchronous_commit=off"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
@@ -29,6 +29,7 @@ services:
       ROOT_USERNAME: ${ROOT_USERNAME:?ROOT_USERNAME is required}
       ROOT_PASSWORD: ${ROOT_PASSWORD:?ROOT_PASSWORD is required}
       ARCHIVE_STORAGE_DIR: /var/lib/archive/uploads
+      GOMAXPROCS: "0"
     volumes:
       - archive-data:/var/lib/archive/uploads
     mem_limit: 10g

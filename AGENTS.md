@@ -172,3 +172,21 @@ docker build --target production --build-arg BUILD_ID=$(date +%s) -t archive-api
    - Channel downloads use `tg-download-*` temp files, renamed to SHA-256 storage path upon index completion.
    - On error, `_ = os.Remove(tmpPath)` is guaranteed in all defer and error branches.
    - Cookie download zips in `/tmp/archive-downloads` are automatically purged after 5 minutes by a background timer.
+
+---
+
+## 6. High-Throughput Parallel Architecture & Multi-Threading
+
+### A. Concurrent Telegram Download Queue
+- **Old Behavior:** `serverQueueWorker` processed one item at a time sequentially.
+- **New Behavior:** `maxConcurrent = 3` parallel download workers run concurrently via goroutines, each managing an isolated MTProto download subprocess.
+- **API Contract:** `GET /api/channels/queue` surfaces `activeList` (all currently downloading streams) and `totalSpeedMbps` (combined throughput).
+
+### B. Multi-Threaded In-Memory Cookie Extraction
+- **In-Memory ZIP Worker Pool:** `extractZipCandidateCookies` uses a multi-worker goroutine pool (`runtime.NumCPU() * 2`, minimum 4 workers) to decompress, signature-check, and parse candidate cookie files in parallel across all CPU cores.
+- **7-Zip Multi-Threading:** `run7zExec` automatically prepends `-mmt=on` to utilize all hardware threads for technical listings, verifications, and extractions.
+
+### C. Database & Docker Resource Tuning
+- **PostgreSQL:** Tuned with `shared_buffers=2048MB`, `work_mem=128MB`, `maintenance_work_mem=1024MB`, `max_parallel_workers=16`, `max_parallel_workers_per_gather=4`, `max_connections=100`, and `synchronous_commit=off` for high-throughput batch insertions.
+- **Connection Pool:** `pgxpool` size expanded to `MaxConns = 25` and `MinConns = 5` to handle concurrent queue downloads, cookie insertions, and API requests without pool starvation.
+- **Full CPU Trust:** Docker containers run without CPU quotas (`GOMAXPROCS=0`), utilizing 100% of host CPU threads.

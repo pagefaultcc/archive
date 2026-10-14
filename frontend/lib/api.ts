@@ -800,6 +800,8 @@ export function browserGetTelegramImportJob(jobId: string) {
 
 export type TelegramQueueStatus = {
   active: TelegramImportJob | null;
+  activeList?: TelegramImportJob[];
+  totalSpeedMbps?: number;
   pendingCount: number;
   pending: TelegramImportJob[];
   completed: TelegramImportJob[];

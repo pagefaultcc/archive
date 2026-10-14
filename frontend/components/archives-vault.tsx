@@ -573,20 +573,24 @@ export function ArchivesVault({
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "Total archives", value: totalArchives },
-              { label: "Indexed files", value: indexedFiles },
-              { label: "Encrypted vaults", value: encryptedVaults },
+              { label: "Total archives", value: totalArchives, accent: "border-sky-500/20 bg-sky-500/[0.02]" },
+              { label: "Indexed files", value: indexedFiles, accent: "border-emerald-500/20 bg-emerald-500/[0.02]" },
+              { label: "Encrypted vaults", value: encryptedVaults, accent: "border-amber-500/20 bg-amber-500/[0.02]" },
               {
                 label: "Total indexed size",
                 value: null,
                 text: formatBytes(totalIndexedBytes),
+                accent: "border-violet-500/20 bg-violet-500/[0.02]",
               },
             ].map((metric) => (
               <div
                 key={metric.label}
-                className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] px-3 py-2.5"
+                className={cn(
+                  "flex flex-col gap-0.5 rounded-[8px] border px-3 py-2.5 transition-all duration-200 hover:border-opacity-40",
+                  metric.accent
+                )}
               >
-                <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-[#8a8f98]">
                   {metric.label}
                 </span>
                 <span className="text-lg font-semibold tabular-nums tracking-tight text-[#f7f8f8]">
@@ -778,32 +782,32 @@ export function ArchivesVault({
       </section>
 
       {/* Background Server Download Indicator */}
-      {serverQueue !== null && (serverQueue.active !== null || serverQueue.pendingCount > 0) ? (
-        <div className="flex flex-col gap-2 rounded-[8px] border border-[rgba(0,186,124,0.25)] bg-[rgba(0,186,124,0.03)] p-3 text-xs">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Radio className="size-3.5 text-[#00ba7c] animate-pulse shrink-0" />
-              <span className="font-mono font-medium text-[#f7f8f8] truncate">
-                {serverQueue.active
-                  ? `Server Downloading: ${serverQueue.active.filename}`
-                  : "Server Downloader: Active (waiting for queue)"}
+      {serverQueue !== null && (serverQueue.active !== null || (serverQueue.activeList && serverQueue.activeList.length > 0) || serverQueue.pendingCount > 0) ? (
+        <div className="flex flex-col gap-2.5 rounded-[10px] border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.02)] p-3.5 text-xs shadow-[0_0_20px_rgba(0,186,124,0.03)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.06)] pb-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ba7c] opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00ba7c]" />
               </span>
+              <span className="font-mono font-medium text-[#f7f8f8]">
+                Parallel Downloader
+              </span>
+              {(serverQueue.activeList && serverQueue.activeList.length > 0) ? (
+                <Badge variant="outline" className="text-[10px] text-[#00ba7c] border-[#00ba7c]/30 bg-[#00ba7c]/10 shrink-0 font-medium px-2 py-0.5">
+                  {serverQueue.activeList.length} stream{serverQueue.activeList.length > 1 ? "s" : ""} downloading in parallel
+                </Badge>
+              ) : null}
               {serverQueue.pendingCount > 0 ? (
                 <Badge variant="outline" className="text-[10px] text-[#8a8f98] shrink-0 font-normal">
-                  +{serverQueue.pendingCount} in queue
+                  +{serverQueue.pendingCount} queued
                 </Badge>
               ) : null}
             </div>
             <div className="flex items-center gap-2 font-mono text-[11px] text-[#8a8f98] shrink-0">
-              {serverQueue.active && serverQueue.active.speedMbps > 0 ? (
-                <span className="text-[#d0d6e0]">{serverQueue.active.speedMbps.toFixed(1)} Mbps</span>
-              ) : null}
-              {serverQueue.active && serverQueue.active.etaSeconds > 0 ? (
-                <span className="text-[#62666d]">· {formatEta(serverQueue.active.etaSeconds)}</span>
-              ) : null}
-              {serverQueue.active && serverQueue.active.totalBytes > 0 ? (
-                <span>
-                  {formatBytes(serverQueue.active.loadedBytes)} / {formatBytes(serverQueue.active.totalBytes)} ({serverQueue.active.percent.toFixed(0)}%)
+              {serverQueue.totalSpeedMbps && serverQueue.totalSpeedMbps > 0 ? (
+                <span className="font-semibold text-[#00ba7c] bg-[#00ba7c]/15 px-2 py-0.5 rounded text-[11px] border border-[#00ba7c]/20">
+                  {serverQueue.totalSpeedMbps.toFixed(1)} Mbps total
                 </span>
               ) : null}
               <button
@@ -814,31 +818,62 @@ export function ArchivesVault({
                   if (q.ok) setServerQueue(q.data);
                   toast.info("Cleared background download queue.");
                 }}
-                className="ml-2 text-[10px] text-[#8a8f98] hover:text-red-400 cursor-pointer"
+                className="ml-2 text-[10px] text-[#8a8f98] hover:text-red-400 cursor-pointer transition-colors"
                 title="Cancel pending background downloads"
               >
-                (Cancel)
+                (Clear Queue)
               </button>
             </div>
           </div>
 
-          {serverQueue.active ? (
-            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
-              <div
-                className={cn(
-                  "h-full rounded-full transition-all duration-300",
-                  serverQueue.active.stage === "indexing"
-                    ? "bg-amber-500 w-full animate-pulse"
-                    : "bg-[#00ba7c]"
-                )}
-                style={
-                  serverQueue.active.stage === "downloading"
-                    ? { width: `${Math.min(100, Math.max(2, serverQueue.active.percent))}%` }
-                    : undefined
-                }
-              />
+          {/* Active Parallel Stream Cards */}
+          {(serverQueue.activeList && serverQueue.activeList.length > 0
+            ? serverQueue.activeList
+            : serverQueue.active
+            ? [serverQueue.active]
+            : []
+          ).map((stream, idx) => (
+            <div key={stream.id} className="flex flex-col gap-1.5 rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.015)] p-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-semibold">
+                    Stream #{idx + 1}
+                  </span>
+                  <span className="font-mono font-medium text-[#d0d6e0] truncate text-[11px]">
+                    {stream.filename}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-[10px] text-[#8a8f98]">
+                  {stream.speedMbps > 0 ? (
+                    <span className="text-[#00ba7c] font-medium">{stream.speedMbps.toFixed(1)} Mbps</span>
+                  ) : null}
+                  {stream.etaSeconds > 0 ? (
+                    <span className="text-[#62666d]">· {formatEta(stream.etaSeconds)}</span>
+                  ) : null}
+                  {stream.totalBytes > 0 ? (
+                    <span>
+                      {formatBytes(stream.loadedBytes)} / {formatBytes(stream.totalBytes)} ({stream.percent.toFixed(0)}%)
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-300",
+                    stream.stage === "indexing"
+                      ? "bg-amber-500 w-full animate-pulse"
+                      : "bg-gradient-to-r from-[#00ba7c] to-[#00d8a5]"
+                  )}
+                  style={
+                    stream.stage === "downloading"
+                      ? { width: `${Math.min(100, Math.max(2, stream.percent))}%` }
+                      : undefined
+                  }
+                />
+              </div>
             </div>
-          ) : null}
+          ))}
         </div>
       ) : null}
 

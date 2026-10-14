@@ -48,7 +48,7 @@ type channelHandlers struct {
 	Log           *slog.Logger
 	StorageDir    string
 	queueMu       sync.RWMutex
-	activeItem    *telegramQueueItem
+	activeItems   map[string]*telegramQueueItem
 	pendingQueue  []*telegramQueueItem
 	completedList []*telegramQueueItem
 	wakeWorker    chan struct{}
@@ -63,6 +63,7 @@ func newChannelHandlers(st *store.Store, log *slog.Logger) *channelHandlers {
 		Store:         st,
 		Log:           log,
 		StorageDir:    dir,
+		activeItems:   make(map[string]*telegramQueueItem),
 		wakeWorker:    make(chan struct{}, 1),
 		completedList: make([]*telegramQueueItem, 0, 50),
 		pendingQueue:  make([]*telegramQueueItem, 0, 100),
@@ -793,11 +794,25 @@ func (h *channelHandlers) getQueueStatus(w http.ResponseWriter, r *http.Request)
 	h.queueMu.RLock()
 	defer h.queueMu.RUnlock()
 
+	activeList := make([]*telegramQueueItem, 0, len(h.activeItems))
+	var totalSpeed float64
+	for _, it := range h.activeItems {
+		activeList = append(activeList, it)
+		totalSpeed += it.SpeedMbps
+	}
+
+	var primaryActive *telegramQueueItem
+	if len(activeList) > 0 {
+		primaryActive = activeList[0]
+	}
+
 	WriteJSON(w, http.StatusOK, map[string]any{
-		"active":       h.activeItem,
-		"pendingCount": len(h.pendingQueue),
-		"pending":      h.pendingQueue,
-		"completed":    h.completedList,
+		"active":         primaryActive,
+		"activeList":     activeList,
+		"totalSpeedMbps": totalSpeed,
+		"pendingCount":   len(h.pendingQueue),
+		"pending":        h.pendingQueue,
+		"completed":      h.completedList,
 	})
 }
 
@@ -816,30 +831,34 @@ func (h *channelHandlers) clearQueue(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *channelHandlers) serverQueueWorker() {
+	const maxConcurrent = 3
 	for {
 		h.queueMu.Lock()
-		if len(h.pendingQueue) == 0 {
-			h.activeItem = nil
-			h.queueMu.Unlock()
+		for len(h.pendingQueue) > 0 && len(h.activeItems) < maxConcurrent {
+			item := h.pendingQueue[0]
+			h.pendingQueue = h.pendingQueue[1:]
+			h.activeItems[item.ID] = item
 
-			<-h.wakeWorker
-			continue
+			go func(it *telegramQueueItem) {
+				h.processQueueItem(it)
+
+				h.queueMu.Lock()
+				delete(h.activeItems, it.ID)
+				h.completedList = append(h.completedList, it)
+				if len(h.completedList) > 50 {
+					h.completedList = h.completedList[len(h.completedList)-50:]
+				}
+				h.queueMu.Unlock()
+
+				select {
+				case h.wakeWorker <- struct{}{}:
+				default:
+				}
+			}(item)
 		}
-
-		item := h.pendingQueue[0]
-		h.pendingQueue = h.pendingQueue[1:]
-		h.activeItem = item
 		h.queueMu.Unlock()
 
-		h.processQueueItem(item)
-
-		h.queueMu.Lock()
-		h.completedList = append(h.completedList, item)
-		if len(h.completedList) > 50 {
-			h.completedList = h.completedList[len(h.completedList)-50:]
-		}
-		h.activeItem = nil
-		h.queueMu.Unlock()
+		<-h.wakeWorker
 	}
 }
 

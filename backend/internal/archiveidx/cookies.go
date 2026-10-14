@@ -10,8 +10,10 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode/utf8"
 )
 
@@ -135,7 +137,7 @@ func ExtractCookieDomains(
 
 	if ok {
 		args := []string{
-			"x", "-y", "-bso0", "-bse0",
+			"x", "-y", "-bso0", "-bse0", "-mmt=on",
 			"-p" + cleanPw,
 			"-o" + tmpDir,
 			"-ir!*cookie*",
@@ -362,7 +364,20 @@ func extractZipCandidateCookies(filePath string, candidates []Entry) []DomainCoo
 	}
 	defer zr.Close()
 
-	var result []DomainCookieChunk
+	// 1. Fast single-threaded pass over zip directory entries
+	candMap := make(map[string]bool, len(candidates))
+	for _, c := range candidates {
+		candMap[normalizePath(c.Path)] = true
+	}
+	useFilter := len(candidates) > 0
+
+	type fileJob struct {
+		f    *zip.File
+		np   string
+		base string
+	}
+
+	var matchedJobs []fileJob
 	for _, f := range zr.File {
 		if f.FileInfo().IsDir() {
 			continue
@@ -372,24 +387,72 @@ func extractZipCandidateCookies(filePath string, candidates []Entry) []DomainCoo
 			continue
 		}
 		base := filepath.Base(np)
-		if !isCandidateCookieFile(np, base, int64(f.UncompressedSize64)) {
+		if useFilter && !candMap[np] {
+			if !isCandidateCookieFile(np, base, int64(f.UncompressedSize64)) {
+				continue
+			}
+		} else if !useFilter && !isCandidateCookieFile(np, base, int64(f.UncompressedSize64)) {
 			continue
 		}
-		rc, err := f.Open()
-		if err != nil {
-			continue
-		}
-		raw, rerr := io.ReadAll(io.LimitReader(rc, 15*1024*1024))
-		_ = rc.Close()
-		if rerr != nil || len(raw) == 0 || !hasCookieSignatures(raw) {
-			continue
-		}
-		chunks := parseCookieFileBytes(np, base, raw)
-		if len(chunks) > 0 {
-			result = append(result, chunks...)
-		}
+		matchedJobs = append(matchedJobs, fileJob{f: f, np: np, base: base})
 	}
-	return result
+
+	if len(matchedJobs) == 0 {
+		return nil
+	}
+
+	// 2. Parallel worker pool across all available CPU cores
+	numWorkers := runtime.NumCPU() * 2
+	if numWorkers < 4 {
+		numWorkers = 4
+	}
+	if numWorkers > len(matchedJobs) {
+		numWorkers = len(matchedJobs)
+	}
+
+	jobsCh := make(chan fileJob, len(matchedJobs))
+	for _, j := range matchedJobs {
+		jobsCh <- j
+	}
+	close(jobsCh)
+
+	var wg sync.WaitGroup
+	resultsCh := make(chan []DomainCookieChunk, numWorkers)
+
+	for range numWorkers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var localChunks []DomainCookieChunk
+			for job := range jobsCh {
+				rc, err := job.f.Open()
+				if err != nil {
+					continue
+				}
+				raw, rerr := io.ReadAll(io.LimitReader(rc, 15*1024*1024))
+				_ = rc.Close()
+				if rerr != nil || len(raw) == 0 || !hasCookieSignatures(raw) {
+					continue
+				}
+				chunks := parseCookieFileBytes(job.np, job.base, raw)
+				if len(chunks) > 0 {
+					localChunks = append(localChunks, chunks...)
+				}
+			}
+			if len(localChunks) > 0 {
+				resultsCh <- localChunks
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(resultsCh)
+
+	var totalChunks []DomainCookieChunk
+	for chunkList := range resultsCh {
+		totalChunks = append(totalChunks, chunkList...)
+	}
+	return totalChunks
 }
 
 func parseCookieFileBytes(entryPath, entryName string, raw []byte) []DomainCookieChunk {
