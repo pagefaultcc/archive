@@ -127,7 +127,7 @@ export function AppSidebar({
               >
                 <item.icon className="size-4.5 transition-transform duration-200" />
                 {isActive ? (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-[#00ba7c] shadow-[0_0_8px_#00ba7c]" />
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-[#00ba7c] shadow-[0_0_6px_rgba(0,186,124,0.35)]" />
                 ) : null}
               </Link>
             </div>
@@ -164,7 +164,7 @@ export function AppSidebar({
                   >
                     <item.icon className="size-4.5 transition-transform duration-200" />
                     {isActive ? (
-                      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-[#00ba7c] shadow-[0_0_8px_#00ba7c]" />
+                      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-[#00ba7c] shadow-[0_0_6px_rgba(0,186,124,0.35)]" />
                     ) : null}
                   </Link>
                 </div>
@@ -201,7 +201,7 @@ export function AppSidebar({
               >
                 <item.icon className="size-4.5 transition-transform duration-200" />
                 {isActive ? (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-[#00ba7c] shadow-[0_0_8px_#00ba7c]" />
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-[#00ba7c] shadow-[0_0_6px_rgba(0,186,124,0.35)]" />
                 ) : null}
               </Link>
             </div>

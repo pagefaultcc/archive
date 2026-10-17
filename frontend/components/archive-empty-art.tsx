@@ -22,7 +22,7 @@ export function ArchiveShieldArt({
       aria-label={alt || undefined}
       aria-hidden={alt ? undefined : true}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-xl border border-white/15 bg-[#0a0a0d] text-white shadow-2xs",
+        "flex shrink-0 items-center justify-center rounded-xl border border-white/15 bg-[#121316] text-white shadow-2xs",
         sizes[size],
         className,
       )}

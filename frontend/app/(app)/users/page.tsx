@@ -46,7 +46,7 @@ function Avatar({ username }: { username: string }) {
   return (
     <span
       aria-hidden
-      className="flex size-6 shrink-0 items-center justify-center rounded-full border border-white/15 bg-[#0c0c0f] text-[10px] font-medium text-white"
+      className="flex size-6 shrink-0 items-center justify-center rounded-full border border-white/15 bg-[#121316] text-[10px] font-medium text-white"
     >
       {username.slice(0, 2).toUpperCase()}
     </span>

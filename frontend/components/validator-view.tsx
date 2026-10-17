@@ -162,9 +162,8 @@ export function ValidatorView() {
               : "text-[#8a8f98] hover:text-[#d0d6e0] hover:bg-white/[0.04]",
           )}
         >
-          <Cookie className="size-3.5 text-emerald-400" />
+          <Cookie className="size-3.5 text-[#8a8f98]" />
           <span>Cookie Validator</span>
-          <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
         </button>
 
         <button
@@ -177,9 +176,9 @@ export function ValidatorView() {
               : "text-[#8a8f98] hover:text-[#d0d6e0] hover:bg-white/[0.04]",
           )}
         >
-          <Lock className="size-3.5 text-amber-400" />
+          <Lock className="size-3.5 text-[#8a8f98]" />
           <span>Password Validator</span>
-          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-normal">
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-[4px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98] font-normal">
             Work in progress
           </span>
         </button>
@@ -187,8 +186,8 @@ export function ValidatorView() {
 
       {mainTab === "passwords" ? (
         /* Password Validator Work In Progress View */
-        <section className="flex flex-col items-center justify-center gap-4 rounded-[12px] border border-amber-500/20 bg-[#0c0d0e]/80 p-12 text-center backdrop-blur-2xl shadow-[0_16px_50px_rgba(0,0,0,0.5),inset_0_1px_1.5px_rgba(255,255,255,0.12)]">
-          <div className="flex size-14 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+        <section className="flex flex-col items-center justify-center gap-4 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-12 text-center shadow-lg">
+          <div className="flex size-14 items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98]">
             <KeyRound className="size-7" />
           </div>
           <div className="flex flex-col gap-1.5 max-w-md">
@@ -198,7 +197,7 @@ export function ValidatorView() {
               </h2>
               <Badge
                 variant="outline"
-                className="border-amber-500/30 bg-amber-500/10 text-amber-400 text-[10px]"
+                className="border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98] text-[10px]"
               >
                 Work in progress
               </Badge>
@@ -217,7 +216,7 @@ export function ValidatorView() {
         /* Cookie Validator Active View */
         <>
           {/* Top Header & Service Indicator */}
-          <section className="rounded-[10px] border border-white/[0.08] bg-[#0c0d0e]/80 p-4 sm:p-5 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_1.5px_rgba(255,255,255,0.12)]">
+          <section className="rounded-[8px] border border-white/[0.08] bg-[#0f1011] p-4 sm:p-5">
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <h1 className="text-base font-semibold tracking-tight text-[#f7f8f8]">
@@ -227,38 +226,38 @@ export function ValidatorView() {
 
               {/* Metrics summary cards */}
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                <div className="flex flex-col gap-0.5 rounded-[8px] border border-sky-500/20 bg-sky-500/[0.02] px-3.5 py-2.5">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-[#8a8f98]">
+                <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
                     Total
                   </span>
-                  <span className="text-lg font-semibold tabular-nums text-[#f7f8f8]">
+                  <span className="text-lg font-semibold tabular-nums text-[#d0d6e0]">
                     {summary.total}
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-0.5 rounded-[8px] border border-slate-500/20 bg-slate-500/[0.02] px-3.5 py-2.5">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-[#8a8f98]">
+                <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
                     Not Checked
                   </span>
-                  <span className="text-lg font-semibold tabular-nums text-amber-400/90">
+                  <span className="text-lg font-semibold tabular-nums text-[#d0d6e0]">
                     {summary.notChecked}
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-0.5 rounded-[8px] border border-emerald-500/25 bg-emerald-500/[0.03] px-3.5 py-2.5 shadow-[0_0_15px_rgba(16,185,129,0.03)]">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-emerald-400/80">
+                <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
                     Valid
                   </span>
-                  <span className="text-lg font-semibold tabular-nums text-emerald-400">
+                  <span className="text-lg font-semibold tabular-nums text-[#00ba7c]">
                     {summary.valid}
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-0.5 rounded-[8px] border border-rose-500/25 bg-rose-500/[0.03] px-3.5 py-2.5">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-rose-400/80">
+                <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
                     Not Valid
                   </span>
-                  <span className="text-lg font-semibold tabular-nums text-rose-400">
+                  <span className="text-lg font-semibold tabular-nums text-[#f91880]">
                     {summary.notValid}
                   </span>
                 </div>
@@ -271,12 +270,12 @@ export function ValidatorView() {
                     type="button"
                     onClick={handleRunValidation}
                     disabled={isChecking || isLoading}
-                    className="gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
+                    className="gap-1.5 rounded-full text-xs cursor-pointer"
                   >
                     {isChecking ? (
                       <Loader2 className="size-3.5 animate-spin" />
                     ) : (
-                      <Play className="size-3.5 fill-black" />
+                      <Play className="size-3.5" />
                     )}
                     Check All
                   </Button>
@@ -296,7 +295,7 @@ export function ValidatorView() {
                     <a
                       href={validatorExportUrl(selectedService)}
                       download
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.1)] text-[#00ba7c] hover:bg-[rgba(0,186,124,0.15)] transition-colors"
                     >
                       <Download className="size-3.5" />
                       Export Valid ({summary.valid})
@@ -318,7 +317,7 @@ export function ValidatorView() {
                         type="button"
                         onClick={() => setStatusFilter(f.id)}
                         className={cn(
-                          "px-2.5 py-0.5 rounded-full transition-colors cursor-pointer",
+                          "px-2.5 py-0.5 rounded-full transition-none cursor-pointer",
                           statusFilter === f.id
                             ? "bg-white/[0.12] text-[#f7f8f8] font-medium"
                             : "text-[#8a8f98] hover:text-[#d0d6e0]",
@@ -335,7 +334,7 @@ export function ValidatorView() {
                       variant="ghost"
                       size="xs"
                       onClick={handleClear}
-                      className="text-xs text-[#8a8f98] hover:text-rose-400"
+                      className="text-xs text-[#8a8f98] hover:text-[#f91880]"
                     >
                       <Trash2 className="size-3 mr-1" />
                       Clear
@@ -347,10 +346,10 @@ export function ValidatorView() {
           </section>
 
           {/* Main Validation Items Table */}
-          <section className="rounded-[10px] border border-white/[0.08] bg-[#0c0d0e]/80 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+          <section className="rounded-[8px] border border-white/[0.08] bg-[#0f1011] overflow-hidden">
             {isLoading ? (
               <div className="flex h-64 items-center justify-center gap-2 text-xs text-[#8a8f98]">
-                <Loader2 className="size-4 animate-spin text-emerald-400" />
+                <Loader2 className="size-4 animate-spin text-[#8a8f98]" />
                 <span>Loading validator queue…</span>
               </div>
             ) : items.length === 0 ? (
@@ -394,22 +393,22 @@ export function ValidatorView() {
                     {items.map((it) => (
                       <TableRow
                         key={it.id}
-                        className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors"
+                        className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-none"
                       >
                         <TableCell className="font-mono text-xs">
                           {it.status === "valid" ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.1)] text-[#00ba7c]">
                               <CheckCircle2 className="size-3" />
                               Valid
                             </span>
                           ) : it.status === "not_valid" ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border border-rose-500/30 bg-rose-500/10 text-rose-400">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border border-[rgba(249,24,128,0.3)] bg-[rgba(249,24,128,0.1)] text-[#f91880]">
                               <XCircle className="size-3" />
                               Not Valid
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border border-white/[0.12] bg-white/[0.04] text-[#8a8f98]">
-                              <Clock className="size-3 text-amber-400" />
+                              <Clock className="size-3 text-[#8a8f98]" />
                               Not Checked
                             </span>
                           )}
@@ -436,9 +435,9 @@ export function ValidatorView() {
 
                         <TableCell className="text-xs text-[#8a8f98] max-w-xs truncate font-mono text-[11px]">
                           {it.errorMessage ? (
-                            <span className="text-rose-400/90">{it.errorMessage}</span>
+                            <span className="text-[#f91880]">{it.errorMessage}</span>
                           ) : it.status === "valid" ? (
-                            <span className="text-emerald-400/90">auth.openai.com session active</span>
+                            <span className="text-[#00ba7c]">auth.openai.com session active</span>
                           ) : (
                             <span className="text-[#62666d]">Pending check</span>
                           )}
@@ -468,10 +467,10 @@ export function ValidatorView() {
             open={selectedItemForInspect !== null}
             onOpenChange={(open) => !open && setSelectedItemForInspect(null)}
           >
-            <DialogContent className="rounded-[10px] border border-white/[0.12] bg-[#0c0d0e]/95 backdrop-blur-2xl sm:max-w-2xl text-[#f7f8f8] shadow-[0_16px_50px_rgba(0,0,0,0.6)]">
+            <DialogContent className="rounded-[8px] border border-white/[0.12] bg-[#0f1011] sm:max-w-2xl text-[#f7f8f8] shadow-lg">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <FileText className="size-4 text-emerald-400" />
+                  <FileText className="size-4 text-[#8a8f98]" />
                   <span>Cookie Log Inspection</span>
                   {selectedItemForInspect ? (
                     <Badge variant="outline" className="font-mono text-[10px] uppercase">
@@ -519,10 +518,10 @@ export function ValidatorView() {
 
           {/* Custom Cookies Dialog */}
           <Dialog open={isCustomModalOpen} onOpenChange={setIsCustomModalOpen}>
-            <DialogContent className="rounded-[10px] border border-white/[0.12] bg-[#0c0d0e]/95 backdrop-blur-2xl sm:max-w-lg text-[#f7f8f8] shadow-[0_16px_50px_rgba(0,0,0,0.6)]">
+            <DialogContent className="rounded-[8px] border border-white/[0.12] bg-[#0f1011] sm:max-w-lg text-[#f7f8f8] shadow-lg">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <Plus className="size-4 text-emerald-400" />
+                  <Plus className="size-4 text-[#8a8f98]" />
                   <span>Add Custom Cookies to Checker</span>
                 </DialogTitle>
                 <DialogDescription className="text-xs text-[#8a8f98]">
@@ -552,7 +551,7 @@ export function ValidatorView() {
                     onChange={(e) => setCustomCookieText(e.target.value)}
                     placeholder={`# Netscape HTTP Cookie File\n.auth.openai.com\tTRUE\t/\tTRUE\t1790000000\t__Secure-next-auth.session-token\tsome_token_here...`}
                     rows={8}
-                    className="w-full rounded-[6px] border border-white/[0.12] bg-black/50 p-2.5 font-mono text-xs text-[#f7f8f8] placeholder:text-[#62666d] focus:border-emerald-500/50 focus:outline-none"
+                    className="w-full rounded-[6px] border border-white/[0.12] bg-black/50 p-2.5 font-mono text-xs text-[#f7f8f8] placeholder:text-[#62666d] focus:border-[rgba(255,255,255,0.2)] focus:outline-none"
                   />
                 </div>
               </div>
@@ -571,7 +570,7 @@ export function ValidatorView() {
                   type="button"
                   onClick={handleAddCustom}
                   disabled={isSubmittingCustom}
-                  className="gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs cursor-pointer"
+                  className="gap-1.5 rounded-full text-xs cursor-pointer"
                 >
                   {isSubmittingCustom ? (
                     <Loader2 className="size-3 animate-spin" />

@@ -515,10 +515,10 @@ export function GlobalSearchVault() {
                   <div
                     key={item.id}
                     className={cn(
-                      "group flex flex-col gap-1 px-3.5 py-2.5 transition-colors",
+                      "group flex flex-col gap-1 px-3.5 py-2.5 transition-none",
                       isSelected
-                        ? "bg-[rgba(255,255,255,0.06)]"
-                        : "hover:bg-[rgba(255,255,255,0.025)]",
+                        ? "bg-[rgba(255,255,255,0.05)]"
+                        : "hover:bg-[rgba(255,255,255,0.03)]",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -763,7 +763,7 @@ export function GlobalSearchVault() {
                       ? "bg-[#f91880]"
                       : downloadJob?.status === "ready"
                         ? "bg-[#00ba7c]"
-                        : "bg-[#4e525a]",
+                        : "kinetics-progress-fill",
                   )}
                   style={{ width: `${downloadJob?.percent ?? 0}%` }}
                 />

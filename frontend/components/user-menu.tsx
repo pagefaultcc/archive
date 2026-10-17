@@ -159,7 +159,7 @@ export function UserMenu({
                   {username}
                 </span>
                 <span className="flex items-center gap-1 truncate text-[11px] text-[#8a8f98]">
-                  <ShieldCheck className="size-3 text-emerald-400" aria-hidden />
+                  <ShieldCheck className="size-3 text-[#00ba7c]" aria-hidden />
                   {roleLabel ?? "Authenticated session"}
                 </span>
               </div>
@@ -172,7 +172,7 @@ export function UserMenu({
             onSelect={() => setIsSettingsOpen(true)}
             className="flex items-center gap-2 cursor-pointer text-xs"
           >
-            <User className="size-3.5 text-sky-400" aria-hidden />
+            <User className="size-3.5 text-[#8a8f98]" aria-hidden />
             <span>User Settings</span>
           </DropdownMenuItem>
 
@@ -194,7 +194,7 @@ export function UserMenu({
               void logout();
             }}
             disabled={pending || busy}
-            className="flex items-center gap-2 cursor-pointer text-xs text-rose-400 focus:bg-rose-500/10 focus:text-rose-300"
+            className="flex items-center gap-2 cursor-pointer text-xs text-[#f91880] focus:bg-[rgba(249,24,128,0.1)] focus:text-[#f91880]"
           >
             <LogOut className="size-3.5" aria-hidden />
             <span>{busy ? "Signing out…" : "Log out"}</span>
@@ -207,7 +207,7 @@ export function UserMenu({
         <DialogContent className="rounded-[10px] border border-white/[0.12] bg-[#0c0d0e]/95 backdrop-blur-2xl sm:max-w-md text-[#f7f8f8] shadow-[0_16px_50px_rgba(0,0,0,0.6)]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-              <User className="size-4 text-sky-400" />
+              <User className="size-4 text-[#8a8f98]" />
               <span>User Account Settings</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-[#8a8f98]">
@@ -227,7 +227,7 @@ export function UserMenu({
                   <span className="text-[11px] text-[#8a8f98]">Account Role: {roleLabel ?? "user"}</span>
                 </div>
               </div>
-              <Badge variant="outline" className="text-[10px] font-mono border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+              <Badge variant="outline" className="text-[10px] font-mono border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.1)] text-[#00ba7c]">
                 Active Session
               </Badge>
             </div>
@@ -235,7 +235,7 @@ export function UserMenu({
             {/* Change Password Form */}
             <form onSubmit={handleChangePassword} className="flex flex-col gap-3 pt-2">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-[#d0d6e0]">
-                <KeyRound className="size-3.5 text-emerald-400" />
+                <KeyRound className="size-3.5 text-[#8a8f98]" />
                 <span>Change Password</span>
               </div>
 
@@ -288,7 +288,7 @@ export function UserMenu({
                   type="submit"
                   size="xs"
                   disabled={isChangingPassword}
-                  className="gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs cursor-pointer"
+                  className="gap-1.5 rounded-full cursor-pointer"
                 >
                   {isChangingPassword ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
                   Save Password

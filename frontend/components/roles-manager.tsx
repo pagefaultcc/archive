@@ -233,7 +233,7 @@ function RoleMutationDialog({
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="spring-enter sm:max-w-md">
+      <DialogContent className="border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold tracking-tight">
             {mode === "create" ? "Create role" : "Edit role"}
@@ -474,7 +474,7 @@ export function RolesManager({
                       <Trash2 aria-hidden /> Delete role
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="spring-enter sm:max-w-sm">
+                  <DialogContent className="border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-sm">
                     <DialogHeader>
                       <DialogTitle className="text-base font-semibold tracking-tight">
                         Delete role

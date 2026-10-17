@@ -379,7 +379,7 @@ export function CookiesVault() {
                     toast.error(res.error?.message ?? "Failed to send to validator", { id: "val-domain" });
                   }
                 }}
-                className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
+                className="gap-1.5 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#d0d6e0] hover:bg-[rgba(255,255,255,0.06)] hover:text-[#ffffff]"
               >
                 <CheckCircle2 className="size-3" />
                 Send All to Validator
@@ -423,7 +423,7 @@ export function CookiesVault() {
           >
             {isLoadingDomains && loadedDomains.length === 0 ? (
               <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8a8f98]">
-                <Loader2 className="size-4 animate-spin text-emerald-400" />
+                <Loader2 className="size-4 animate-spin text-[#8a8f98]" />
                 Loading websites…
               </div>
             ) : loadedDomains.length === 0 ? (
@@ -461,9 +461,9 @@ export function CookiesVault() {
                         void loadDomainLogs(dom, false);
                       }}
                       className={cn(
-                        "flex w-full items-center justify-between gap-2 px-3 text-left transition-colors cursor-pointer",
+                        "flex w-full items-center justify-between gap-2 px-3 text-left transition-none cursor-pointer",
                         isActive
-                          ? "bg-[rgba(255,255,255,0.08)] text-[#f7f8f8]"
+                          ? "bg-[rgba(255,255,255,0.05)] text-[#f7f8f8]"
                           : "text-[#8a8f98] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#d0d6e0]"
                       )}
                     >
@@ -487,7 +487,7 @@ export function CookiesVault() {
 
                 {isLoadingMore ? (
                   <div className="flex items-center justify-center py-2.5 text-xs text-[#8a8f98] font-mono">
-                    <Loader2 className="size-3 animate-spin mr-1.5 text-emerald-400" />
+                    <Loader2 className="size-3 animate-spin mr-1.5 text-[#8a8f98]" />
                     Streaming more websites…
                   </div>
                 ) : null}
@@ -537,10 +537,10 @@ export function CookiesVault() {
                   <div
                     key={item.id}
                     className={cn(
-                      "flex flex-col gap-1.5 px-3.5 py-2.5 transition-colors",
+                      "flex flex-col gap-1.5 px-3.5 py-2.5 transition-none",
                       isSelected
-                        ? "bg-[rgba(255,255,255,0.07)]"
-                        : "hover:bg-[rgba(255,255,255,0.025)]",
+                        ? "bg-[rgba(255,255,255,0.05)]"
+                        : "hover:bg-[rgba(255,255,255,0.03)]",
                     )}
                   >
                     <button
@@ -592,7 +592,7 @@ export function CookiesVault() {
                             }
                           }}
                           title="Send this log to Cookie Validator"
-                          className="inline-flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors cursor-pointer shrink-0 ml-2"
+                          className="inline-flex items-center gap-1 text-[10px] text-[#d0d6e0] hover:text-[#ffffff] font-medium px-2 py-0.5 rounded-full bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.06)] transition-none cursor-pointer shrink-0 ml-2"
                         >
                           <CheckCircle2 className="size-2.5" />
                           Check
@@ -648,9 +648,9 @@ export function CookiesVault() {
                       type="button"
                       onClick={() => setViewFormat("netscape")}
                       className={cn(
-                        "rounded-[4px] px-2 py-0.5 font-mono text-[11px] transition-colors",
+                        "rounded-[4px] px-2 py-0.5 font-mono text-[11px] transition-none",
                         viewFormat === "netscape"
-                          ? "bg-[rgba(255,255,255,0.1)] text-[#d0d6e0]"
+                          ? "bg-[rgba(255,255,255,0.05)] text-[#ffffff]"
                           : "text-[#62666d] hover:text-[#d0d6e0]",
                       )}
                     >
@@ -660,9 +660,9 @@ export function CookiesVault() {
                       type="button"
                       onClick={() => setViewFormat("json")}
                       className={cn(
-                        "rounded-[4px] px-2 py-0.5 font-mono text-[11px] transition-colors",
+                        "rounded-[4px] px-2 py-0.5 font-mono text-[11px] transition-none",
                         viewFormat === "json"
-                          ? "bg-[rgba(255,255,255,0.1)] text-[#d0d6e0]"
+                          ? "bg-[rgba(255,255,255,0.05)] text-[#ffffff]"
                           : "text-[#62666d] hover:text-[#d0d6e0]",
                       )}
                     >
@@ -688,7 +688,7 @@ export function CookiesVault() {
                           toast.error(res.error?.message ?? "Failed to queue log", { id: `val-inspect-${selectedLog.id}` });
                         }
                       }}
-                      className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
+                      className="gap-1.5 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#d0d6e0] hover:bg-[rgba(255,255,255,0.06)] hover:text-[#ffffff]"
                     >
                       <CheckCircle2 className="size-3" />
                       Send to Validator

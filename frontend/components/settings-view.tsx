@@ -330,7 +330,7 @@ export function SettingsView({
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col gap-1 rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)] p-3">
             <div className="flex items-center gap-2 text-xs text-[#8a8f98]">
-              <HardDrive className="size-3.5 text-[#3b82f6]" />
+              <HardDrive className="size-3.5 text-[#8a8f98]" />
               <span>Physical Uploads</span>
             </div>
             <p className="font-mono text-base font-semibold text-[#d0d6e0]">
@@ -343,7 +343,7 @@ export function SettingsView({
 
           <div className="flex flex-col gap-1 rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)] p-3">
             <div className="flex items-center gap-2 text-xs text-[#8a8f98]">
-              <Layers className="size-3.5 text-[#10b981]" />
+              <Layers className="size-3.5 text-[#8a8f98]" />
               <span>Uncompressed Size</span>
             </div>
             <p className="font-mono text-base font-semibold text-[#d0d6e0]">
@@ -356,7 +356,7 @@ export function SettingsView({
 
           <div className="flex flex-col gap-1 rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)] p-3">
             <div className="flex items-center gap-2 text-xs text-[#8a8f98]">
-              <Database className="size-3.5 text-[#f59e0b]" />
+              <Database className="size-3.5 text-[#8a8f98]" />
               <span>Database &amp; Trigram</span>
             </div>
             <p className="font-mono text-base font-semibold text-[#d0d6e0]">
@@ -369,7 +369,7 @@ export function SettingsView({
 
           <div className="flex flex-col gap-1 rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)] p-3">
             <div className="flex items-center gap-2 text-xs text-[#8a8f98]">
-              <HardDrive className="size-3.5 text-[#8b5cf6]" />
+              <HardDrive className="size-3.5 text-[#8a8f98]" />
               <span>Host Filesystem</span>
             </div>
             <p className="font-mono text-base font-semibold text-[#d0d6e0]">
@@ -384,12 +384,12 @@ export function SettingsView({
         {/* Subdued Dark-Zinc Segmented Bar */}
         <div className="mt-5 flex h-2 w-full overflow-hidden rounded-full bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.04)]">
           <div
-            className="h-full bg-[#4e525a] transition-all duration-500"
+            className="h-full bg-[rgba(255,255,255,0.15)]"
             style={{ width: `${archivePct}%` }}
             title={`Archive Blobs: ${formatBytes(packedBytes)}`}
           />
           <div
-            className="h-full bg-[#2a2c30] transition-all duration-500"
+            className="h-full bg-[rgba(255,255,255,0.06)]"
             style={{ width: `${systemPct}%` }}
             title={`System & Runtime: ${formatBytes(systemUsed)}`}
           />
@@ -399,7 +399,7 @@ export function SettingsView({
         <div className="mt-4 grid grid-cols-1 gap-4 border-t border-[rgba(255,255,255,0.05)] pt-4 sm:grid-cols-3">
           <div className="flex items-center justify-between sm:block">
             <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full bg-[#4e525a]" />
+              <span className="size-2 rounded-full bg-[rgba(255,255,255,0.15)]" />
               <span className="text-xs text-[#8a8f98]">Archive Uploads On Disk</span>
             </div>
             <p className="mt-1 font-mono text-sm font-medium tabular-nums text-[#d0d6e0]">
@@ -409,7 +409,7 @@ export function SettingsView({
 
           <div className="flex items-center justify-between sm:block">
             <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full bg-[#2a2c30]" />
+              <span className="size-2 rounded-full bg-[rgba(255,255,255,0.06)]" />
               <span className="text-xs text-[#8a8f98]">System &amp; Database</span>
             </div>
             <p className="mt-1 font-mono text-sm font-medium tabular-nums text-[#d0d6e0]">
@@ -600,7 +600,7 @@ export function SettingsView({
                     <TableCell className="font-mono text-xs tabular-nums text-[#d0d6e0]">
                       {formatBytes(item.uncompressedBytes)}
                     </TableCell>
-                    <TableCell className="font-mono text-xs font-semibold tabular-nums text-[#10b981]">
+                    <TableCell className="font-mono text-xs font-semibold tabular-nums text-[#00ba7c]">
                       {item.ratio}
                     </TableCell>
                     <TableCell className="font-mono text-xs tabular-nums text-[#8a8f98]">

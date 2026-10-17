@@ -40,9 +40,9 @@ export function CodeViewer({
         return (
           <div
             key={idx}
-            className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 hover:bg-[rgba(255,255,255,0.02)]"
+            className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 hover:bg-[rgba(255,255,255,0.03)] transition-none"
           >
-            <span className="select-none text-right text-[#4e525a] tabular-nums text-[11.5px]">
+            <span className="select-none text-right text-[#62666d] tabular-nums text-[11.5px]">
               {idx + 1}
             </span>
             <span
@@ -74,7 +74,7 @@ function highlightJSONLine(line: string): React.ReactNode {
     return (
       <>
         <span>{indent}</span>
-        <span className="text-[#38bdf8] font-medium">{rawKey}</span>
+        <span className="text-[#ffffff] font-medium">{rawKey}</span>
         <span className="text-[#8a8f98]">: </span>
         {formatJSONValue(rest)}
       </>
@@ -97,7 +97,7 @@ function formatJSONValue(val: string): React.ReactNode {
   if (core.startsWith('"') && core.endsWith('"')) {
     return (
       <>
-        <span className="text-[#34d399]">{core}</span>
+        <span className="text-[#d0d6e0]">{core}</span>
         {trailingComma ? <span className="text-[#8a8f98]">{trailingComma}</span> : null}
       </>
     );
@@ -105,7 +105,7 @@ function formatJSONValue(val: string): React.ReactNode {
   if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(core)) {
     return (
       <>
-        <span className="text-[#fb923c] font-semibold">{core}</span>
+        <span className="text-[#8a8f98] font-semibold">{core}</span>
         {trailingComma ? <span className="text-[#8a8f98]">{trailingComma}</span> : null}
       </>
     );
@@ -113,7 +113,7 @@ function formatJSONValue(val: string): React.ReactNode {
   if (["true", "false", "null"].includes(core.toLowerCase())) {
     return (
       <>
-        <span className="text-[#c084fc] font-semibold">{core}</span>
+        <span className="text-[#8a8f98] font-semibold">{core}</span>
         {trailingComma ? <span className="text-[#8a8f98]">{trailingComma}</span> : null}
       </>
     );

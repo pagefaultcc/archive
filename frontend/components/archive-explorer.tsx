@@ -234,7 +234,7 @@ export function ArchiveExplorer({
             <li key={dir.path}>
               <div
                 className={cn(
-                  "group flex items-center justify-between gap-1 rounded-[6px] pr-1.5 transition-colors",
+                  "group flex items-center justify-between gap-1 rounded-[6px] pr-1.5 transition-none",
                   isActive
                     ? "bg-[rgba(255,255,255,0.08)] text-[#ffffff]"
                     : "text-[#8a8f98] hover:bg-[rgba(255,255,255,0.04)] hover:text-[#f7f8f8]",
@@ -356,7 +356,7 @@ export function ArchiveExplorer({
                 void navigateFolder("", "");
               }}
               className={cn(
-                "mb-1 flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[13px] font-[510] transition-colors",
+                "mb-1 flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[13px] font-[510] transition-none",
                 currentParent === "" && !searchQuery.trim()
                   ? "bg-[rgba(255,255,255,0.08)] text-[#ffffff]"
                   : "text-[#8a8f98] hover:bg-[rgba(255,255,255,0.04)] hover:text-[#f7f8f8]",

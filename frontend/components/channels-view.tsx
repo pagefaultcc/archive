@@ -343,7 +343,7 @@ export function ChannelsView() {
               size="xs"
               onClick={handleSaveSettings}
               disabled={isSavingSettings}
-              className="gap-1.5 bg-[#4e525a] text-[#ffffff] hover:bg-[#62666d]"
+              className="gap-1.5 bg-[rgba(255,255,255,0.05)] text-[#ffffff] hover:bg-[rgba(255,255,255,0.08)]"
             >
               <Save className="size-3.5" />
               {isSavingSettings ? "Saving…" : "Save Credentials"}

@@ -573,14 +573,14 @@ export function ArchivesVault({
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "Total archives", value: totalArchives, accent: "border-sky-500/20 bg-sky-500/[0.02]" },
-              { label: "Indexed files", value: indexedFiles, accent: "border-emerald-500/20 bg-emerald-500/[0.02]" },
-              { label: "Encrypted vaults", value: encryptedVaults, accent: "border-amber-500/20 bg-amber-500/[0.02]" },
+              { label: "Total archives", value: totalArchives, accent: "border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)]" },
+              { label: "Indexed files", value: indexedFiles, accent: "border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)]" },
+              { label: "Encrypted vaults", value: encryptedVaults, accent: "border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)]" },
               {
                 label: "Total indexed size",
                 value: null,
                 text: formatBytes(totalIndexedBytes),
-                accent: "border-violet-500/20 bg-violet-500/[0.02]",
+                accent: "border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)]",
               },
             ].map((metric) => (
               <div
@@ -783,7 +783,7 @@ export function ArchivesVault({
 
       {/* Background Server Download Indicator */}
       {serverQueue !== null && (serverQueue.active !== null || (serverQueue.activeList && serverQueue.activeList.length > 0) || serverQueue.pendingCount > 0) ? (
-        <div className="flex flex-col gap-2.5 rounded-[10px] border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.02)] p-3.5 text-xs shadow-[0_0_20px_rgba(0,186,124,0.03)]">
+        <div className="flex flex-col gap-2.5 rounded-[8px] border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.02)] p-3.5 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.06)] pb-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="relative flex h-2 w-2 shrink-0">
@@ -794,7 +794,7 @@ export function ArchivesVault({
                 Parallel Downloader
               </span>
               {(serverQueue.activeList && serverQueue.activeList.length > 0) ? (
-                <Badge variant="outline" className="text-[10px] text-[#00ba7c] border-[#00ba7c]/30 bg-[#00ba7c]/10 shrink-0 font-medium px-2 py-0.5">
+                <Badge variant="outline" className="text-[10px] text-[#00ba7c] border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] shrink-0 font-medium px-2 py-0.5">
                   {serverQueue.activeList.length} stream{serverQueue.activeList.length > 1 ? "s" : ""} downloading in parallel
                 </Badge>
               ) : null}
@@ -806,7 +806,7 @@ export function ArchivesVault({
             </div>
             <div className="flex items-center gap-2 font-mono text-[11px] text-[#8a8f98] shrink-0">
               {serverQueue.totalSpeedMbps && serverQueue.totalSpeedMbps > 0 ? (
-                <span className="font-semibold text-[#00ba7c] bg-[#00ba7c]/15 px-2 py-0.5 rounded text-[11px] border border-[#00ba7c]/20">
+                <span className="font-semibold text-[#00ba7c] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-2 py-0.5 rounded-[4px] text-[11px]">
                   {serverQueue.totalSpeedMbps.toFixed(1)} Mbps total
                 </span>
               ) : null}
@@ -818,7 +818,7 @@ export function ArchivesVault({
                   if (q.ok) setServerQueue(q.data);
                   toast.info("Cleared background download queue.");
                 }}
-                className="ml-2 text-[10px] text-[#8a8f98] hover:text-red-400 cursor-pointer transition-colors"
+                className="ml-2 text-[10px] text-[#8a8f98] hover:text-[#f91880] cursor-pointer transition-colors"
                 title="Cancel pending background downloads"
               >
                 (Clear Queue)
@@ -836,7 +836,7 @@ export function ArchivesVault({
             <div key={stream.id} className="flex flex-col gap-1.5 rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.015)] p-2.5">
               <div className="flex flex-wrap items-center justify-between gap-1.5">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-semibold">
+                  <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 rounded-[4px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98] font-semibold">
                     Stream #{idx + 1}
                   </span>
                   <span className="font-mono font-medium text-[#d0d6e0] truncate text-[11px]">
@@ -860,10 +860,8 @@ export function ArchivesVault({
               <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
                 <div
                   className={cn(
-                    "h-full rounded-full transition-all duration-300",
-                    stream.stage === "indexing"
-                      ? "bg-amber-500 w-full animate-pulse"
-                      : "bg-gradient-to-r from-[#00ba7c] to-[#00d8a5]"
+                    "h-full rounded-full transition-all duration-300 kinetics-progress-fill",
+                    stream.stage === "indexing" && "w-full animate-pulse"
                   )}
                   style={
                     stream.stage === "downloading"
@@ -1204,13 +1202,13 @@ export function ArchivesVault({
                         {scrapedItems.filter((it) => it.blacklisted).length > 0 ? (
                           <div className="flex items-center gap-1">
                             <span className="text-[#62666d]">·</span>
-                            <span className="text-red-400 font-medium">
+                            <span className="text-[#f91880] font-medium">
                               {scrapedItems.filter((it) => it.blacklisted).length} bad password
                             </span>
                             <button
                               type="button"
                               onClick={handleClearBlacklist}
-                              className="text-[10px] text-[#8a8f98] hover:text-red-400 hover:underline cursor-pointer"
+                              className="text-[10px] text-[#8a8f98] hover:text-[#f91880] hover:underline cursor-pointer"
                               title="Reset blacklist to allow re-trying"
                             >
                               (Reset)
@@ -1252,7 +1250,7 @@ export function ArchivesVault({
                           <div
                             key={it.messageId}
                             className={cn(
-                              "flex items-center gap-2.5 p-2.5 text-xs hover:bg-[rgba(255,255,255,0.02)] transition-colors",
+                              "flex items-center gap-2.5 p-2.5 text-xs hover:bg-[rgba(255,255,255,0.02)] transition-none",
                               isChecked && "bg-[rgba(255,255,255,0.015)]"
                             )}
                           >
@@ -1283,7 +1281,7 @@ export function ArchivesVault({
                                     In Vault
                                   </Badge>
                                 ) : it.blacklisted ? (
-                                  <Badge className="bg-red-500/15 text-red-400 border border-red-500/30 text-[10px] shrink-0 font-normal">
+                                  <Badge className="border-[rgba(249,24,128,0.3)] bg-[rgba(249,24,128,0.1)] text-[#f91880] text-[10px] shrink-0 font-normal">
                                     Bad Password
                                   </Badge>
                                 ) : null}

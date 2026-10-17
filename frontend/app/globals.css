@@ -400,3 +400,12 @@ pre,
     animation: none !important;
   }
 }
+
+/* Sonner toast canonical status icon color overrides */
+[data-sonner-toast][data-type='success'] [data-icon] {
+  color: #00ba7c;
+}
+
+[data-sonner-toast][data-type='error'] [data-icon] {
+  color: #f91880;
+}
