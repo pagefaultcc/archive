@@ -98,7 +98,19 @@ When extending an existing view, match the literals already in that view. These 
 - **Page header:** `.app-page-header` — baseline row, hairline bottom border.
 - **Primitives:** shadcn/ui new-york style in `components/ui/`; icons lucide-react only (`size-3.5`/`size-4`/`size-5`); toasts via sonner; forms via react-hook-form + zod; conditional classes always through `cn()`.
 
-## 9. Do / Don't
+## 9. Icons & assets — where they come from
+
+| Asset | Source | How it's used |
+|---|---|---|
+| UI icons | `lucide-react` npm package (in-JSX React components) | `<Icon className="size-3.5/4/5" />` — the only stroke-icon set |
+| 3D illustration icons | **3dicons.co** (free license) — static WebPs committed at `frontend/public/icons/*-3d.webp` | Rendered by `Icon3D` (`components/kinetics-ui.tsx`): glass tile (`border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]` + inset specular) + float animation. To add one: drop the WebP in `public/icons/` and register it in the `ICON_PATHS` map |
+| Fonts | Inter + JetBrains Mono via `next/font/google` (downloaded and self-hosted at build; Berkeley Mono is a locally-installed fallback-first mono face) | `app/layout.tsx` |
+| Favicon | `app/favicon.ico` | App Router convention |
+| Motion effects | [libraries.dev](https://libraries.dev) (`border-beam` pkg, login-only) | See §7 |
+
+No remote asset URLs at runtime — everything ships inside the bundle/image. Scaffold leftovers (`file/globe/next/vercel/window.svg`) and an unused `shield.webp` were deleted; don't re-add Next.js defaults.
+
+## 10. Do / Don't
 
 | Do | Don't |
 |---|---|
@@ -110,7 +122,7 @@ When extending an existing view, match the literals already in that view. These 
 | `font-mono` for data | New font families |
 | Plain, concrete labels ("Total", "Not Checked") | Buzzwords, status badges, marketing copy |
 
-## 10. Deviations from the upstream Linear reference
+## 11. Deviations from the upstream Linear reference
 
 - `--primary` is translucent white, not Linear indigo `#5e6ad2` — the vault is deliberately accent-less.
 - Destructive is shadcn pink `#f91880`, not Linear's alert palette.
