@@ -1,6 +1,6 @@
 # Archive
 
-Dockerized user, role, session, and audit foundation for an archive-management product. This milestone provides login, full user lifecycle management (create, edit username, reset password, suspend/reactivate, soft-delete/restore, active session inspection/revocation), custom RBAC role and permission administration, and an append-only audit log; archive upload, extraction, and indexing are intentionally out of scope.
+Researcher-facing archive for infostealer logs. Archive ingests ZIP, RAR, and 7z collections, indexes their files, parses supported cookie and password records, and organizes extracted artifacts by source and website/domain. Researchers can browse, search, inspect, and export relevant material; administrators manage users, roles, sessions, and audit records. See [PRODUCT.md](PRODUCT.md) for the product purpose, workflows, and capability boundaries.
 
 ## Run
 

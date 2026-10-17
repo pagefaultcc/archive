@@ -2,6 +2,8 @@
 
 This document is the authoritative technical reference for any AI assistant or engineer working on this repository. It documents the architecture, database design, background workers, failure modes encountered, critical fixes implemented, and engineering rules that must not be broken.
 
+Read [PRODUCT.md](PRODUCT.md) for the research purpose, users, workflows, current capability boundaries, and open product decisions. Follow [DESIGN.md](DESIGN.md) for UI work; this document owns technical guidance.
+
 ---
 
 ## 1. System Architecture & Topology
