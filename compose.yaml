@@ -33,7 +33,7 @@ services:
       GOMAXPROCS: "0"
     volumes:
       - archive-data:/var/lib/archive/uploads
-    mem_limit: 10g
+    mem_limit: 4g
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,6 +55,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    mem_limit: 1g
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/login"]
       interval: 5s
