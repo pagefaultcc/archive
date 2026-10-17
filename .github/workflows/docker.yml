@@ -19,8 +19,21 @@ env:
   FRONTEND_IMAGE: ghcr.io/pagefaultcc/archive-frontend
 
 jobs:
-  test:
+  backend-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: archive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v4
 
@@ -28,9 +41,16 @@ jobs:
         with:
           go-version: "1.25"
           cache-dependency-path: backend/go.sum
-      - name: Backend unit tests
+      - name: Backend tests (unit + DB integration)
         working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgres://postgres:test@localhost:5432/archive?sslmode=disable
         run: go test -p 1 ./...
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -45,7 +65,8 @@ jobs:
           npm test -- --run
 
   build-push:
-    needs: test
+    needs: [backend-test, frontend-test]
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
