@@ -19,6 +19,7 @@ services:
       start_period: 10s
     restart: unless-stopped
   api:
+    image: ghcr.io/pagefaultcc/archive-api:latest
     build:
       context: ./backend
       target: production
@@ -45,6 +46,7 @@ services:
     restart: unless-stopped
 
   frontend:
+    image: ghcr.io/pagefaultcc/archive-frontend:latest
     build:
       context: ./frontend
       target: production
