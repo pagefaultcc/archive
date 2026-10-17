@@ -3,8 +3,12 @@
 # containers whose image changed. Run from cron/systemd as a user in the
 # docker group. Fails with a clear message while ghcr.io is not logged in.
 set -euo pipefail
-cd /home/deploy/archive
+# Serialize runs: a manual run colliding with the timer otherwise races
+# docker compose and can leave name-conflict remnants.
+exec 9>/tmp/archive-autodeploy.lock
+flock -n 9 || { echo "$(date -Is) another deploy run in progress, skipping"; exit 0; }
 
+ cd /home/deploy/archive
 before_api=$(docker inspect --format '{{.Image}}' archive-api-1 2>/dev/null || true)
 before_fe=$(docker inspect --format '{{.Image}}' archive-frontend-1 2>/dev/null || true)
 
