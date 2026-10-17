@@ -27,7 +27,7 @@ This document is the authoritative technical reference for any AI assistant or e
 
 - **Backend:** Go 1.25 (`backend/`), standard library HTTP router + `jackc/pgx/v5`, strict PHC Argon2id passwords (`m=65536, t=3, p=2`), origin validation, sliding session cookies.
 - **Frontend:** Next.js 16 App Router + Turbopack + React 19 + Tailwind CSS + Radix UI / shadcn/ui.
-- **Database:** PostgreSQL 17 with migrations `001_initial.sql` through `009_telegram_blacklist.sql`.
+- **Database:** PostgreSQL 17 with migrations `001_initial.sql` through `015_archive_credentials.sql` (prod history additionally has versions 12–14 applied from an untracked experiment — see §2.E).
 - **Archive Extractor / Indexer:** In-memory streaming ZIP reader (`archive/zip`) for uncompressed/pass-free archives; external `7zz` pipeline for RAR, 7z, and encrypted archives.
 - **Telegram MTProto Scraper:** Python 3 + Telethon UserBot (`backend/scraper/tg_engine.py`) communicating with Telegram Datacenters over MTProto 2.0 with parallel segmented downloads.
 
@@ -94,6 +94,13 @@ This document is the authoritative technical reference for any AI assistant or e
   - Storage files on disk are keyed by SHA-256 (`/var/lib/archive/uploads/<sha256>.ext`), ensuring distinct content never overwrites on disk.
   - Post-download duplicate detection uses SHA-256 hash comparison (`GetArchiveBySHA256`).
 
+### E. Prod Goose Version History & Migration Numbering
+- **The Problem:** Production `goose_db_version` contains versions **12, 13, 14** applied by an earlier untracked experiment (it left behind an `archive_cookie_domain_summary` table nothing references). Goose tracks only `version_id` — **no content checksums**.
+- **The Invariant:**
+  - New migration files MUST use version numbers **≥ 015** with no collision against prod-applied ids, or goose silently skips them in prod while applying them on fresh installs (divergent schemas).
+  - After creating or renaming a migration, re-run the HTTP integration suite against a **fresh** test database (`TEST_DATABASE_URL` + `go test -p 1 ./internal/httpx/ ./internal/bootstrap/`) before deploying.
+  - Both test packages share one `TEST_DATABASE_URL`; their reset helpers drop **all** migration tables explicitly. Keep that list complete when adding tables.
+
 ---
 
 ## 3. Directory Layout & Roles
@@ -109,7 +116,7 @@ This document is the authoritative technical reference for any AI assistant or e
 │   │   ├── config/                 # Env loading & validation
 │   │   ├── httpx/                  # Handlers, router, session middleware, queue worker
 │   │   └── store/                  # PostgreSQL database queries, caches, audit logs
-│   ├── migrations/                 # Goose SQL migrations (001-012)
+│   ├── migrations/                 # Goose SQL migrations (001–015; 013–014 exist only in prod history)
 │   ├── scraper/
 │   │   └── tg_engine.py            # Telethon MTProto UserBot CLI engine
 │   ├── 7zz                         # Standalone Linux x86_64 7-Zip executable
@@ -121,7 +128,6 @@ This document is the authoritative technical reference for any AI assistant or e
 │   │   │   ├── channels/           # Telegram channel scraper & download queue
 │   │   │   ├── cookies/            # Cookie explorer, domain search, Netscape zip export
 │   │   │   ├── search/             # Global cross-archive regex/exact file search
-│   │   │   ├── settings/           # System settings, Telegram bot credentials, storage stats
 │   │   │   └── users/              # User management & RBAC role assignments
 │   │   └── login/                  # Argon2id authenticated login
 │   ├── components/                 # React UI components, shadcn/ui primitives
@@ -155,11 +161,8 @@ cd backend && go test ./...
 cd frontend && npm run build && npm test
 ```
 
-### Docker Build Caching Tip
-When updating backend code without changing system dependencies, bust only the Go build cache layer rather than re-downloading Python packages:
-```bash
-docker build --target production --build-arg BUILD_ID=$(date +%s) -t archive-api ./backend
-```
+### Deploying (CI → GHCR → VPS auto-pull)
+Push to `main` triggers `.github/workflows/docker.yml`: backend unit tests + frontend build/tests gate, then production images are pushed to `ghcr.io/pagefaultcc/archive-{api,frontend}` (`:latest` + `:sha-<sha>`). The VPS (`deploy@85.9.208.82`, deploy dir NOT a git repo) runs `archive-autodeploy.timer` (every 5 min): `docker compose pull` → `up -d` only when the image changed → prune images older than 7 days. Migrations run automatically on api startup under the bootstrap advisory lock. Registry auth is a classic PAT with `read:packages` only (ghcr.io does not accept fine-grained PATs) stored in `/home/deploy/.docker/config.json` (0600). Fallback without registry: rsync `backend/` + `frontend/` into `/home/deploy/archive`, then `docker compose build api frontend && docker compose up -d` — layer order already caches Python deps and go modules; the Dockerfile `BUILD_ID` ARG is unused.
 
 ---
 

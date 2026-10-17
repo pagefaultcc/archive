@@ -5,3 +5,5 @@ frontend/.next/
 frontend/node_modules/
 backend/bin/
 coverage/
+.omp/
+*.tsbuildinfo
