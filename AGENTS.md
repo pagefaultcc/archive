@@ -253,6 +253,7 @@ Push to `main` triggers `.github/workflows/docker.yml`: backend unit tests + fro
 - **UI:** `/search` has a Files/Passwords tab switcher (`search-tabs.tsx`); the Passwords tab renders the URL → user:pass table with masked passwords (global reveal toggle), per-row copy, source archive/file attribution, and Load-more pagination (200/page).
 
 ## 7. Frontend Design System & UI Stack
+- **Design language:** the visual contract (color tiers, alpha ladder, shape, motion, component recipes, Do/Don't) lives in the repo-root **`DESIGN.md`** — follow it for every UI change. This section covers the tooling stack only.
 - **Framework:** Next.js 16 App Router + React 19 + Turbopack; dark-only theme.
 - **Styling:** Tailwind CSS **v4** with CSS-first config — there is NO `tailwind.config`; all theme tokens live in `app/globals.css` (`@theme inline` maps CSS variables to Tailwind utilities).
 - **Components:** shadcn/ui, `new-york` style, neutral base color, CSS variables on (`components.json`); primitives live in `components/ui`, add new ones with `npx shadcn@latest add <name>`. Radix primitives via `@radix-ui/react-*` + the consolidated `radix-ui` package.
