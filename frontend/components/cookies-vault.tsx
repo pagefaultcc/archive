@@ -18,6 +18,7 @@ import {
   WrapText,
 } from "lucide-react";
 import { Icon3D, SpringCounter } from "@/components/kinetics-ui";
+import { MotionSurface } from "@/components/motion-surface";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -245,6 +246,7 @@ export function CookiesVault() {
   return (
     <div className="flex flex-1 flex-col gap-5 spring-enter">
       {/* Top Modular Summary Strip — Websites & Domain-Separated Logs */}
+      <MotionSurface busy={isReindexing}>
       <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
         <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
           <div className="flex items-start gap-3">
@@ -301,6 +303,7 @@ export function CookiesVault() {
           </div>
         </div>
       </section>
+      </MotionSurface>
 
       {/* Bulk Download & Domain Action Bar */}
       {selectedDomain ? (
@@ -320,7 +323,7 @@ export function CookiesVault() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Download All for this domain */}
-            <Button asChild variant="outline" size="xs" className="gap-1.5">
+            <Button asChild variant="outline" size="xs" className="motion-sheen gap-1.5">
               <a
                 href={cookieBulkDownloadUrl(
                   selectedDomain.domain,
@@ -437,7 +440,7 @@ export function CookiesVault() {
                   size="xs"
                   onClick={handleReindex}
                   disabled={isReindexing}
-                  className="gap-1.5"
+                  className="motion-sheen gap-1.5"
                 >
                   <RotateCcw
                     className={cn("size-3", isReindexing && "animate-spin")}

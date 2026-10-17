@@ -13,6 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { SpringCounter } from "@/components/kinetics-ui";
+import { MotionSurface } from "@/components/motion-surface";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -143,6 +144,7 @@ export function PasswordsSearch() {
   return (
     <div className="flex flex-1 flex-col gap-5 spring-enter">
       {/* Top Telemetry Header Card */}
+      <MotionSurface busy={isSearching}>
       <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
         <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
           <div className="flex items-start gap-3">
@@ -181,6 +183,7 @@ export function PasswordsSearch() {
           </div>
         </div>
       </section>
+      </MotionSurface>
 
       {/* Search Input Bar */}
       <section className="flex flex-col gap-3 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
@@ -216,7 +219,7 @@ export function PasswordsSearch() {
             size="sm"
             onClick={handleImmediateSearch}
             disabled={isSearching}
-            className="h-10 gap-1.5 text-xs"
+            className="motion-sheen h-10 gap-1.5 text-xs"
           >
             {isSearching ? (
               <Loader2 className="size-3.5 animate-spin" />

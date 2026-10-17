@@ -22,6 +22,7 @@ import {
   Upload,
 } from "lucide-react";
 import { Icon3D, Magnetic, SpringCounter } from "@/components/kinetics-ui";
+import { MotionSurface } from "@/components/motion-surface";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -558,6 +559,7 @@ export function ArchivesVault({
   return (
     <div className="flex flex-1 flex-col gap-5 spring-enter">
       {/* Top modular summary strip */}
+      <MotionSurface>
       <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
         <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
           <div className="flex items-start gap-3">
@@ -601,8 +603,10 @@ export function ArchivesVault({
           </div>
         </div>
       </section>
+      </MotionSurface>
 
       {/* Upload panel */}
+      <MotionSurface busy={isUploading}>
       <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
@@ -637,7 +641,7 @@ export function ArchivesVault({
               if (!isUploading) onPickFiles(event.dataTransfer.files);
             }}
             className={
-              "flex cursor-pointer flex-col items-center gap-2 rounded-[8px] border border-dashed px-6 py-8 text-center transition-colors duration-200 " +
+              "motion-sheen flex cursor-pointer flex-col items-center gap-2 rounded-[8px] border border-dashed px-6 py-8 text-center transition-colors duration-200 " +
               (isDragActive
                 ? "border-[rgba(255,255,255,0.28)] bg-[rgba(255,255,255,0.05)]"
                 : "border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.015)] hover:border-[rgba(255,255,255,0.22)] hover:bg-[rgba(255,255,255,0.03)]") +
@@ -754,6 +758,9 @@ export function ArchivesVault({
                         )}
                         style={{ width: `${item.percent}%` }}
                       />
+                      {item.stage === "uploading" || item.stage === "indexing" ? (
+                        <div aria-hidden="true" className="kinetics-progress-shimmer absolute inset-0" />
+                      ) : null}
                     </div>
                     <div className="mt-1.5 flex items-center justify-between text-[11px]">
                       <span
@@ -780,6 +787,7 @@ export function ArchivesVault({
 
         </div>
       </section>
+      </MotionSurface>
 
       {/* Background Server Download Indicator */}
       {serverQueue !== null && (serverQueue.active !== null || (serverQueue.activeList && serverQueue.activeList.length > 0) || serverQueue.pendingCount > 0) ? (

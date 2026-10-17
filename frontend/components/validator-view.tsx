@@ -21,6 +21,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+import { MotionSurface } from "@/components/motion-surface";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -216,6 +217,7 @@ export function ValidatorView() {
         /* Cookie Validator Active View */
         <>
           {/* Top Header & Service Indicator */}
+          <MotionSurface busy={isChecking}>
           <section className="rounded-[8px] border border-white/[0.08] bg-[#0f1011] p-4 sm:p-5">
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
@@ -270,7 +272,7 @@ export function ValidatorView() {
                     type="button"
                     onClick={handleRunValidation}
                     disabled={isChecking || isLoading}
-                    className="gap-1.5 rounded-full text-xs cursor-pointer"
+                    className="motion-sheen gap-1.5 rounded-full text-xs cursor-pointer"
                   >
                     {isChecking ? (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -344,6 +346,7 @@ export function ValidatorView() {
               </div>
             </div>
           </section>
+          </MotionSurface>
 
           {/* Main Validation Items Table */}
           <section className="rounded-[8px] border border-white/[0.08] bg-[#0f1011] overflow-hidden">

@@ -19,6 +19,7 @@ import {
   Tv,
 } from "lucide-react";
 import { Icon3D, SpringCounter } from "@/components/kinetics-ui";
+import { MotionSurface } from "@/components/motion-surface";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -244,6 +245,7 @@ export function ChannelsView() {
   return (
     <div className="flex flex-1 flex-col gap-6 spring-enter">
       {/* Top Telemetry Strip */}
+      <MotionSurface busy={isSavingSettings || isTestingConnection}>
       <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
         <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
           <div className="flex items-start gap-3">
@@ -305,6 +307,7 @@ export function ChannelsView() {
           </div>
         </div>
       </section>
+      </MotionSurface>
 
       {/* Global Telethon UserBot Credentials Card */}
       <section className="kinetics-card rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-5">
@@ -343,7 +346,7 @@ export function ChannelsView() {
               size="xs"
               onClick={handleSaveSettings}
               disabled={isSavingSettings}
-              className="gap-1.5 bg-[rgba(255,255,255,0.05)] text-[#ffffff] hover:bg-[rgba(255,255,255,0.08)]"
+              className="motion-sheen gap-1.5 bg-[rgba(255,255,255,0.05)] text-[#ffffff] hover:bg-[rgba(255,255,255,0.08)]"
             >
               <Save className="size-3.5" />
               {isSavingSettings ? "Saving…" : "Save Credentials"}

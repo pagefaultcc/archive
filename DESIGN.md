@@ -81,12 +81,14 @@ When extending an existing view, match the literals already in that view. These 
 - **Spring tokens** (Kinetics, kinetics.colorion.co): `--spring-easing` `linear(...)` curve; `--spring-duration` 520ms, fast 260ms.
 - **Page/tab enter:** `.apple-tab-enter` — 200ms `cubic-bezier(0.16, 1, 0.3, 1)`, fade + 6px rise.
 - **View enter:** `.spring-enter` (480ms overshoot) + `.kinetics-stagger` (40ms per-child delays).
-- **Surface hover:** `.kinetics-card` (translateY −3px, border → 0.12 alpha, deep shadow); `.spring-interactive` (−1.5px/×1.02 hover, ×0.96 press).
-- **Loading:** `.kinetics-progress-fill` gradient bar + `.kinetics-progress-shimmer`; `.kinetics-pulse` for live indicators.
+- **Surface hover:** unwrapped `.kinetics-card` surfaces retain their lift. `MotionSurface` replaces that lift with a monochrome travelling border so the card and beam never move apart; `.spring-interactive` retains its press feedback.
+- **Shared beam material:** `components/motion-surface.tsx` wraps the login card and one summary/header per main view; archives also wraps its upload panel. A 2.5-second first-visible sweep runs once per mount; hover or contained keyboard focus reactivates it. Actual busy states switch to a contained 3-second breathing border. Strength is 0.30 for lines and 0.22 for breathing; theme is always dark/mono, with outer bloom disabled.
+- **Primary-action sheen:** `.motion-sheen` gives selected primary actions one 700ms white-light sweep on hover or keyboard focus. Disabled actions have no sheen. Do not apply it to table actions, menu items, destructive buttons, or tabs.
+- **Loading:** `.kinetics-progress-fill` + `.kinetics-progress-shimmer` mark ongoing uploads/indexing. Shimmer inside a `MotionSurface` pauses when that surface is not animating.
 - **THE ZERO-ANIMATION RULE:** clicking/interacting with data rows, log entries, validator items, and profile menus is `transition-none` and instant. Never animate selection.
-- **`prefers-reduced-motion: reduce`** disables all transforms/entrances — keep it honored when adding new motion classes.
+- **Motion budget:** no idle decorative loops. Beams stop when offscreen, when the document is hidden, or when reduced motion is requested; observers, listeners, and reveal timers are cleaned up on unmount. `prefers-reduced-motion: reduce` also hides beam/sheens in CSS; content and controls remain usable.
 
-- **Effect libraries:** [`border-beam`](https://libraries.dev) (login-only) comes from **libraries.dev** — MIT, zero-dependency React effects shipped as agent-ready prompts (border beam, thinking orbs, liquid metal, gooey loaders, image loaders). It is the vetted source when an effect is genuinely needed; anything adopted from there MUST stay inside this system's monochrome/glass language and respect the zero-animation rule.
+- **Effect sources:** [`border-beam`](https://libraries.dev) supplies the shared line/breathing material. Sheen and shimmer use local CSS, with no extra dependencies. External examples are references, not automatic permission to add shaders, asset downloads, or new accent colors.
 
 ## 8. Component recipes
 
@@ -106,7 +108,7 @@ When extending an existing view, match the literals already in that view. These 
 | 3D illustration icons | **3dicons.co** (free license) — static WebPs committed at `frontend/public/icons/*-3d.webp` | Rendered by `Icon3D` (`components/kinetics-ui.tsx`): glass tile (`border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]` + inset specular) + float animation. To add one: drop the WebP in `public/icons/` and register it in the `ICON_PATHS` map |
 | Fonts | Inter + JetBrains Mono via `next/font/google` (downloaded and self-hosted at build; Berkeley Mono is a locally-installed fallback-first mono face) | `app/layout.tsx` |
 | Favicon | `app/favicon.ico` | App Router convention |
-| Motion effects | [libraries.dev](https://libraries.dev) (`border-beam` pkg, login-only) | See §7 |
+| Motion effects | [libraries.dev](https://libraries.dev) (`border-beam` via `MotionSurface`) + local CSS sheen/shimmer | See §7 |
 
 No remote asset URLs at runtime — everything ships inside the bundle/image. Scaffold leftovers (`file/globe/next/vercel/window.svg`) and an unused `shield.webp` were deleted; don't re-add Next.js defaults.
 

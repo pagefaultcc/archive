@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { BorderBeam } from "border-beam";
+import { MotionSurface } from "@/components/motion-surface";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,6 @@ import {
   type SessionUser,
 } from "@/lib/api";
 import { loginSchema, type LoginInput } from "@/lib/validation";
-import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
 function destination(user: SessionUser): string {
   return user.permissions.includes("users:read") ? "/users" : "/";
@@ -26,7 +25,6 @@ function destination(user: SessionUser): string {
 
 export function LoginForm() {
   const router = useRouter();
-  const reducedMotion = usePrefersReducedMotion();
   const [showPassword, setShowPassword] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
   const form = useForm<LoginInput>({
@@ -62,14 +60,7 @@ export function LoginForm() {
   }
 
   return (
-    <BorderBeam
-      size="line"
-      colorVariant="mono"
-      theme="auto"
-      strength={0.5}
-      active={!reducedMotion}
-      className="w-full max-w-sm rounded-xl"
-    >
+    <MotionSurface radius={12} className="w-full max-w-sm rounded-xl">
       <Card className="border-border/70 bg-card p-8 shadow-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Icon3D name="key" size="lg" />
@@ -136,7 +127,7 @@ export function LoginForm() {
           <Magnetic strength={0.22}>
             <Button
               type="submit"
-              className="spring-interactive w-full"
+              className="spring-interactive motion-sheen w-full"
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting ? (
@@ -154,6 +145,6 @@ export function LoginForm() {
           Protected by Argon2id PHC &amp; server-side session RBAC.
         </p>
       </Card>
-    </BorderBeam>
+    </MotionSurface>
   );
 }

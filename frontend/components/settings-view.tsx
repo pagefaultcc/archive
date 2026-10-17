@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { Icon3D, SpringCounter } from "@/components/kinetics-ui";
+import { MotionSurface } from "@/components/motion-surface";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -191,6 +192,7 @@ export function SettingsView({
   return (
     <div className="flex flex-col gap-6 spring-enter">
       {/* Top Telemetry Strip */}
+      <MotionSurface busy={isSavingPasswords}>
       <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
         <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
           <div className="flex items-start gap-3">
@@ -251,6 +253,7 @@ export function SettingsView({
           </div>
         </div>
       </section>
+      </MotionSurface>
 
       {/* Action Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -495,7 +498,7 @@ export function SettingsView({
                   void savePasswordsList(lines);
                 }}
                 disabled={isSavingPasswords}
-                className="gap-1.5"
+                className="motion-sheen gap-1.5"
               >
                 <Save className="size-3.5" />
                 {isSavingPasswords ? "Saving…" : "Save password list"}
@@ -522,7 +525,7 @@ export function SettingsView({
                 size="xs"
                 onClick={() => void handleAddSinglePassword()}
                 disabled={!newPasswordInput.trim() || isSavingPasswords}
-                className="gap-1 h-8"
+                className="motion-sheen gap-1 h-8"
               >
                 <Plus className="size-3" />
                 Add
