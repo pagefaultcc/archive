@@ -1,7 +1,7 @@
-import { GlobalSearchVault } from "@/components/global-search-vault";
+import { SearchTabs } from "@/components/search-tabs";
 
 export const dynamic = "force-dynamic";
 
 export default function SearchPage() {
-  return <GlobalSearchVault />;
+  return <SearchTabs />;
 }

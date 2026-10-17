@@ -21,6 +21,7 @@ func resetSchema(t *testing.T, url string) {
 	defer db.Close()
 	for _, stmt := range []string{
 		`DROP TABLE IF EXISTS audit_logs, sessions, role_permissions, user_roles, permissions, roles, users CASCADE`,
+		`DROP TABLE IF EXISTS archive_cookie_domains, archive_credentials, cookie_validation_items, telegram_channels, telegram_blacklist, app_settings CASCADE`,
 		`DROP TABLE IF EXISTS archives, archive_entries CASCADE`,
 		`DROP TABLE IF EXISTS goose_db_version CASCADE`,
 		`DROP FUNCTION IF EXISTS audit_logs_append_only() CASCADE`,

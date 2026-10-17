@@ -367,6 +367,7 @@ func (s *Store) DeleteArchive(ctx context.Context, id, actorID string) (storageP
 
 	// Direct indexed deletes run far faster than cascade triggers on large tables
 	_, _ = s.pool.Exec(ctx, `DELETE FROM archive_cookie_domains WHERE archive_id = $1`, id)
+	_, _ = s.pool.Exec(ctx, `DELETE FROM archive_credentials WHERE archive_id = $1`, id)
 	_, _ = s.pool.Exec(ctx, `DELETE FROM archive_entries WHERE archive_id = $1`, id)
 
 	tx, err := s.pool.Begin(ctx)
@@ -633,6 +634,7 @@ type CookieDomainInput struct {
 	NetscapeText string
 	JSONText     string
 }
+
 func sanitizePGText(s string) string {
 	if strings.IndexByte(s, 0) >= 0 {
 		s = strings.ReplaceAll(s, "\x00", "")
@@ -710,7 +712,6 @@ func (s *Store) ensureCookieDomainsLoaded(ctx context.Context) error {
 		return nil
 	}
 	defer s.cookieCache.loading.Store(false)
-
 
 	rows, err := s.pool.Query(ctx, `
 		SELECT domain, count(*) AS log_count, coalesce(sum(cookie_count), 0) AS total_cookies

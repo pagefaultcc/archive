@@ -63,6 +63,7 @@ func NewRouter(st *store.Store, origin *config.URL, log *slog.Logger) http.Handl
 	mux.Handle("PUT /api/settings/passwords", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(archives.updateArchivePasswords))))
 	mux.Handle("POST /api/settings/reindex-cookies", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(archives.reindexAllCookies))))
 	mux.Handle("GET /api/cookies", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(archives.listCookies))))
+	mux.Handle("GET /api/passwords", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(archives.listPasswords))))
 	mux.Handle("GET /api/cookies/download", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(archives.downloadCookies))))
 	mux.Handle("GET /api/search", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(archives.searchEntries))))
 	mux.Handle("GET /api/search/download", RequireOrigin(origin, authH.SessionMiddleware(http.HandlerFunc(archives.downloadSearchResults))))

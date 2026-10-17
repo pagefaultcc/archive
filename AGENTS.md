@@ -103,13 +103,13 @@ This document is the authoritative technical reference for any AI assistant or e
 ├── backend/
 │   ├── cmd/api/main.go             # Server entry point, bootstrap, cleanup loops
 │   ├── internal/
-│   │   ├── archiveidx/             # Archive indexing, 7zz extraction, cookie parser
+│   │   ├── archiveidx/             # Archive indexing, 7zz extraction, cookie & credential parsers
 │   │   ├── auth/                   # Argon2id hasher, rate limiter
 │   │   ├── bootstrap/              # Database initialization & advisory locking
 │   │   ├── config/                 # Env loading & validation
 │   │   ├── httpx/                  # Handlers, router, session middleware, queue worker
 │   │   └── store/                  # PostgreSQL database queries, caches, audit logs
-│   ├── migrations/                 # Goose SQL migrations (001-009)
+│   ├── migrations/                 # Goose SQL migrations (001-012)
 │   ├── scraper/
 │   │   └── tg_engine.py            # Telethon MTProto UserBot CLI engine
 │   ├── 7zz                         # Standalone Linux x86_64 7-Zip executable
@@ -242,3 +242,9 @@ docker build --target production --build-arg BUILD_ID=$(date +%s) -t archive-api
   - Top and bottom spacers (`paddingTop`, `paddingBottom`) preserve accurate native scrollbar height.
   - Infinite scroll dynamically streams next chunks as the user approaches the bottom of the list.
   - Maintains 120 FPS silky smooth scrolling with zero DOM lag or memory bloat.
+
+### I. Credential Index & URL-Based Password Search
+- **What:** Every archive is additionally mined for stealer-log password files (`passwords.txt`, `Password.txt`, per-domain files under `Passwords/` folders). Parsed `url/login/password` rows land in `archive_credentials` (migration `012`) keyed by normalized root `domain` (reuses `NormalizeRootDomain`), so searching `.auth.openai.com` resolves to `openai.com`.
+- **Extraction:** `archiveidx/credentials.go` mirrors the cookie pipeline: in-memory ZIP worker pool fast path for plain zips, `7zz` include-filter pass (`-ir!*password*`, binary/SQLite exclusions) for 7z/rar/encrypted. Supported line shapes: `url\tlogin\tpass` (RedLine/Vidar/Lumma/Meta), `url\tlogin:pass`, `login\tpass\turl`, `url|login|pass`, and colon-only forms (`site.com:login:pass`, `https://site/path:login:pass`, bare `login:pass` attributed via per-domain file names). Rows without any resolvable URL are dropped.
+- **API:** `GET /api/passwords?q=&limit=&offset=` (case-insensitive substring over `domain`/`url`, trigram GIN indexes, `ORDER BY id DESC`, exact `totalCount` for filtered queries, `reltuples` estimate for the empty-query fast path). Extraction runs at every `indexArchiveCookies` call site (upload, unlock, reindex, channel import), so reindexing backfills credentials for existing archives.
+- **UI:** `/search` has a Files/Passwords tab switcher (`search-tabs.tsx`); the Passwords tab renders the URL → user:pass table with masked passwords (global reveal toggle), per-row copy, source archive/file attribution, and Load-more pagination (200/page).

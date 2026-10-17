@@ -366,3 +366,97 @@ func TestArchiveRequiresSession(t *testing.T) {
 		t.Fatalf("unauthenticated list status %d", res.status)
 	}
 }
+
+func TestCredentialSearchByURL(t *testing.T) {
+	a := newArchiveEnv(t)
+	content := makeZip(t, map[string]string{
+		"Browser/Chrome/passwords.txt": "https://auth.openai.com/log\tvictim1@mail.com\tPass123!\n" +
+			".auth.openai.com\tvictim2@mail.com\tS3cret\n" +
+			"instagram.com\tjohn_doe\thunter2\n",
+		"Cookies/Default/Cookies.txt": ".google.com\tTRUE\t/\tTRUE\t1822690705\tSSID\tx\n",
+	})
+
+	res := a.upload(t, "creds.zip", content, "")
+	if res.status != 201 {
+		t.Fatalf("upload status %d: %s", res.status, res.body)
+	}
+
+	// URL substring search matches both the full URL and the dot-prefixed
+	// domain column.
+	r := do(t, a.srv, "GET", "/api/passwords?q=auth.openai.com", "", origin, a.cookie)
+	if r.status != 200 {
+		t.Fatalf("password search status %d: %s", r.status, r.body)
+	}
+	var got struct {
+		Results []struct {
+			URL       string `json:"url"`
+			Domain    string `json:"domain"`
+			Login     string `json:"login"`
+			Password  string `json:"password"`
+			EntryPath string `json:"entryPath"`
+		} `json:"results"`
+		TotalCount int64 `json:"totalCount"`
+		HasMore    bool  `json:"hasMore"`
+	}
+	if err := json.Unmarshal(r.body, &got); err != nil {
+		t.Fatalf("%s: %v", r.body, err)
+	}
+	if got.TotalCount != 2 || len(got.Results) != 2 {
+		t.Fatalf("expected 2 openai.com credentials, got %d (%s)", got.TotalCount, r.body)
+	}
+	logins := map[string]bool{}
+	for _, c := range got.Results {
+		logins[c.Login] = true
+		if c.Domain != "openai.com" {
+			t.Errorf("domain = %q, want openai.com", c.Domain)
+		}
+		if c.EntryPath != "Browser/Chrome/passwords.txt" {
+			t.Errorf("entryPath = %q", c.EntryPath)
+		}
+	}
+	if !logins["victim1@mail.com"] || !logins["victim2@mail.com"] {
+		t.Errorf("missing logins: %+v", got.Results)
+	}
+
+	// Unrelated domain search returns nothing.
+	r2 := do(t, a.srv, "GET", "/api/passwords?q=github.com", "", origin, a.cookie)
+	var none struct {
+		TotalCount int64 `json:"totalCount"`
+	}
+	if err := json.Unmarshal(r2.body, &none); err != nil {
+		t.Fatal(err)
+	}
+	if none.TotalCount != 0 {
+		t.Fatalf("expected 0 github.com credentials, got %d", none.TotalCount)
+	}
+
+	// Pagination: newest row first (id DESC).
+	r3 := do(t, a.srv, "GET", "/api/passwords?q=openai&limit=1&offset=0", "", origin, a.cookie)
+	var page struct {
+		Results []struct {
+			Login string `json:"login"`
+		} `json:"results"`
+		TotalCount int64 `json:"totalCount"`
+		HasMore    bool  `json:"hasMore"`
+	}
+	if err := json.Unmarshal(r3.body, &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.TotalCount != 2 || len(page.Results) != 1 || !page.HasMore ||
+		page.Results[0].Login != "victim2@mail.com" {
+		t.Fatalf("page = %+v (%s)", page, r3.body)
+	}
+	r4 := do(t, a.srv, "GET", "/api/passwords?q=openai&limit=1&offset=1", "", origin, a.cookie)
+	var last struct {
+		Results []struct {
+			Login string `json:"login"`
+		} `json:"results"`
+		HasMore bool `json:"hasMore"`
+	}
+	if err := json.Unmarshal(r4.body, &last); err != nil {
+		t.Fatal(err)
+	}
+	if len(last.Results) != 1 || last.HasMore || last.Results[0].Login != "victim1@mail.com" {
+		t.Fatalf("last page = %+v (%s)", last, r4.body)
+	}
+}

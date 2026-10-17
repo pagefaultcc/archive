@@ -1,6 +1,8 @@
 package httpx
 
 import (
+	"archive/backend/internal/archiveidx"
+	"archive/backend/internal/store"
 	"archive/zip"
 	"bytes"
 	"context"
@@ -20,12 +22,11 @@ import (
 	"sync"
 	"time"
 	"unicode/utf8"
-	"archive/backend/internal/archiveidx"
-	"archive/backend/internal/store"
 )
 
 // maxArchiveBytes is the 100 GiB upload limit.
 const maxArchiveBytes = 100 << 30
+
 type searchDownloadJob struct {
 	ID        string    `json:"id"`
 	Total     int       `json:"total"`
@@ -47,6 +48,7 @@ type archiveHandlers struct {
 	jobsMu     sync.RWMutex
 	jobs       map[string]*searchDownloadJob
 }
+
 // tempFileMaxAge is how long an orphaned temp/partial upload file may sit
 // before the background sweep removes it.
 const tempFileMaxAge = 30 * time.Minute
@@ -486,6 +488,7 @@ func (h *archiveHandlers) unlock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.indexArchiveCookies(r.Context(), id, storagePath, format, req.Password, res.Entries)
+	h.indexArchiveCredentials(r.Context(), id, storagePath, format, req.Password, res.Entries)
 	WriteJSON(w, http.StatusOK, map[string]store.ArchiveItem{"archive": item})
 }
 
@@ -781,6 +784,7 @@ func (h *archiveHandlers) upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.indexArchiveCookies(r.Context(), item.ID, activePath, format, savedPassword, res.Entries)
+	h.indexArchiveCredentials(r.Context(), item.ID, activePath, format, savedPassword, res.Entries)
 	WriteJSON(w, http.StatusCreated, map[string]any{
 		"archive":      item,
 		"autoUnlocked": res.MatchedPassword != "",
@@ -856,6 +860,7 @@ func (h *archiveHandlers) reindexAll(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		h.indexArchiveCookies(r.Context(), a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
+		h.indexArchiveCredentials(r.Context(), a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
 		reindexed++
 	}
 
@@ -887,6 +892,7 @@ func (h *archiveHandlers) reindexAllCookies(w http.ResponseWriter, r *http.Reque
 				continue
 			}
 			h.indexArchiveCookies(ctx, a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
+			h.indexArchiveCredentials(ctx, a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
 			h.Log.Info("reindexAllCookies: completed archive", "index", i+1, "total", len(archives), "filename", a.Filename)
 		}
 	}()
@@ -934,6 +940,7 @@ func (h *archiveHandlers) reindexOne(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.indexArchiveCookies(r.Context(), a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
+	h.indexArchiveCredentials(r.Context(), a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
 	WriteJSON(w, http.StatusOK, map[string]any{"archive": item})
 }
 
@@ -982,6 +989,32 @@ func (h *archiveHandlers) indexArchiveCookies(
 	}
 	if err := h.Store.SaveArchiveCookieDomains(bgCtx, archiveID, inputs); err != nil {
 		h.logInternal(bgCtx, "saving archive cookie domains failed", err)
+	}
+}
+
+// indexArchiveCredentials extracts and parses stealer-log password files by URL.
+func (h *archiveHandlers) indexArchiveCredentials(
+	ctx context.Context,
+	archiveID, filePath, format, password string,
+	entries []archiveidx.Entry,
+) {
+	bgCtx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	defer cancel()
+
+	chunks := archiveidx.ExtractCredentials(bgCtx, filePath, format, password, entries)
+	inputs := make([]store.CredentialInput, 0, len(chunks))
+	for _, c := range chunks {
+		inputs = append(inputs, store.CredentialInput{
+			EntryPath: c.EntryPath,
+			EntryName: c.EntryName,
+			URL:       c.URL,
+			Domain:    c.Domain,
+			Login:     c.Login,
+			Password:  c.Password,
+		})
+	}
+	if err := h.Store.SaveArchiveCredentials(bgCtx, archiveID, inputs); err != nil {
+		h.logInternal(bgCtx, "saving archive credentials failed", err)
 	}
 }
 
@@ -1037,6 +1070,43 @@ func (h *archiveHandlers) listCookies(w http.ResponseWriter, r *http.Request) {
 		"hasMore":       hasMore,
 		"limit":         limit,
 		"offset":        offset,
+	})
+}
+
+// listPasswords handles GET /api/passwords?q=&limit=&offset=
+func (h *archiveHandlers) listPasswords(w http.ResponseWriter, r *http.Request) {
+	if _, ok := SessionFrom(r.Context()); !ok {
+		WriteError(w, Unauthenticated)
+		return
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	limit := 100
+	if lStr := r.URL.Query().Get("limit"); lStr != "" {
+		if n, err := strconv.Atoi(lStr); err == nil && n > 0 && n <= 1000 {
+			limit = n
+		}
+	}
+	offset := 0
+	if oStr := r.URL.Query().Get("offset"); oStr != "" {
+		if n, err := strconv.Atoi(oStr); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	results, totalCount, err := h.Store.SearchCredentials(r.Context(), q, limit, offset)
+	if err != nil {
+		h.logInternal(r.Context(), "searching credentials failed", err)
+		WriteError(w, InternalServerError)
+		return
+	}
+	hasMore := (int64(offset) + int64(len(results))) < totalCount
+
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"results":    results,
+		"totalCount": totalCount,
+		"limit":      limit,
+		"offset":     offset,
+		"hasMore":    hasMore,
 	})
 }
 
@@ -1675,4 +1745,3 @@ func (h *archiveHandlers) updateArchivePasswords(w http.ResponseWriter, r *http.
 	pws := archiveidx.DefaultPasswords()
 	WriteJSON(w, http.StatusOK, map[string]any{"passwords": pws})
 }
-

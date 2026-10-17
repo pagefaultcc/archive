@@ -76,8 +76,12 @@ func reset(t *testing.T, url string) {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	// Every migration-created table must be listed explicitly: two test
+	// packages share TEST_DATABASE_URL, and goose re-runs from a clean
+	// version state, so leftover tables collide with CREATE TABLE.
 	for _, stmt := range []string{
 		`DROP TABLE IF EXISTS audit_logs, sessions, role_permissions, user_roles, permissions, roles, users CASCADE`,
+		`DROP TABLE IF EXISTS archive_cookie_domains, archive_credentials, cookie_validation_items, telegram_channels, telegram_blacklist, app_settings CASCADE`,
 		`DROP TABLE IF EXISTS archives, archive_entries CASCADE`,
 		`DROP TABLE IF EXISTS goose_db_version CASCADE`,
 		`DROP FUNCTION IF EXISTS audit_logs_append_only() CASCADE`,
