@@ -68,9 +68,9 @@ function RolePills({ roles }: { roles: string[] }) {
     return <span className="text-muted-foreground">—</span>;
   }
   return (
-    <span className="inline-flex flex-wrap gap-1">
+    <span className="inline-flex min-w-0 max-w-full flex-wrap gap-1">
       {roles.map((role) => (
-        <Badge key={role} variant="outline">
+        <Badge key={role} variant="outline" className="max-w-full whitespace-normal break-all text-left">
           {role}
         </Badge>
       ))}
@@ -116,7 +116,7 @@ function UsersTable({ users, permissions, availableRoles }: UserListProps) {
               <TableCell>
                 <span className="flex items-center gap-2">
                   <Avatar username={user.username} />
-                  <span className="font-medium">{user.username}</span>
+                  <span className="max-w-64 truncate font-medium" title={user.username}>{user.username}</span>
                   {user.isRoot ? <Badge variant="outline">root</Badge> : null}
                   <span className="font-mono text-xs text-muted-foreground">
                     {shortId(user.id)}
@@ -153,9 +153,9 @@ function UsersStack({ users, permissions, availableRoles }: UserListProps) {
       {users.map((user) => (
         <Card key={user.id} className="border-border/70 bg-card">
           <CardContent className="flex flex-col gap-2 p-4">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Avatar username={user.username} />
-              <span className="font-medium">{user.username}</span>
+              <span className="min-w-0 break-all font-medium">{user.username}</span>
               {user.isRoot ? <Badge variant="outline">root</Badge> : null}
               <StatusBadge user={user} />
             </div>
@@ -271,8 +271,8 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
           <h1 className="text-base font-semibold tracking-tight">Users</h1>
           <Badge variant="secondary">{users.length}</Badge>
         </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="h-9 transition-none hover:scale-100 active:scale-100">
             <Link
               href={showDeleted ? "/users" : "/users?deleted=1"}
               aria-pressed={showDeleted}

@@ -592,7 +592,7 @@ export function ArchivesVault({
                   metric.accent
                 )}
               >
-                <span className="text-[11px] font-medium uppercase tracking-wide text-[#8a8f98]">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
                   {metric.label}
                 </span>
                 <span className="text-lg font-semibold tabular-nums tracking-tight text-[#f7f8f8]">
@@ -678,16 +678,16 @@ export function ArchivesVault({
           {/* Multi-archive upload queue cards */}
           {uploadQueue.length > 0 ? (
             <div className="flex flex-col gap-2 rounded-[8px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] p-3.5">
-              <div className="flex items-center justify-between text-xs text-[#8a8f98]">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#8a8f98]">
                 <span className="font-medium text-[#f7f8f8]">
                   Upload Queue ({uploadQueue.filter((it) => it.stage === "done").length}/{uploadQueue.length} completed)
                 </span>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   {failedCount > 0 ? (
                     <button
                       type="button"
                       onClick={clearFailed}
-                      className="text-[11px] text-[#f91880] hover:opacity-80"
+                      className="whitespace-nowrap text-[11px] text-[#f91880] transition-none hover:opacity-80"
                     >
                       Clear failed ({failedCount})
                     </button>
@@ -696,7 +696,7 @@ export function ArchivesVault({
                     <button
                       type="button"
                       onClick={clearFinished}
-                      className="text-[11px] text-[#00ba7c] hover:opacity-80"
+                      className="whitespace-nowrap text-[11px] text-[#00ba7c] transition-none hover:opacity-80"
                     >
                       Clear finished ({finishedCount})
                     </button>
@@ -705,7 +705,7 @@ export function ArchivesVault({
                     <button
                       type="button"
                       onClick={() => setUploadQueue([])}
-                      className="text-[11px] text-[#62666d] hover:text-[#f7f8f8]"
+                      className="whitespace-nowrap text-[11px] text-[#62666d] transition-none hover:text-[#f7f8f8]"
                     >
                       Clear all
                     </button>
@@ -719,7 +719,7 @@ export function ArchivesVault({
                     className="rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.015)] p-2.5"
                   >
                     <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                      <span className="min-w-0 truncate text-xs font-medium text-[#f7f8f8]">
+                      <span className="min-w-0 max-w-full truncate text-xs font-medium text-[#f7f8f8]" title={item.filename}>
                         {item.filename}
                       </span>
                       {item.format !== null ? (
@@ -765,7 +765,7 @@ export function ArchivesVault({
                     <div className="mt-1.5 flex items-center justify-between text-[11px]">
                       <span
                         className={cn(
-                          "inline-flex items-center gap-1 font-medium",
+                          "inline-flex min-w-0 items-center gap-1 break-words font-medium",
                           item.stage === "error"
                             ? "text-[#f91880]"
                             : item.stage === "done"
@@ -793,12 +793,12 @@ export function ArchivesVault({
       {serverQueue !== null && (serverQueue.active !== null || (serverQueue.activeList && serverQueue.activeList.length > 0) || serverQueue.pendingCount > 0) ? (
         <div className="flex flex-col gap-2.5 rounded-[8px] border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.02)] p-3.5 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.06)] pb-2.5">
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
               <span className="relative flex h-2 w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ba7c] opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00ba7c]" />
               </span>
-              <span className="font-mono font-medium text-[#f7f8f8]">
+              <span className="font-mono font-medium text-[#f7f8f8] whitespace-nowrap">
                 Parallel Downloader
               </span>
               {(serverQueue.activeList && serverQueue.activeList.length > 0) ? (
@@ -826,7 +826,7 @@ export function ArchivesVault({
                   if (q.ok) setServerQueue(q.data);
                   toast.info("Cleared background download queue.");
                 }}
-                className="ml-2 text-[10px] text-[#8a8f98] hover:text-[#f91880] cursor-pointer transition-colors"
+                className="ml-2 whitespace-nowrap text-[10px] text-[#8a8f98] hover:text-[#f91880] cursor-pointer transition-none"
                 title="Cancel pending background downloads"
               >
                 (Clear Queue)
@@ -843,15 +843,15 @@ export function ArchivesVault({
           ).map((stream, idx) => (
             <div key={stream.id} className="flex flex-col gap-1.5 rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.015)] p-2.5">
               <div className="flex flex-wrap items-center justify-between gap-1.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 rounded-[4px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98] font-semibold">
+                <div className="flex max-w-full items-center gap-2 min-w-0">
+                  <span className="shrink-0 font-mono text-[9px] uppercase px-1.5 py-0.5 rounded-[4px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98] font-semibold">
                     Stream #{idx + 1}
                   </span>
-                  <span className="font-mono font-medium text-[#d0d6e0] truncate text-[11px]">
+                  <span className="font-mono font-medium text-[#d0d6e0] truncate text-[11px]" title={stream.filename}>
                     {stream.filename}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 font-mono text-[10px] text-[#8a8f98]">
+                <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-[#8a8f98]">
                   {stream.speedMbps > 0 ? (
                     <span className="text-[#00ba7c] font-medium">{stream.speedMbps.toFixed(1)} Mbps</span>
                   ) : null}
@@ -885,11 +885,11 @@ export function ArchivesVault({
 
       {/* Archive Vault List */}
       <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-sm font-semibold tracking-tight text-[#f7f8f8]">
             Indexed Archives ({archives.length})
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -939,9 +939,9 @@ export function ArchivesVault({
                   name={archive.isEncrypted ? "lock" : "tools"}
                   size="sm"
                 />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="min-w-0 truncate text-sm font-medium text-[#f7f8f8] hover:underline">
+                    <span className="min-w-0 max-w-full truncate text-sm font-medium text-[#f7f8f8] hover:underline" title={archive.filename}>
                       {archive.filename}
                     </span>
                     <Badge variant="outline" className="uppercase font-mono">
@@ -968,7 +968,7 @@ export function ArchivesVault({
                 </div>
               </Link>
 
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <Magnetic strength={0.16}>
                   <Button asChild size="sm">
                     <Link href={`/archives/${archive.id}`}>
@@ -1045,7 +1045,7 @@ export function ArchivesVault({
           {unlockArchive !== null ? (
             <div className="flex flex-col gap-4">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base">
+                <DialogTitle className="flex items-center gap-2 pr-6 text-left text-base">
                   <Icon3D name="lock" size="md" />
                   Password-Protected Archive Detected
                 </DialogTitle>
@@ -1081,7 +1081,7 @@ export function ArchivesVault({
                     aria-label={
                       showUnlockPassword ? "Hide password" : "Show password"
                     }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[9999px] p-1.5 text-[#8a8f98] transition-colors hover:text-[#f7f8f8]"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[9999px] p-1.5 text-[#8a8f98] transition-none hover:text-[#f7f8f8]"
                   >
                     {showUnlockPassword ? (
                       <EyeOff className="size-4" />
@@ -1098,14 +1098,14 @@ export function ArchivesVault({
               </div>
               <Magnetic strength={0.18}>
                 <Button
-                  className="spring-interactive w-full rounded-[9999px]"
+                  className="spring-interactive h-auto min-h-10 w-full whitespace-normal rounded-[9999px] py-2"
                   disabled={isUnlocking || unlockPassword.length === 0}
                   onClick={() => void handleUnlock()}
                 >
                   {isUnlocking ? (
-                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Lock className="mr-2 size-4" />
+                    <Lock className="size-4" />
                   )}
                   Store password &amp; open File Explorer
                 </Button>
@@ -1120,8 +1120,8 @@ export function ArchivesVault({
         <DialogContent className="border border-[rgba(255,255,255,0.1)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-3xl w-[92vw] max-h-[85vh] flex flex-col p-6 overflow-hidden shadow-2xl">
           <DialogHeader className="shrink-0 pb-3 border-b border-[rgba(255,255,255,0.06)]">
             <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2.5 text-base font-semibold text-[#ffffff]">
-                <div className="flex size-7 items-center justify-center rounded-md bg-[rgba(255,255,255,0.05)] text-[#d0d6e0] border border-[rgba(255,255,255,0.08)]">
+              <DialogTitle className="flex items-center gap-2.5 pr-6 text-left text-base font-semibold text-[#ffffff]">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[rgba(255,255,255,0.05)] text-[#d0d6e0] border border-[rgba(255,255,255,0.08)]">
                   <Radio className="size-3.5 text-[#00ba7c]" />
                 </div>
                 Telegram Channel Auto-Scrape Importer
@@ -1132,7 +1132,7 @@ export function ArchivesVault({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-1 flex-col gap-4 py-2 min-h-0 overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-2 sm:overflow-hidden">
             {scrapeChannels.length === 0 ? (
               <div className="flex flex-col items-center justify-center flex-1 rounded-[8px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.015)] p-8 text-center">
                 <Radio className="size-8 text-[#62666d] mb-2" />
@@ -1155,7 +1155,7 @@ export function ArchivesVault({
                     <select
                       value={selectedChannelId}
                       onChange={(e) => setSelectedChannelId(e.target.value)}
-                      className="h-8.5 w-full rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[#08090a] px-2.5 text-xs text-[#d0d6e0] outline-none"
+                      className="h-8.5 min-w-0 w-full rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[#08090a] px-2.5 text-xs text-[#d0d6e0] outline-none"
                     >
                       {scrapeChannels.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -1187,7 +1187,7 @@ export function ArchivesVault({
                         className="h-8.5 shrink-0 px-3.5"
                       >
                         {isScanningChannel ? (
-                          <Loader2 className="size-3.5 animate-spin mr-1" />
+                          <Loader2 className="size-3.5 animate-spin" />
                         ) : null}
                         {isScanningChannel ? "Scanning…" : "Scan"}
                       </Button>
@@ -1197,9 +1197,9 @@ export function ArchivesVault({
 
                 {/* Scraped items selection list */}
                 {scrapedItems.length > 0 ? (
-                  <div className="flex flex-1 flex-col gap-2 min-h-0 overflow-hidden">
-                    <div className="shrink-0 flex items-center justify-between text-xs text-[#8a8f98]">
-                      <div className="flex items-center gap-1.5">
+                  <div className="flex min-h-0 shrink-0 flex-col gap-2 sm:flex-1">
+                    <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 text-xs text-[#8a8f98]">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className="font-medium text-[#d0d6e0]">
                           Found {scrapedItems.length} archives
                         </span>
@@ -1258,7 +1258,7 @@ export function ArchivesVault({
                           <div
                             key={it.messageId}
                             className={cn(
-                              "flex items-center gap-2.5 p-2.5 text-xs hover:bg-[rgba(255,255,255,0.02)] transition-none",
+                              "flex flex-wrap items-center gap-2.5 p-2.5 text-xs hover:bg-[rgba(255,255,255,0.02)] transition-none",
                               isChecked && "bg-[rgba(255,255,255,0.015)]"
                             )}
                           >
@@ -1299,7 +1299,7 @@ export function ArchivesVault({
                               </p>
                             </div>
 
-                            <div className="flex items-center gap-1.5 w-44 shrink-0">
+                            <div className="flex min-w-0 basis-full items-center gap-1.5 sm:w-44 sm:shrink-0 sm:basis-auto">
                               <span className="text-[10px] text-[#8a8f98] shrink-0">PW:</span>
                               <Input
                                 type="text"
@@ -1330,7 +1330,7 @@ export function ArchivesVault({
                 )}
 
                 {/* Footer with summary and action buttons */}
-                <div className="shrink-0 flex items-center justify-between gap-3 pt-3 border-t border-[rgba(255,255,255,0.06)]">
+                <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[rgba(255,255,255,0.06)]">
                   <div className="text-xs text-[#8a8f98]">
                     {scrapedItems.length > 0 ? (
                       <span>
@@ -1349,7 +1349,7 @@ export function ArchivesVault({
                     ) : null}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
                       variant="ghost"

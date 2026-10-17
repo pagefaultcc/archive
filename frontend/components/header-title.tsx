@@ -7,6 +7,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/archives": "Archives",
   "/search": "Search Vault",
   "/cookies": "Cookies",
+  "/validator": "Validator",
   "/channels": "Telegram Channels",
   "/roles": "Roles & Permissions",
   "/audit": "Audit Log",
@@ -23,6 +24,8 @@ export function HeaderTitle() {
         ? "Search Vault"
         : pathname.startsWith("/cookies")
           ? "Cookies"
+        : pathname.startsWith("/validator")
+          ? "Validator"
         : pathname.startsWith("/channels")
           ? "Telegram Channels"
         : pathname.startsWith("/users")

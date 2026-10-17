@@ -22,6 +22,7 @@ import { MotionSurface } from "@/components/motion-surface";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   browserAddValidationDomain,
   browserAddValidationLog,
@@ -645,33 +646,16 @@ export function CookiesVault() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {/* Format Switcher: Netscape | JSON */}
-                  <div className="flex items-center rounded-[6px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setViewFormat("netscape")}
-                      className={cn(
-                        "rounded-[4px] px-2 py-0.5 font-mono text-[11px] transition-none",
-                        viewFormat === "netscape"
-                          ? "bg-[rgba(255,255,255,0.05)] text-[#ffffff]"
-                          : "text-[#62666d] hover:text-[#d0d6e0]",
-                      )}
-                    >
-                      Netscape
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewFormat("json")}
-                      className={cn(
-                        "rounded-[4px] px-2 py-0.5 font-mono text-[11px] transition-none",
-                        viewFormat === "json"
-                          ? "bg-[rgba(255,255,255,0.05)] text-[#ffffff]"
-                          : "text-[#62666d] hover:text-[#d0d6e0]",
-                      )}
-                    >
-                      JSON
-                    </button>
-                  </div>
+                  <SegmentedControl
+                    label="Cookie format"
+                    value={viewFormat}
+                    onValueChange={(value) => setViewFormat(value as "netscape" | "json")}
+                    options={[
+                      { value: "netscape", label: "Netscape" },
+                      { value: "json", label: "JSON" },
+                    ]}
+                    size="sm"
+                  />
 
                   {/* Send to Validator in Inspector — only for supported domain */}
                   {selectedLog &&

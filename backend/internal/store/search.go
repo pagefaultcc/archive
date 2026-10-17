@@ -73,7 +73,12 @@ func (s *Store) SearchArchiveEntries(ctx context.Context, f SearchFilters) ([]Ar
 	// Instant fast-path for blank initial load: avoids 15-second disk sort across 6.3M rows
 	if f.Query == "" && f.FileName == "" && f.FileType == "" && f.MinSizeBytes == 0 && f.MaxSizeBytes == 0 && f.ArchiveID == "" {
 		var countTotal int64
-		_ = s.pool.QueryRow(ctx, `SELECT reltuples::bigint FROM pg_class WHERE relname = 'archive_entries'`).Scan(&countTotal)
+		err := s.pool.QueryRow(ctx, `SELECT reltuples::bigint FROM pg_class WHERE relname = 'archive_entries'`).Scan(&countTotal)
+		if err != nil || countTotal <= 0 {
+			if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM archive_entries WHERE is_dir = false`).Scan(&countTotal); err != nil {
+				return nil, 0, fmt.Errorf("counting archive entries: %w", err)
+			}
+		}
 
 		rows, err := s.pool.Query(ctx, `
 			SELECT e.id, e.archive_id, a.filename, e.path, e.name, 

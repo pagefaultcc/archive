@@ -63,17 +63,17 @@ function PermissionChecklist({
       {permissions.map((permission) => {
         const inputId = `${idPrefix}-${permission.id}`;
         return (
-          <div key={permission.id} className="flex items-center gap-3 py-0.5">
+          <div key={permission.id} className="flex items-start gap-3 py-1">
             <input
               id={inputId}
               type="checkbox"
-              className="size-4 accent-primary"
+              className="mt-0.5 size-4 shrink-0 accent-primary"
               checked={selected.includes(permission.name)}
               onChange={() => onToggle(permission.name)}
             />
-            <Label htmlFor={inputId} className="cursor-pointer font-normal">
+            <Label htmlFor={inputId} className="min-w-0 flex-wrap gap-x-2 gap-y-1 break-all cursor-pointer font-normal">
               <span className="font-mono text-xs">{permission.name}</span>
-              <span className="ml-2 text-muted-foreground">{permission.label}</span>
+              <span className="text-muted-foreground">{permission.label}</span>
             </Label>
           </div>
         );
@@ -233,7 +233,7 @@ function RoleMutationDialog({
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] min-w-0 overflow-y-auto [overflow-wrap:anywhere] border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold tracking-tight">
             {mode === "create" ? "Create role" : "Edit role"}
@@ -263,7 +263,7 @@ function RoleMutationDialog({
               <AlertDescription>{generalError}</AlertDescription>
             </Alert>
           ) : null}
-          <DialogFooter>
+          <DialogFooter className="sm:flex-wrap">
             <Button
               type="button"
               variant="outline"
@@ -401,16 +401,16 @@ export function RolesManager({
 
       <div className="kinetics-stagger grid gap-4 lg:grid-cols-2">
         {roles.map((role) => (
-          <Card key={role.id} data-testid={`role-row-${role.name}`}>
-            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+          <Card key={role.id} className="min-w-0" data-testid={`role-row-${role.name}`}>
+            <CardHeader className="flex flex-col items-start justify-between gap-3 space-y-0 sm:flex-row">
               <div className="flex min-w-0 items-start gap-3">
                 <Icon3D name={role.protected ? "lock" : "tools"} size="sm" />
                 <div className="min-w-0 space-y-1.5">
-                  <CardTitle className="text-sm font-semibold tracking-tight">
+                  <CardTitle className="break-all text-sm font-semibold tracking-tight">
                     {role.label}
                   </CardTitle>
                 <CardDescription className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="font-mono text-[11px]">
+                  <Badge variant="outline" className="max-w-full whitespace-normal break-all text-left font-mono text-[11px]">
                     {role.name}
                   </Badge>
                   {role.protected ? (
@@ -427,7 +427,7 @@ export function RolesManager({
                   role={role}
                   permissions={permissions}
                   trigger={
-                    <Button variant="outline" size="sm" className="spring-interactive">
+                    <Button variant="outline" size="sm" className="h-9 transition-none hover:scale-100 active:scale-100">
                       <Pencil aria-hidden /> Edit role
                     </Button>
                   }
@@ -451,7 +451,7 @@ export function RolesManager({
                     <Badge
                       key={permission}
                       variant="secondary"
-                      className="font-mono text-[11px]"
+                      className="max-w-full whitespace-normal break-all text-left font-mono text-[11px]"
                     >
                       {permission}
                     </Badge>
@@ -469,12 +469,12 @@ export function RolesManager({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="spring-interactive text-destructive"
+                      className="h-9 text-destructive transition-none hover:scale-100 active:scale-100"
                     >
                       <Trash2 aria-hidden /> Delete role
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-sm">
+                  <DialogContent className="max-h-[calc(100dvh-2rem)] min-w-0 overflow-y-auto [overflow-wrap:anywhere] border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-sm">
                     <DialogHeader>
                       <DialogTitle className="text-base font-semibold tracking-tight">
                         Delete role
@@ -484,7 +484,7 @@ export function RolesManager({
                         cannot be undone.
                       </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter>
+                    <DialogFooter className="sm:flex-wrap">
                       <Button
                         type="button"
                         variant="outline"
@@ -497,7 +497,7 @@ export function RolesManager({
                         variant="destructive"
                         onClick={handleDelete}
                         disabled={deleting}
-                        className="spring-interactive"
+                        className="transition-none hover:scale-100 active:scale-100"
                       >
                         {deleting ? (
                           <Loader2 aria-hidden className="animate-spin" />

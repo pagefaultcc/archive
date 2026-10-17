@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import {
   AlertCircle,
   ArrowUpRight,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Download,
   FileArchive,
@@ -312,7 +314,7 @@ export function GlobalSearchVault() {
         {/* Search input + Regex Toggle */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Clean flex input: icon and input are natural flex siblings, zero overlap */}
-          <div className="flex flex-1 min-w-[280px] items-center gap-2.5 rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-3.5 py-2 transition-colors focus-within:border-[rgba(255,255,255,0.2)] focus-within:bg-[rgba(255,255,255,0.04)]">
+          <div className="flex h-10 min-w-0 basis-full items-center gap-2.5 rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-3.5 transition-none focus-within:border-[rgba(255,255,255,0.2)] focus-within:bg-[rgba(255,255,255,0.04)] sm:flex-1 sm:basis-0">
             <Search className="size-4 shrink-0 text-[#8a8f98]" />
             <input
               type="search"
@@ -322,7 +324,7 @@ export function GlobalSearchVault() {
                 if (e.key === "Enter") executeSearch();
               }}
               placeholder="Search all archives (e.g. auth.json, passwords, or regex)..."
-              className="w-full bg-transparent font-mono text-xs text-[#f7f8f8] outline-none placeholder:text-[#62666d]"
+              className="min-w-0 w-full bg-transparent font-mono text-xs text-[#f7f8f8] outline-none placeholder:text-[#62666d]"
             />
           </div>
 
@@ -331,10 +333,13 @@ export function GlobalSearchVault() {
             variant="outline"
             size="sm"
             onClick={() => setShowAdvanced((s) => !s)}
-            className="h-10 gap-1.5 text-xs"
+            aria-expanded={showAdvanced}
+            aria-controls="archive-search-filters"
+            className="h-10 gap-1.5 text-xs transition-none hover:scale-100 active:scale-100"
           >
             <SlidersHorizontal className="size-3.5" />
-            Filters {showAdvanced ? "▲" : "▼"}
+            Filters
+            {showAdvanced ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
           </Button>
 
           <Button
@@ -343,7 +348,7 @@ export function GlobalSearchVault() {
             size="sm"
             onClick={() => executeSearch()}
             disabled={isSearching}
-            className="motion-sheen h-10 gap-1.5 text-xs"
+            className="motion-sheen h-10 gap-1.5 text-xs transition-none hover:scale-100 active:scale-100"
           >
             <Sparkles className={cn("size-3.5", isSearching && "animate-spin")} />
             Search
@@ -363,7 +368,7 @@ export function GlobalSearchVault() {
               setFileType("");
               executeSearch({ type: undefined });
             }}
-            className="font-mono text-[10px]"
+            className="font-mono text-[10px] transition-none hover:scale-100 active:scale-100"
           >
             All
           </Button>
@@ -380,7 +385,7 @@ export function GlobalSearchVault() {
                   setFileType(next);
                   executeSearch({ type: next || undefined });
                 }}
-                className="font-mono text-[10px]"
+                className="font-mono text-[10px] transition-none hover:scale-100 active:scale-100"
               >
                 .{ext}
               </Button>
@@ -390,7 +395,7 @@ export function GlobalSearchVault() {
 
         {/* Collapsible Advanced Filters Drawer */}
         {showAdvanced ? (
-          <div className="grid grid-cols-1 gap-3 border-t border-[rgba(255,255,255,0.05)] pt-3 sm:grid-cols-3">
+          <div id="archive-search-filters" className="grid grid-cols-1 gap-3 border-t border-[rgba(255,255,255,0.05)] pt-3 sm:grid-cols-3">
             <div className="flex flex-col gap-1">
               <label className="text-[11px] font-medium text-[#8a8f98]">
                 File Name Filter (Regex / Substring)
@@ -423,8 +428,8 @@ export function GlobalSearchVault() {
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex-1 flex flex-col gap-1">
+            <div className="flex min-w-0 items-end gap-2">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label className="text-[11px] font-medium text-[#8a8f98]">
                   Min Size (KiB)
                 </label>
@@ -443,7 +448,7 @@ export function GlobalSearchVault() {
                   className="h-8 font-mono text-xs"
                 />
               </div>
-              <div className="flex-1 flex flex-col gap-1">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label className="text-[11px] font-medium text-[#8a8f98]">
                   Max Size (KiB)
                 </label>
@@ -472,7 +477,7 @@ export function GlobalSearchVault() {
         {/* Left Pane: Search Results */}
         <section className="flex min-w-0 flex-col rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] px-3.5 py-2.5">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
               <span className="text-xs font-medium text-[#d0d6e0]">
                 Search Results ({results.length} of {totalCount.toLocaleString()})
               </span>
@@ -571,7 +576,7 @@ export function GlobalSearchVault() {
                     {/* Clickable Path forward to Archive Explorer */}
                     <Link
                       href={`/archives/${item.archiveId}?path=${encodeURIComponent(item.path)}`}
-                      className="group inline-flex items-center gap-1 truncate font-mono text-[11px] text-[#62666d] hover:text-[#d0d6e0] hover:underline"
+                      className="group inline-flex max-w-full items-center gap-1 truncate font-mono text-[11px] text-[#62666d] hover:text-[#d0d6e0] hover:underline"
                       title={`Open in Archive File Viewer: ${item.archiveFilename} → ${item.path}`}
                     >
                       <span className="truncate">
@@ -602,9 +607,9 @@ export function GlobalSearchVault() {
             <>
               {/* File Viewer Header */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] px-3.5 py-2.5">
-                <div className="min-w-0">
+                <div className="min-w-0 max-w-full">
                   <div className="flex items-center gap-2">
-                    <span className="truncate font-mono text-xs font-semibold text-[#d0d6e0]">
+                    <span className="truncate font-mono text-xs font-semibold text-[#d0d6e0]" title={selectedResult.name}>
                       {selectedResult.name}
                     </span>
                     <Badge variant="secondary" className="font-mono text-[10px]">
@@ -734,7 +739,7 @@ export function GlobalSearchVault() {
       >
         <DialogContent className="border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base text-[#ffffff]">
+            <DialogTitle className="flex items-center gap-2 pr-6 text-left text-base text-[#ffffff]">
               <FileArchive className="size-4 text-[#8a8f98]" />
               Packaging Search Results Archive
             </DialogTitle>
@@ -773,14 +778,14 @@ export function GlobalSearchVault() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-[6px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] p-2.5 text-xs">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-[6px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] p-2.5 text-xs">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 {downloadJob?.status === "preparing" ? (
                   <Loader2 className="size-3.5 animate-spin text-[#8a8f98]" />
                 ) : (
                   <FileArchive className="size-3.5 text-[#8a8f98]" />
                 )}
-                <span className="font-mono text-[#d0d6e0]">
+                <span className="truncate font-mono text-[#d0d6e0]" title={downloadJob?.zipName ?? "search-results.zip"}>
                   {downloadJob?.zipName ?? "search-results.zip"}
                 </span>
               </div>

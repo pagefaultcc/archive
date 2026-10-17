@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check,
   ChevronsUpDown,
   KeyRound,
   Loader2,
-  Lock,
   LogOut,
   Settings,
-  Shield,
   ShieldCheck,
   User,
 } from "lucide-react";
@@ -47,6 +45,7 @@ export function UserMenu({
   compact?: boolean;
 }) {
   const router = useRouter();
+  const passwordFieldId = useId();
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
 
@@ -109,7 +108,7 @@ export function UserMenu({
               type="button"
               disabled={pending || busy}
               aria-label={`User account for ${username}`}
-              className="relative flex size-9 sm:size-10 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.04] text-[11px] font-semibold text-[#f7f8f8] transition-all duration-150 hover:scale-110 hover:bg-white/[0.1] hover:border-white/25 active:scale-95 cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]"
+              className="relative flex size-9 shrink-0 sm:size-10 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.04] text-[11px] font-semibold text-[#f7f8f8] transition-none hover:bg-white/[0.1] hover:border-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]"
             >
               <span className="truncate">{username.slice(0, 2).toUpperCase()}</span>
             </button>
@@ -117,7 +116,7 @@ export function UserMenu({
             <button
               type="button"
               disabled={pending || busy}
-              className="flex w-full items-center gap-2.5 rounded-[6px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] px-2.5 py-2 text-left transition-colors hover:border-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.05)] focus-visible:outline-2 focus-visible:outline-[rgba(255,255,255,0.15)] disabled:opacity-50"
+              className="flex w-full items-center gap-2.5 rounded-[6px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] px-2.5 py-2 text-left transition-none hover:border-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.05)] focus-visible:outline-2 focus-visible:outline-[rgba(255,255,255,0.15)] disabled:opacity-50"
             >
               <span
                 aria-hidden
@@ -144,7 +143,7 @@ export function UserMenu({
           side="top"
           align={compact ? "end" : "start"}
           sideOffset={compact ? 12 : 6}
-          className="min-w-56 rounded-[10px] border border-white/[0.12] bg-[#0c0d0e]/95 text-[#f7f8f8] backdrop-blur-2xl shadow-[0_16px_40px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)] transition-none"
+          className="w-64 min-w-0 max-w-[calc(100vw-2rem)] rounded-[10px] border border-white/[0.12] bg-[#0c0d0e]/95 text-[#f7f8f8] backdrop-blur-2xl shadow-[0_16px_40px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)] transition-none data-[state=open]:animate-none data-[state=closed]:animate-none"
         >
           <DropdownMenuLabel className="p-0 font-normal">
             <div className="flex items-center gap-2.5 px-3 py-2.5 text-left">
@@ -154,13 +153,13 @@ export function UserMenu({
               >
                 {username.slice(0, 2).toUpperCase()}
               </span>
-              <div className="grid flex-1 text-left leading-tight">
+              <div className="grid min-w-0 flex-1 text-left leading-tight">
                 <span className="truncate text-[13px] font-semibold text-white">
                   {username}
                 </span>
-                <span className="flex items-center gap-1 truncate text-[11px] text-[#8a8f98]">
-                  <ShieldCheck className="size-3 text-[#00ba7c]" aria-hidden />
-                  {roleLabel ?? "Authenticated session"}
+                <span className="flex min-w-0 items-center gap-1 text-[11px] text-[#8a8f98]">
+                  <ShieldCheck className="size-3 shrink-0 text-[#00ba7c]" aria-hidden />
+                  <span className="truncate">{roleLabel ?? "Authenticated session"}</span>
                 </span>
               </div>
             </div>
@@ -170,14 +169,14 @@ export function UserMenu({
           {/* User Account Settings */}
           <DropdownMenuItem
             onSelect={() => setIsSettingsOpen(true)}
-            className="flex items-center gap-2 cursor-pointer text-xs"
+            className="flex min-h-9 items-center gap-2 cursor-pointer text-xs transition-none"
           >
             <User className="size-3.5 text-[#8a8f98]" aria-hidden />
             <span>User Settings</span>
           </DropdownMenuItem>
 
           {/* System Settings Link */}
-          <DropdownMenuItem asChild className="text-xs">
+          <DropdownMenuItem asChild className="min-h-9 text-xs transition-none">
             <a href="/settings" className="flex items-center gap-2 cursor-pointer">
               <Settings className="size-3.5 text-[#8a8f98]" aria-hidden />
               <span>System Settings</span>
@@ -194,7 +193,7 @@ export function UserMenu({
               void logout();
             }}
             disabled={pending || busy}
-            className="flex items-center gap-2 cursor-pointer text-xs text-[#f91880] focus:bg-[rgba(249,24,128,0.1)] focus:text-[#f91880]"
+            className="flex min-h-9 items-center gap-2 cursor-pointer text-xs text-[#f91880] transition-none focus:bg-[rgba(249,24,128,0.1)] focus:text-[#f91880]"
           >
             <LogOut className="size-3.5" aria-hidden />
             <span>{busy ? "Signing out…" : "Log out"}</span>
@@ -204,7 +203,7 @@ export function UserMenu({
 
       {/* User Settings Clear Glass Modal */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="rounded-[10px] border border-white/[0.12] bg-[#0c0d0e]/95 backdrop-blur-2xl sm:max-w-md text-[#f7f8f8] shadow-[0_16px_50px_rgba(0,0,0,0.6)]">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[10px] border border-white/[0.12] bg-[#0c0d0e]/95 backdrop-blur-2xl sm:max-w-md text-[#f7f8f8] shadow-[0_16px_50px_rgba(0,0,0,0.6)]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
               <User className="size-4 text-[#8a8f98]" />
@@ -217,14 +216,14 @@ export function UserMenu({
 
           {/* Account Profile Details */}
           <div className="flex flex-col gap-3 py-1">
-            <div className="flex items-center justify-between rounded-[8px] border border-white/[0.08] bg-black/40 p-3">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-9 items-center justify-center rounded-full bg-white/[0.06] border border-white/[0.12] text-xs font-semibold text-white">
+            <div className="flex flex-col items-start gap-3 rounded-[8px] border border-white/[0.08] bg-black/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex w-full min-w-0 items-center gap-2.5 sm:w-auto sm:flex-1">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] border border-white/[0.12] text-xs font-semibold text-white">
                   {username.slice(0, 2).toUpperCase()}
                 </span>
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-white">{username}</span>
-                  <span className="text-[11px] text-[#8a8f98]">Account Role: {roleLabel ?? "user"}</span>
+                <div className="flex min-w-0 flex-col">
+                  <span className="break-all text-xs font-semibold text-white">{username}</span>
+                  <span className="break-all text-[11px] text-[#8a8f98]">Account Role: {roleLabel ?? "user"}</span>
                 </div>
               </div>
               <Badge variant="outline" className="text-[10px] font-mono border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.1)] text-[#00ba7c]">
@@ -240,60 +239,63 @@ export function UserMenu({
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] text-[#8a8f98]">Current Password</label>
+                <label htmlFor={`${passwordFieldId}-current`} className="text-[11px] text-[#8a8f98]">Current Password</label>
                 <Input
+                  id={`${passwordFieldId}-current`}
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="h-8 rounded-[6px] bg-black/40 border-white/[0.12] text-xs"
+                  className="h-9 rounded-[6px] bg-black/40 border-white/[0.12] text-xs"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-[#8a8f98]">New Password</label>
+                  <label htmlFor={`${passwordFieldId}-new`} className="text-[11px] text-[#8a8f98]">New Password</label>
                   <Input
+                    id={`${passwordFieldId}-new`}
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Min 8 characters"
-                    className="h-8 rounded-[6px] bg-black/40 border-white/[0.12] text-xs"
+                    className="h-9 rounded-[6px] bg-black/40 border-white/[0.12] text-xs"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-[#8a8f98]">Confirm New</label>
+                  <label htmlFor={`${passwordFieldId}-confirm`} className="text-[11px] text-[#8a8f98]">Confirm New</label>
                   <Input
+                    id={`${passwordFieldId}-confirm`}
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repeat password"
-                    className="h-8 rounded-[6px] bg-black/40 border-white/[0.12] text-xs"
+                    className="h-9 rounded-[6px] bg-black/40 border-white/[0.12] text-xs"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <DialogFooter className="pt-2">
                 <Button
                   type="button"
                   variant="ghost"
-                  size="xs"
+                  size="sm"
                   onClick={() => setIsSettingsOpen(false)}
-                  className="text-xs text-[#8a8f98]"
+                  className="h-9 text-xs text-[#8a8f98] transition-none hover:scale-100 active:scale-100"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  size="xs"
+                  size="sm"
                   disabled={isChangingPassword}
-                  className="gap-1.5 rounded-full cursor-pointer"
+                  className="h-9 gap-1.5 cursor-pointer transition-none hover:scale-100 active:scale-100"
                 >
-                  {isChangingPassword ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                  {isChangingPassword ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
                   Save Password
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
           </div>
         </DialogContent>

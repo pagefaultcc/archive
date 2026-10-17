@@ -188,7 +188,7 @@ export function PasswordsSearch() {
       {/* Search Input Bar */}
       <section className="flex flex-col gap-3 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-1 min-w-[280px] items-center gap-2.5 rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-3.5 py-2 transition-colors focus-within:border-[rgba(255,255,255,0.2)] focus-within:bg-[rgba(255,255,255,0.04)]">
+          <div className="flex h-10 min-w-0 basis-full items-center gap-2.5 rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-3.5 transition-none focus-within:border-[rgba(255,255,255,0.2)] focus-within:bg-[rgba(255,255,255,0.04)] sm:flex-1 sm:basis-0">
             <Search className="size-4 shrink-0 text-[#8a8f98]" />
             <input
               type="search"
@@ -198,7 +198,7 @@ export function PasswordsSearch() {
                 if (e.key === "Enter") handleImmediateSearch();
               }}
               placeholder="Search by URL or domain (e.g. auth.openai.com)"
-              className="w-full bg-transparent font-mono text-xs text-[#f7f8f8] outline-none placeholder:text-[#62666d]"
+              className="min-w-0 w-full bg-transparent font-mono text-xs text-[#f7f8f8] outline-none placeholder:text-[#62666d]"
             />
           </div>
 
@@ -207,7 +207,8 @@ export function PasswordsSearch() {
             variant="outline"
             size="sm"
             onClick={() => setShowPasswords((s) => !s)}
-            className="h-10 gap-1.5 text-xs text-[#d0d6e0] hover:text-white"
+            aria-pressed={showPasswords}
+            className="h-10 gap-1.5 text-xs text-[#d0d6e0] transition-none hover:scale-100 active:scale-100 hover:text-white"
           >
             {showPasswords ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
             {showPasswords ? "Mask passwords" : "Show passwords"}
@@ -219,7 +220,7 @@ export function PasswordsSearch() {
             size="sm"
             onClick={handleImmediateSearch}
             disabled={isSearching}
-            className="motion-sheen h-10 gap-1.5 text-xs"
+            className="motion-sheen h-10 gap-1.5 text-xs transition-none hover:scale-100 active:scale-100"
           >
             {isSearching ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -232,7 +233,7 @@ export function PasswordsSearch() {
       </section>
 
       {/* Results Table Card */}
-      <section className="flex flex-col gap-3 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
+      <section className="flex min-w-0 flex-col gap-3 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -255,34 +256,7 @@ export function PasswordsSearch() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isSearching && results.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={5} className="py-12 text-center text-xs text-[#62666d]">
-                    <div className="flex items-center justify-center gap-2">
-                      <Loader2 className="size-4 animate-spin text-[#8a8f98]" />
-                      Searching credentials...
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : results.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={5} className="py-12 text-center">
-                    <div className="flex flex-col items-center justify-center gap-1.5 text-xs text-[#62666d]">
-                      <p>
-                        No credentials matched. Password files are parsed when archives are indexed/reindexed.
-                      </p>
-                      <p className="text-[11px] text-[#8a8f98]">
-                        Hint: Existing archives need reindex (
-                        <Link href="/settings" className="underline hover:text-[#d0d6e0]">
-                          Settings → Reindex
-                        </Link>
-                        ) to backfill.
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                results.map((item, idx) => (
+              {results.map((item, idx) => (
                   <TableRow
                     key={`${item.id}-${idx}`}
                     className="border-b border-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.03)] transition-none"
@@ -347,11 +321,31 @@ export function PasswordsSearch() {
                       </span>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         </div>
+        {results.length === 0 ? (
+          isSearching ? (
+            <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8a8f98]">
+              <Loader2 className="size-4 animate-spin" />
+              Searching credentials...
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center text-xs text-[#62666d]">
+              <p>
+                No credentials matched. Password files are parsed when archives are indexed/reindexed.
+              </p>
+              <p className="text-[11px] text-[#8a8f98]">
+                Hint: Existing archives need reindex (
+                <Link href="/settings" className="underline hover:text-[#d0d6e0]">
+                  Settings → Reindex
+                </Link>
+                ) to backfill.
+              </p>
+            </div>
+          )
+        ) : null}
 
         {hasMore && (
           <div className="flex justify-center pt-2">

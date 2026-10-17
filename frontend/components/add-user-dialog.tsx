@@ -26,7 +26,6 @@ export function AddUserDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
   const form = useForm<CreateUserInput>({
     resolver: zodResolver(createUserSchema),
@@ -84,11 +83,11 @@ export function AddUserDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button className="spring-interactive">
+        <Button size="sm" className="h-9 spring-interactive">
           <Plus aria-hidden /> Add user
         </Button>
       </DialogTrigger>
-      <DialogContent className="spring-enter sm:max-w-md">
+      <DialogContent className="spring-enter max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold tracking-tight">
             Add user
@@ -126,7 +125,7 @@ export function AddUserDialog() {
                 type="button"
                 onClick={() => setShowPassword((value) => !value)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="spring-interactive absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                className="absolute inset-y-0 right-0 flex min-w-9 items-center justify-center rounded-[6px] text-muted-foreground transition-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
               >
                 {showPassword ? (
                   <EyeOff className="size-4" aria-hidden />

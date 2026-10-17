@@ -25,6 +25,7 @@ import { MotionSurface } from "@/components/motion-surface";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Dialog,
   DialogContent,
@@ -50,7 +51,7 @@ import {
   validatorExportUrl,
 } from "@/lib/api";
 import type { ValidationItem, ValidationSummary } from "@/lib/api";
-import { cn, copyToClipboard } from "@/lib/utils";
+import { copyToClipboard } from "@/lib/utils";
 
 export function ValidatorView() {
   const [mainTab, setMainTab] = useState<"cookies" | "passwords">("cookies");
@@ -151,48 +152,30 @@ export function ValidatorView() {
 
   return (
     <div className="flex flex-1 flex-col gap-5">
-      {/* Top Primary Mode Switcher: Cookie Validator vs Password Validator (WIP) */}
-      <div className="flex items-center gap-2 p-1 rounded-full border border-white/[0.08] bg-[#0c0d0e]/80 backdrop-blur-2xl w-fit shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.12)]">
-        <button
-          type="button"
-          onClick={() => setMainTab("cookies")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer",
-            mainTab === "cookies"
-              ? "bg-white/[0.14] text-[#f7f8f8] shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] border border-white/20"
-              : "text-[#8a8f98] hover:text-[#d0d6e0] hover:bg-white/[0.04]",
-          )}
-        >
-          <Cookie className="size-3.5 text-[#8a8f98]" />
-          <span>Cookie Validator</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMainTab("passwords")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer",
-            mainTab === "passwords"
-              ? "bg-white/[0.14] text-[#f7f8f8] shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] border border-white/20"
-              : "text-[#8a8f98] hover:text-[#d0d6e0] hover:bg-white/[0.04]",
-          )}
-        >
-          <Lock className="size-3.5 text-[#8a8f98]" />
-          <span>Password Validator</span>
-          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-[4px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98] font-normal">
-            Work in progress
-          </span>
-        </button>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <SegmentedControl
+          label="Validator mode"
+          value={mainTab}
+          onValueChange={(value) => setMainTab(value as "cookies" | "passwords")}
+          options={[
+            { value: "cookies", label: "Cookie Validator", icon: <Cookie /> },
+            { value: "passwords", label: "Password Validator", icon: <Lock /> },
+          ]}
+          className="w-full sm:w-fit"
+        />
+        <p className="text-[11px] text-[#8a8f98]">
+          Password Validator: <span>Work in progress</span>
+        </p>
       </div>
 
       {mainTab === "passwords" ? (
         /* Password Validator Work In Progress View */
-        <section className="flex flex-col items-center justify-center gap-4 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-12 text-center shadow-lg">
+        <section className="flex flex-col items-center justify-center gap-4 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] px-4 py-8 text-center shadow-lg sm:p-12">
           <div className="flex size-14 items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98]">
             <KeyRound className="size-7" />
           </div>
-          <div className="flex flex-col gap-1.5 max-w-md">
-            <div className="flex items-center justify-center gap-2">
+          <div className="flex max-w-md min-w-0 flex-col gap-1.5">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <h2 className="text-base font-semibold text-white">
                 Password &amp; Credential Validator
               </h2>
@@ -207,9 +190,9 @@ export function ValidatorView() {
               Automated stealer password lists, credentials.txt auditing, and hash verification pipelines are under active development.
             </p>
           </div>
-          <div className="flex items-center gap-2 font-mono text-[11px] text-[#62666d]">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[11px] text-[#62666d]">
             <span>Target: stealer password vaults</span>
-            <span>·</span>
+            <span aria-hidden="true" className="hidden sm:inline">·</span>
             <span>Status: Engine in development</span>
           </div>
         </section>
@@ -270,9 +253,10 @@ export function ValidatorView() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     type="button"
+                    size="sm"
                     onClick={handleRunValidation}
                     disabled={isChecking || isLoading}
-                    className="motion-sheen gap-1.5 rounded-full text-xs cursor-pointer"
+                    className="motion-sheen h-8 gap-1.5 rounded-full text-xs cursor-pointer transition-none hover:scale-100 active:scale-100 [&_svg]:size-3.5"
                   >
                     {isChecking ? (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -287,7 +271,7 @@ export function ValidatorView() {
                     variant="outline"
                     size="sm"
                     onClick={() => setIsCustomModalOpen(true)}
-                    className="gap-1.5 rounded-full text-xs border-white/[0.12] bg-white/[0.03] hover:bg-white/[0.08]"
+                    className="h-8 gap-1.5 rounded-full text-xs border-white/[0.12] bg-white/[0.03] hover:bg-white/[0.08] transition-none hover:scale-100 active:scale-100 [&_svg]:size-3.5"
                   >
                     <Plus className="size-3.5" />
                     Add Custom
@@ -297,7 +281,7 @@ export function ValidatorView() {
                     <a
                       href={validatorExportUrl(selectedService)}
                       download
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.1)] text-[#00ba7c] hover:bg-[rgba(0,186,124,0.15)] transition-colors"
+                      className="inline-flex h-8 items-center justify-center gap-1.5 px-3 rounded-full text-xs font-medium border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.1)] text-[#00ba7c] hover:bg-[rgba(0,186,124,0.15)] transition-none [&_svg]:shrink-0"
                     >
                       <Download className="size-3.5" />
                       Export Valid ({summary.valid})
@@ -305,30 +289,20 @@ export function ValidatorView() {
                   ) : null}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Filter tabs */}
-                  <div className="flex items-center gap-1 text-[11px] rounded-full border border-white/[0.08] bg-black/40 p-0.5">
-                    {[
-                      { id: "", label: "All" },
-                      { id: "valid", label: "Valid" },
-                      { id: "not_valid", label: "Not Valid" },
-                      { id: "not_checked", label: "Not Checked" },
-                    ].map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => setStatusFilter(f.id)}
-                        className={cn(
-                          "px-2.5 py-0.5 rounded-full transition-none cursor-pointer",
-                          statusFilter === f.id
-                            ? "bg-white/[0.12] text-[#f7f8f8] font-medium"
-                            : "text-[#8a8f98] hover:text-[#d0d6e0]",
-                        )}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                  <SegmentedControl
+                    label="Validation status"
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                    options={[
+                      { value: "", label: "All" },
+                      { value: "valid", label: "Valid" },
+                      { value: "not_valid", label: "Not Valid" },
+                      { value: "not_checked", label: "Not Checked" },
+                    ]}
+                    size="sm"
+                    className="auto-cols-auto"
+                  />
 
                   {summary.total > 0 ? (
                     <Button
@@ -336,9 +310,9 @@ export function ValidatorView() {
                       variant="ghost"
                       size="xs"
                       onClick={handleClear}
-                      className="text-xs text-[#8a8f98] hover:text-[#f91880]"
+                      className="gap-1 text-xs text-[#8a8f98] hover:text-[#f91880] transition-none hover:scale-100 active:scale-100"
                     >
-                      <Trash2 className="size-3 mr-1" />
+                      <Trash2 className="size-3" />
                       Clear
                     </Button>
                   ) : null}
@@ -470,25 +444,25 @@ export function ValidatorView() {
             open={selectedItemForInspect !== null}
             onOpenChange={(open) => !open && setSelectedItemForInspect(null)}
           >
-            <DialogContent className="rounded-[8px] border border-white/[0.12] bg-[#0f1011] sm:max-w-2xl text-[#f7f8f8] shadow-lg">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <FileText className="size-4 text-[#8a8f98]" />
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[8px] border border-white/[0.12] bg-[#0f1011] p-4 text-[#f7f8f8] shadow-lg sm:max-w-2xl sm:p-6">
+              <DialogHeader className="min-w-0 pr-6 text-left">
+                <DialogTitle className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm font-semibold leading-5">
+                  <FileText className="size-4 shrink-0 text-[#8a8f98]" />
                   <span>Cookie Log Inspection</span>
                   {selectedItemForInspect ? (
-                    <Badge variant="outline" className="font-mono text-[10px] uppercase">
+                    <Badge variant="outline" className="max-w-full whitespace-normal break-all font-mono text-[10px] uppercase">
                       {selectedItemForInspect.domain}
                     </Badge>
                   ) : null}
                 </DialogTitle>
-                <DialogDescription className="text-xs text-[#8a8f98]">
+                <DialogDescription className="min-w-0 break-all text-xs text-[#8a8f98]">
                   {selectedItemForInspect?.entryPath || "Custom cookie payload"}
                 </DialogDescription>
               </DialogHeader>
 
               {selectedItemForInspect ? (
-                <div className="flex flex-col gap-3">
-                  <div className="max-h-[350px] overflow-auto rounded-[6px] border border-white/[0.08] bg-black/60 p-3 font-mono text-xs">
+                <div className="flex min-w-0 flex-col gap-3">
+                  <div className="max-h-[350px] min-w-0 overflow-auto rounded-[6px] border border-white/[0.08] bg-black/60 p-3 font-mono text-xs">
                     <CodeViewer
                       content={selectedItemForInspect.cookieText}
                       filename="cookies.txt"
@@ -496,7 +470,7 @@ export function ValidatorView() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between pt-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                     <span className="text-xs text-[#8a8f98]">
                       {selectedItemForInspect.cookieCount} cookies in this log
                     </span>
@@ -508,7 +482,7 @@ export function ValidatorView() {
                         copyToClipboard(selectedItemForInspect.cookieText);
                         toast.success("Cookies copied to clipboard.");
                       }}
-                      className="gap-1.5 rounded-full text-xs border-white/[0.12]"
+                      className="h-8 gap-1.5 rounded-full text-xs border-white/[0.12] transition-none hover:scale-100 active:scale-100"
                     >
                       <Copy className="size-3.5" />
                       Copy Cookies
@@ -521,59 +495,62 @@ export function ValidatorView() {
 
           {/* Custom Cookies Dialog */}
           <Dialog open={isCustomModalOpen} onOpenChange={setIsCustomModalOpen}>
-            <DialogContent className="rounded-[8px] border border-white/[0.12] bg-[#0f1011] sm:max-w-lg text-[#f7f8f8] shadow-lg">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <Plus className="size-4 text-[#8a8f98]" />
-                  <span>Add Custom Cookies to Checker</span>
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[8px] border border-white/[0.12] bg-[#0f1011] p-4 text-[#f7f8f8] shadow-lg sm:max-w-lg sm:p-6">
+              <DialogHeader className="min-w-0 pr-6 text-left">
+                <DialogTitle className="flex items-start gap-2 text-sm font-semibold leading-5">
+                  <Plus className="mt-0.5 size-4 shrink-0 text-[#8a8f98]" />
+                  <span className="min-w-0">Add Custom Cookies to Checker</span>
                 </DialogTitle>
                 <DialogDescription className="text-xs text-[#8a8f98]">
                   Paste raw Netscape or JSON cookies. They will be verified for auth.openai.com automatically upon insertion.
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="flex flex-col gap-3 py-2">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-[#d0d6e0]">
+              <div className="flex min-w-0 flex-col gap-3 py-2">
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <label htmlFor="validator-custom-domain" className="text-xs font-medium text-[#d0d6e0]">
                     Target Domain
                   </label>
                   <Input
+                    id="validator-custom-domain"
                     value={customDomain}
                     onChange={(e) => setCustomDomain(e.target.value)}
                     placeholder="openai.com"
-                    className="font-mono text-xs rounded-[6px] bg-black/40 border-white/[0.12]"
+                    className="min-w-0 font-mono text-xs rounded-[6px] bg-black/40 border-white/[0.12]"
                   />
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-[#d0d6e0]">
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <label htmlFor="validator-custom-cookie-text" className="text-xs font-medium text-[#d0d6e0]">
                     Raw Cookie Text (Netscape / JSON)
                   </label>
                   <textarea
+                    id="validator-custom-cookie-text"
                     value={customCookieText}
                     onChange={(e) => setCustomCookieText(e.target.value)}
                     placeholder={`# Netscape HTTP Cookie File\n.auth.openai.com\tTRUE\t/\tTRUE\t1790000000\t__Secure-next-auth.session-token\tsome_token_here...`}
                     rows={8}
-                    className="w-full rounded-[6px] border border-white/[0.12] bg-black/50 p-2.5 font-mono text-xs text-[#f7f8f8] placeholder:text-[#62666d] focus:border-[rgba(255,255,255,0.2)] focus:outline-none"
+                    className="min-w-0 w-full rounded-[6px] border border-white/[0.12] bg-black/50 p-2.5 font-mono text-xs text-[#f7f8f8] placeholder:text-[#62666d] focus:border-[rgba(255,255,255,0.2)] focus:outline-none"
                   />
                 </div>
               </div>
 
-              <DialogFooter className="gap-2">
+              <DialogFooter className="flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsCustomModalOpen(false)}
-                  className="text-xs text-[#8a8f98]"
+                  className="h-8 text-xs text-[#8a8f98] transition-none hover:scale-100 active:scale-100"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="button"
+                  size="sm"
                   onClick={handleAddCustom}
                   disabled={isSubmittingCustom}
-                  className="gap-1.5 rounded-full text-xs cursor-pointer"
+                  className="h-8 gap-1.5 rounded-full text-xs cursor-pointer transition-none hover:scale-100 active:scale-100"
                 >
                   {isSubmittingCustom ? (
                     <Loader2 className="size-3 animate-spin" />

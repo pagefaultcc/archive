@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -38,6 +39,18 @@ export function AppSidebar({
   roleLabel?: string;
 }) {
   const pathname = usePathname();
+  const navigationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const navigation = navigationRef.current;
+    if (navigation && navigation.scrollWidth > navigation.clientWidth) {
+      navigation.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({
+        behavior: "instant",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [pathname]);
 
   const coreItems: NavItem[] = [
     { href: "/archives", label: "Archives", icon: Archive },
@@ -60,11 +73,11 @@ export function AppSidebar({
   return (
     <nav
       aria-label="Application dock navigation"
-      className="fixed bottom-5 inset-x-0 mx-auto w-fit z-50 pointer-events-none select-none transition-all duration-300"
+      className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] inset-x-0 mx-auto w-fit max-w-[calc(100%-2rem)] z-50 pointer-events-none select-none transition-all duration-300"
     >
       <div
         className={cn(
-          "pointer-events-auto relative flex items-center gap-1 sm:gap-1.5 px-3 py-2 rounded-full",
+          "pointer-events-auto relative flex max-w-full items-center gap-1 sm:gap-1.5 px-3 py-2 rounded-full",
           "border border-white/[0.14] bg-[#0c0d0e]/80",
           "backdrop-blur-2xl backdrop-saturate-150",
           "shadow-[0_16px_50px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.22),inset_0_-1px_1px_rgba(0,0,0,0.45)]",
@@ -72,11 +85,20 @@ export function AppSidebar({
           "transition-all duration-300 ease-out"
         )}
       >
+        <div
+          ref={navigationRef}
+          className="flex min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain py-2 -my-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-1.5 sm:overflow-visible"
+          onFocusCapture={(event) => {
+            if (event.currentTarget.scrollWidth > event.currentTarget.clientWidth) {
+              event.target.scrollIntoView({ behavior: "instant", block: "nearest", inline: "nearest" });
+            }
+          }}
+        >
         {/* Brand Home Icon */}
-        <div className="group relative flex flex-col items-center">
+        <div className="group relative flex shrink-0 flex-col items-center">
           <div
             role="tooltip"
-            className="absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
+            className="hidden sm:block absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
           >
             <div className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-tight text-[#f7f8f8] bg-[#121316]/90 backdrop-blur-xl border border-white/[0.16] shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.2)]">
               <span>Archive Home</span>
@@ -102,11 +124,11 @@ export function AppSidebar({
         {coreItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           return (
-            <div key={item.href} className="group relative flex flex-col items-center">
+            <div key={item.href} className="group relative flex shrink-0 flex-col items-center">
               {/* Floating Apple Island Tooltip */}
               <div
                 role="tooltip"
-                className="absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
+                className="hidden sm:block absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
               >
                 <div className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-tight text-[#f7f8f8] bg-[#121316]/90 backdrop-blur-xl border border-white/[0.16] shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.2)]">
                   <span>{item.label}</span>
@@ -117,6 +139,7 @@ export function AppSidebar({
               <Link
                 href={item.href}
                 aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "relative flex size-9 sm:size-10 items-center justify-center rounded-full transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
                   "hover:scale-115 hover:bg-white/[0.08] active:scale-95",
@@ -141,10 +164,10 @@ export function AppSidebar({
             {adminItems.map((item) => {
               const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
               return (
-                <div key={item.href} className="group relative flex flex-col items-center">
+                <div key={item.href} className="group relative flex shrink-0 flex-col items-center">
                   <div
                     role="tooltip"
-                    className="absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
+                    className="hidden sm:block absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
                   >
                     <div className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-tight text-[#f7f8f8] bg-[#121316]/90 backdrop-blur-xl border border-white/[0.16] shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.2)]">
                       <span>{item.label}</span>
@@ -154,6 +177,7 @@ export function AppSidebar({
                   <Link
                     href={item.href}
                     aria-label={item.label}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "relative flex size-9 sm:size-10 items-center justify-center rounded-full transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
                       "hover:scale-115 hover:bg-white/[0.08] active:scale-95",
@@ -178,10 +202,10 @@ export function AppSidebar({
         {systemItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           return (
-            <div key={item.href} className="group relative flex flex-col items-center">
+            <div key={item.href} className="group relative flex shrink-0 flex-col items-center">
               <div
                 role="tooltip"
-                className="absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
+                className="hidden sm:block absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
               >
                 <div className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-tight text-[#f7f8f8] bg-[#121316]/90 backdrop-blur-xl border border-white/[0.16] shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.2)]">
                   <span>{item.label}</span>
@@ -191,6 +215,7 @@ export function AppSidebar({
               <Link
                 href={item.href}
                 aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "relative flex size-9 sm:size-10 items-center justify-center rounded-full transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
                   "hover:scale-115 hover:bg-white/[0.08] active:scale-95",
@@ -207,18 +232,19 @@ export function AppSidebar({
             </div>
           );
         })}
+        </div>
 
         {/* User Profile / Menu */}
         {username ? (
           <>
             <div className="h-5 w-[1px] bg-white/[0.1] mx-0.5 shrink-0" />
-            <div className="group relative flex flex-col items-center">
+            <div className="group relative flex shrink-0 flex-col items-center">
               <div
                 role="tooltip"
-                className="absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
+                className="hidden sm:block absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
               >
-                <div className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-tight text-[#f7f8f8] bg-[#121316]/90 backdrop-blur-xl border border-white/[0.16] shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.2)]">
-                  <span>{username} ({roleLabel ?? "user"})</span>
+                <div className="flex max-w-64 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-tight text-[#f7f8f8] bg-[#121316]/90 backdrop-blur-xl border border-white/[0.16] shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.2)]">
+                  <span className="truncate">{username} ({roleLabel ?? "user"})</span>
                 </div>
               </div>
               <UserMenu username={username} roleLabel={roleLabel} compact={true} />

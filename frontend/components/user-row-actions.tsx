@@ -7,6 +7,7 @@ import {
   KeyRound,
   Lock,
   MoreHorizontal,
+  Monitor,
   RotateCcw,
   ShieldCheck,
   Trash2,
@@ -111,7 +112,7 @@ function EditUsernameDialog({ user, open, onOpenChange }: EditUsernameDialogProp
         onOpenChange(next);
       }}
     >
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto [overflow-wrap:anywhere]">
         <DialogHeader>
           <DialogTitle>Edit username</DialogTitle>
           <DialogDescription>
@@ -204,7 +205,7 @@ function ResetPasswordDialog({ user, open, onOpenChange }: ResetPasswordDialogPr
         onOpenChange(next);
       }}
     >
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto [overflow-wrap:anywhere]">
         <DialogHeader>
           <DialogTitle>Reset password</DialogTitle>
           <DialogDescription>
@@ -291,7 +292,7 @@ function ManageRolesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto [overflow-wrap:anywhere]">
         <DialogHeader>
           <DialogTitle>Manage roles</DialogTitle>
           <DialogDescription>
@@ -305,15 +306,16 @@ function ManageRolesDialog({
             return (
               <li
                 key={role.id}
-                className="flex items-center justify-between gap-2 rounded border px-3 py-2"
+                className="flex min-w-0 items-center justify-between gap-3 rounded-[6px] border px-3 py-2"
               >
-                <div>
-                  <p className="font-medium">{role.label}</p>
-                  <p className="text-xs text-muted-foreground">{role.name}</p>
+                <div className="min-w-0">
+                  <p className="break-all font-medium">{role.label}</p>
+                  <p className="break-all font-mono text-xs text-muted-foreground">{role.name}</p>
                 </div>
                 <Button
                   type="button"
                   size="sm"
+                  className="h-9 min-w-20 transition-none hover:scale-100 active:scale-100"
                   variant={assigned ? "outline" : "default"}
                   disabled={pending}
                   onClick={() => void toggleRole(role, assigned)}
@@ -401,7 +403,7 @@ function ActiveSessionsDialog({ user, open, onOpenChange }: ActiveSessionsDialog
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto [overflow-wrap:anywhere]">
         <DialogHeader>
           <DialogTitle>Active sessions</DialogTitle>
           <DialogDescription>
@@ -421,7 +423,7 @@ function ActiveSessionsDialog({ user, open, onOpenChange }: ActiveSessionsDialog
             {sessions.map((session) => (
               <li
                 key={session.id}
-                className="flex items-center justify-between gap-2 rounded border px-3 py-2"
+                className="flex min-w-0 items-center justify-between gap-3 rounded-[6px] border px-3 py-2"
               >
                 <div className="min-w-0 text-sm">
                   <p className="truncate font-mono text-xs">{session.id.slice(0, 8)}…</p>
@@ -433,6 +435,7 @@ function ActiveSessionsDialog({ user, open, onOpenChange }: ActiveSessionsDialog
                 <Button
                   type="button"
                   size="sm"
+                  className="h-9 min-w-20 transition-none hover:scale-100 active:scale-100"
                   variant="outline"
                   disabled={pendingId === session.id}
                   onClick={() => void revoke(session.id)}
@@ -489,7 +492,7 @@ function DeleteUserDialog({ user, open, onOpenChange }: DeleteUserDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto [overflow-wrap:anywhere]">
         <DialogHeader>
           <DialogTitle>Delete user</DialogTitle>
           <DialogDescription>
@@ -569,7 +572,7 @@ export function UserRowActions({ user, permissions, availableRoles = [] }: UserR
   }
 
   return (
-    <span className="inline-flex items-center justify-end gap-1.5">
+    <span className="inline-flex max-w-full flex-wrap items-center justify-end gap-1.5">
       {user.isRoot ? (
         <span
           className="inline-flex items-center gap-1 text-xs text-muted-foreground"
@@ -585,7 +588,7 @@ export function UserRowActions({ user, permissions, availableRoles = [] }: UserR
               type="button"
               variant="outline"
               size="sm"
-              className="hidden md:inline-flex"
+              className="hidden h-9 transition-none hover:scale-100 active:scale-100 md:inline-flex"
               onClick={() => setOpenDialog("roles")}
             >
               Roles
@@ -596,7 +599,7 @@ export function UserRowActions({ user, permissions, availableRoles = [] }: UserR
               type="button"
               variant="outline"
               size="sm"
-              className="hidden md:inline-flex"
+              className="hidden h-9 transition-none hover:scale-100 active:scale-100 md:inline-flex"
               onClick={() => setOpenDialog("sessions")}
             >
               Sessions
@@ -607,14 +610,15 @@ export function UserRowActions({ user, permissions, availableRoles = [] }: UserR
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon-sm"
               aria-haspopup="menu"
               aria-label={`Actions for ${user.username}`}
+              className="size-9 transition-none hover:scale-100 active:scale-100"
             >
               <MoreHorizontal className="size-4" aria-hidden />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="max-w-[calc(100vw-2rem)] transition-none data-[state=open]:animate-none data-[state=closed]:animate-none [&_[data-slot=dropdown-menu-item]]:min-h-9">
             {canEdit ? (
               <DropdownMenuItem onSelect={() => setOpenDialog("edit")}>
                 <UserCog className="size-4" aria-hidden />
@@ -644,11 +648,13 @@ export function UserRowActions({ user, permissions, availableRoles = [] }: UserR
             ) : null}
             {canManageRoles ? (
               <DropdownMenuItem onSelect={() => setOpenDialog("roles")}>
+                <ShieldCheck className="size-4" aria-hidden />
                 Manage roles
               </DropdownMenuItem>
             ) : null}
             {canManageSessions ? (
               <DropdownMenuItem onSelect={() => setOpenDialog("sessions")}>
+                <Monitor className="size-4" aria-hidden />
                 Active sessions
               </DropdownMenuItem>
             ) : null}

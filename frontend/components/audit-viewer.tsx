@@ -64,7 +64,7 @@ function MetadataPills({ metadata }: { metadata?: Record<string, unknown> | null
       {pills.map((pill) => (
         <span
           key={pill.key}
-          className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+          className="inline-flex min-w-0 max-w-full items-center break-all rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
         >
           {pill.key}={pill.value}
         </span>
@@ -152,20 +152,20 @@ export function AuditViewer({ initialPage }: { initialPage: AuditPage }) {
           <div className="flex flex-wrap items-center gap-3">
             <Icon3D name="notebook" size="sm" />
             <h1 className="text-base font-semibold tracking-tight">Audit log</h1>
-            <Badge variant="secondary">Append-only trigger enforced</Badge>
+            <Badge variant="secondary" className="max-w-full whitespace-normal text-left">Append-only trigger enforced</Badge>
           </div>
           <form
-            className="flex flex-wrap items-end gap-3"
+            className="flex min-w-0 max-w-full flex-wrap items-end gap-3"
             onSubmit={(event) => {
               event.preventDefault();
               void applyFilters();
             }}
           >
-            <div className="space-y-1">
+            <div className="min-w-0 max-w-full space-y-1">
               <Label htmlFor="audit-action">Action</Label>
               <select
                 id="audit-action"
-                className="block h-9 rounded-md border bg-background px-3 text-sm"
+                className="block h-9 max-w-full rounded-[6px] border bg-background px-3 text-sm transition-none"
                 value={actionFilter}
                 onChange={(event) => setActionFilter(event.target.value)}
               >
@@ -181,7 +181,7 @@ export function AuditViewer({ initialPage }: { initialPage: AuditPage }) {
               <Label htmlFor="audit-target-type">Target type</Label>
               <select
                 id="audit-target-type"
-                className="block h-9 rounded-md border bg-background px-3 text-sm"
+                className="block h-9 max-w-full rounded-[6px] border bg-background px-3 text-sm transition-none"
                 value={targetTypeFilter}
                 onChange={(event) => setTargetTypeFilter(event.target.value)}
               >
@@ -193,7 +193,7 @@ export function AuditViewer({ initialPage }: { initialPage: AuditPage }) {
                 ))}
               </select>
             </div>
-            <Button type="submit" size="sm" className="spring-interactive" disabled={pending !== null}>
+            <Button type="submit" size="sm" className="h-9 transition-none hover:scale-100 active:scale-100" disabled={pending !== null}>
               {pending === "apply" ? (
                 <Loader2 aria-hidden className="animate-spin" />
               ) : null}
@@ -203,7 +203,7 @@ export function AuditViewer({ initialPage }: { initialPage: AuditPage }) {
               type="button"
               size="sm"
               variant="outline"
-              className="spring-interactive"
+              className="h-9 transition-none hover:scale-100 active:scale-100"
               disabled={pending !== null}
               onClick={() => void resetFilters()}
             >
@@ -280,7 +280,7 @@ export function AuditViewer({ initialPage }: { initialPage: AuditPage }) {
               <p className="text-xs text-muted-foreground">
                 {formatTimestamp(entry.createdAt)}
               </p>
-              <p className="font-mono text-xs">
+              <p className="break-all font-mono text-xs">
                 actor {entry.actorId ?? "—"} → {entry.targetType}:{entry.targetId ?? "—"}
               </p>
               <MetadataPills metadata={entry.metadata} />
@@ -297,7 +297,7 @@ export function AuditViewer({ initialPage }: { initialPage: AuditPage }) {
       {page.hasMore && page.nextCursor ? (
         <Button
           variant="outline"
-          className="spring-interactive"
+          className="transition-none hover:scale-100 active:scale-100"
           disabled={pending !== null}
           onClick={() => void loadMore()}
         >

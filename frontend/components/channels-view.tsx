@@ -311,10 +311,10 @@ export function ChannelsView() {
 
       {/* Global Telethon UserBot Credentials Card */}
       <section className="kinetics-card rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] pb-3">
-          <div className="flex items-center gap-2.5">
-            <Bot className="size-4 text-[#8a8f98]" />
-            <div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] pb-3">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <Bot className="mt-0.5 size-4 shrink-0 text-[#8a8f98]" />
+            <div className="min-w-0">
               <p className="text-sm font-medium text-[#d0d6e0]">
                 Telethon UserBot Credentials
               </p>
@@ -324,7 +324,7 @@ export function ChannelsView() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -405,9 +405,9 @@ export function ChannelsView() {
 
       {/* Channels List Section */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Tv className="size-4 text-[#8a8f98]" />
+            <Tv className="size-4 shrink-0 text-[#8a8f98]" />
             <h2 className="text-sm font-semibold tracking-tight text-[#d0d6e0]">
               Configured Target Channels ({channels.length})
             </h2>
@@ -425,7 +425,7 @@ export function ChannelsView() {
           </Button>
         </div>
 
-        <div className="rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
+        <div className="min-w-0 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -437,31 +437,17 @@ export function ChannelsView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoadingChannels ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-xs text-[#8a8f98]">
-                    <Loader2 className="size-4 animate-spin inline-block mr-2" />
-                    Loading channels…
-                  </TableCell>
-                </TableRow>
-              ) : channels.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-xs text-[#62666d]">
-                    No channels added yet. Click &quot;Add Channel&quot; above to configure one.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                channels.map((c) => (
+              {!isLoadingChannels && channels.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-medium text-xs text-[#d0d6e0]">
-                      {c.name}
+                    <TableCell className="max-w-[240px] font-medium text-xs text-[#d0d6e0]">
+                      <span className="block truncate" title={c.name}>{c.name}</span>
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-[#8a8f98]">
-                      {c.channelId}
+                    <TableCell className="max-w-[240px] font-mono text-xs text-[#8a8f98]">
+                      <span className="block truncate" title={c.channelId}>{c.channelId}</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="font-mono text-[10px]">
-                        <Code2 className="size-3 mr-1 inline" />
+                        <Code2 className="size-3" />
                         Custom Script
                       </Badge>
                     </TableCell>
@@ -490,10 +476,19 @@ export function ChannelsView() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
+          {isLoadingChannels ? (
+            <div className="flex items-center justify-center gap-2 px-4 py-8 text-center text-xs text-[#8a8f98]">
+              <Loader2 className="size-4 animate-spin" />
+              Loading channels…
+            </div>
+          ) : channels.length === 0 ? (
+            <div className="px-4 py-8 text-center text-xs text-[#62666d]">
+              No channels added yet. Click &quot;Add Channel&quot; above to configure one.
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -501,7 +496,7 @@ export function ChannelsView() {
       <Dialog open={isChannelDialogOpen} onOpenChange={setIsChannelDialogOpen}>
         <DialogContent className="border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-base text-[#ffffff]">
+            <DialogTitle className="break-words pr-6 text-base text-[#ffffff]">
               {editingChannel ? `Edit Channel: ${editingChannel.name}` : "Add Telegram Channel"}
             </DialogTitle>
             <DialogDescription className="text-xs text-[#8a8f98]">
@@ -540,9 +535,9 @@ export function ChannelsView() {
 
             {/* Password script editor */}
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <label className="text-[11px] font-medium text-[#8a8f98] flex items-center gap-1">
-                  <Code2 className="size-3" /> Password Script (Python Implementation)
+                  <Code2 className="size-3 shrink-0" /> Password Script (Python Implementation)
                 </label>
                 <Button
                   type="button"
@@ -564,7 +559,7 @@ export function ChannelsView() {
 
             {/* Interactive Test Script Panel */}
             <div className="rounded-[6px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] p-3 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] font-medium text-[#8a8f98]">
                   Test Script on Sample Message Content
                 </span>
@@ -574,7 +569,7 @@ export function ChannelsView() {
                   size="xs"
                   onClick={handleTestScriptLive}
                   disabled={isTestingScript}
-                  className="gap-1 h-6 text-[10px]"
+                  className="gap-1 text-[11px]"
                 >
                   {isTestingScript ? (
                     <Loader2 className="size-3 animate-spin" />
@@ -594,16 +589,16 @@ export function ChannelsView() {
               />
 
               {testScriptResult !== null ? (
-                <div className="flex items-center gap-2 pt-1 text-xs">
+                <div className="flex min-w-0 flex-wrap items-center gap-2 pt-1 text-xs">
                   <span className="text-[#8a8f98]">Resolved Password:</span>
-                  <Badge variant="secondary" className="font-mono text-xs text-[#00ba7c]">
+                  <Badge variant="secondary" className="max-w-full whitespace-normal break-all font-mono text-xs text-[#00ba7c]">
                     {testScriptResult}
                   </Badge>
                 </div>
               ) : null}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(255,255,255,0.05)]">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-[rgba(255,255,255,0.05)]">
               <Button
                 type="button"
                 variant="ghost"

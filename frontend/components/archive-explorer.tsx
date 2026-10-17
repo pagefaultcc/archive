@@ -265,7 +265,7 @@ export function ArchiveExplorer({
                   download
                   title={`Download ${dir.name}.zip (auto-deleted from /tmp)`}
                   aria-label={`Download ${dir.name} folder as zip`}
-                  className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-[#8a8f98] opacity-75 transition-opacity hover:bg-[rgba(255,255,255,0.08)] hover:text-[#ffffff] group-hover:opacity-100"
+                  className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-[#8a8f98] opacity-75 transition-none hover:bg-[rgba(255,255,255,0.08)] hover:text-[#ffffff] group-hover:opacity-100"
                 >
                   <Download className="size-3" />
                 </a>
@@ -288,7 +288,7 @@ export function ArchiveExplorer({
       {/* Top Explorer Header Bar */}
       <section className="flex flex-col gap-3 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2.5 sm:flex-1">
             <Button asChild variant="outline" size="sm">
               <Link href="/archives">
                 <ArrowLeft className="size-3.5" />
@@ -299,9 +299,9 @@ export function ArchiveExplorer({
               name={archive.isEncrypted ? "lock" : "tools"}
               size="sm"
             />
-            <div className="min-w-0">
+            <div className="min-w-0 max-w-full flex-1 basis-48">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-[16px] font-[590] text-[#ffffff]">
+                <h1 className="max-w-full truncate text-[16px] font-[590] text-[#ffffff]" title={archive.filename}>
                   {archive.filename}
                 </h1>
                 <Badge variant="outline" className="uppercase font-mono">
@@ -342,7 +342,7 @@ export function ArchiveExplorer({
       {/* 3-Pane File Explorer Grid */}
       <div className="grid min-h-[640px] grid-cols-1 gap-4 lg:grid-cols-[15rem_minmax(0,1.05fr)_minmax(0,1.15fr)]">
         {/* Pane 1: Folder Tree Sidebar */}
-        <aside className="flex flex-col rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-3">
+        <aside className="flex min-w-0 flex-col rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-3">
           <div className="mb-2 flex items-center justify-between px-1.5">
             <span className="text-[11px] font-[510] uppercase tracking-wider text-[#62666d]">
               Folders ({archive.dirCount})
@@ -381,7 +381,7 @@ export function ArchiveExplorer({
                   void navigateFolder("", "");
                 }}
                 className={cn(
-                  "rounded-full px-2 py-0.5 transition-colors hover:bg-[rgba(255,255,255,0.05)]",
+                  "rounded-full px-2 py-0.5 transition-none hover:bg-[rgba(255,255,255,0.05)]",
                   currentParent === "" && !searchQuery.trim()
                     ? "font-[590] text-[#ffffff]"
                     : "text-[#8a8f98]",
@@ -392,7 +392,7 @@ export function ArchiveExplorer({
               {breadcrumbs.map((crumb, index) => {
                 const isLast = index === breadcrumbs.length - 1;
                 return (
-                  <span key={crumb.path} className="inline-flex items-center gap-1">
+                  <span key={crumb.path} className="inline-flex min-w-0 max-w-full items-center gap-1">
                     <span className="text-[#62666d]">/</span>
                     <button
                       type="button"
@@ -401,7 +401,7 @@ export function ArchiveExplorer({
                         void navigateFolder(crumb.path, "");
                       }}
                       className={cn(
-                        "max-w-[16ch] truncate rounded-full px-2 py-0.5 transition-colors hover:bg-[rgba(255,255,255,0.05)]",
+                        "max-w-[16ch] truncate rounded-full px-2 py-0.5 transition-none hover:bg-[rgba(255,255,255,0.05)]",
                         isLast && !searchQuery.trim()
                           ? "font-[590] text-[#ffffff]"
                           : "text-[#8a8f98]",
@@ -413,8 +413,8 @@ export function ArchiveExplorer({
                 );
               })}
               {searchQuery.trim() ? (
-                <Badge variant="secondary" className="ml-1">
-                  Search: “{searchQuery.trim()}”
+                <Badge variant="secondary" className="ml-1 min-w-0 max-w-full">
+                  <span className="truncate" title={`Search: “${searchQuery.trim()}”`}>Search: “{searchQuery.trim()}”</span>
                 </Badge>
               ) : null}
             </div>
@@ -438,7 +438,7 @@ export function ArchiveExplorer({
               <button
                 type="button"
                 onClick={() => void navigateFolder(parentFolderOfCurrent, "")}
-                className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-[13px] text-[#8a8f98] transition-colors hover:bg-[rgba(255,255,255,0.03)] hover:text-[#f7f8f8]"
+                className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-[13px] text-[#8a8f98] transition-none hover:bg-[rgba(255,255,255,0.03)] hover:text-[#f7f8f8]"
               >
                 <CornerLeftUp className="size-3.5 shrink-0 text-[#62666d]" />
                 <span className="font-mono">..</span>
@@ -452,7 +452,7 @@ export function ArchiveExplorer({
                 Loading indexed directory…
               </div>
             ) : entries.length === 0 ? (
-              <div className="py-12 text-center text-[13px] text-[#8a8f98]">
+              <div className="break-words px-3.5 py-12 text-center text-[13px] text-[#8a8f98]">
                 {searchQuery.trim()
                   ? `No indexed entries match “${searchQuery.trim()}”.`
                   : "This directory is empty."}
@@ -464,7 +464,7 @@ export function ArchiveExplorer({
                   <div
                     key={entry.id}
                     className={cn(
-                      "group flex items-center justify-between gap-2 px-3.5 py-2 transition-colors",
+                      "group flex items-center justify-between gap-2 px-3.5 py-2 transition-none",
                       isSelected
                         ? "bg-[rgba(255,255,255,0.07)]"
                         : "hover:bg-[rgba(255,255,255,0.03)]",
@@ -489,7 +489,7 @@ export function ArchiveExplorer({
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="truncate text-[13.5px] font-[510] text-[#f7f8f8]">
+                          <span className="truncate text-[13.5px] font-[510] text-[#f7f8f8]" title={entry.name}>
                             {entry.name}
                           </span>
                           {entry.encrypted ? (
@@ -585,9 +585,9 @@ export function ArchiveExplorer({
             <>
               {/* File Viewer Header */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] px-3.5 py-2.5">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-[13.5px] font-[590] text-[#ffffff]">
+                <div className="min-w-0 max-w-full">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="min-w-0 max-w-full truncate text-[13.5px] font-[590] text-[#ffffff]" title={selectedFile.name}>
                       {selectedFile.name}
                     </span>
                     <Badge variant="secondary" className="font-mono text-[11px]">
@@ -597,7 +597,7 @@ export function ArchiveExplorer({
                       <Badge variant="outline">First 512 KiB preview</Badge>
                     ) : null}
                   </div>
-                  <p className="truncate font-mono text-[11px] text-[#62666d]">
+                  <p className="truncate font-mono text-[11px] text-[#62666d]" title={selectedFile.path}>
                     {selectedFile.path}
                     {selectedFile.crc32 ? ` · CRC32 ${selectedFile.crc32}` : ""}
                   </p>

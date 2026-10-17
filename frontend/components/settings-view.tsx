@@ -257,7 +257,7 @@ export function SettingsView({
 
       {/* Action Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-base font-semibold tracking-tight text-[#d0d6e0]">
             Storage Allocation
           </h1>
@@ -331,7 +331,7 @@ export function SettingsView({
 
         {/* 4 Detail Columns */}
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex flex-col gap-1 rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)] p-3">
+          <div className="flex min-w-0 flex-col gap-1 rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)] p-3">
             <div className="flex items-center gap-2 text-xs text-[#8a8f98]">
               <HardDrive className="size-3.5 text-[#8a8f98]" />
               <span>Physical Uploads</span>
@@ -339,7 +339,7 @@ export function SettingsView({
             <p className="font-mono text-base font-semibold text-[#d0d6e0]">
               {stats ? formatBytes(packedBytes) : "—"}
             </p>
-            <p className="text-[11px] text-[#62666d]">
+            <p className="break-words text-[11px] text-[#62666d]">
               Raw packed .rar, .7z, and .zip files stored in /var/lib/archive/uploads.
             </p>
           </div>
@@ -435,9 +435,9 @@ export function SettingsView({
       {/* Archive Password Dictionary (ZIP / 7z / RAR Auto-Unlock) */}
       <section className="kinetics-card rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] pb-3">
-          <div className="flex items-center gap-2.5">
-            <Key className="size-4 text-[#d0d6e0]" />
-            <div>
+          <div className="flex min-w-0 items-start gap-2.5">
+            <Key className="mt-0.5 size-4 shrink-0 text-[#d0d6e0]" />
+            <div className="min-w-0">
               <p className="text-sm font-medium text-[#d0d6e0]">
                 Archive Password Dictionary
               </p>
@@ -446,7 +446,7 @@ export function SettingsView({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="font-mono text-xs">
               {passwords.length} active passwords
             </Badge>
@@ -517,7 +517,7 @@ export function SettingsView({
                   if (e.key === "Enter") void handleAddSinglePassword();
                 }}
                 placeholder="Add new password to dictionary…"
-                className="h-8 flex-1 rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-2.5 font-mono text-xs text-[#d0d6e0] outline-none focus:border-[rgba(255,255,255,0.2)]"
+                className="h-8 min-w-0 flex-1 rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-2.5 font-mono text-xs text-[#d0d6e0] outline-none focus:border-[rgba(255,255,255,0.2)]"
               />
               <Button
                 type="button"
@@ -537,15 +537,15 @@ export function SettingsView({
               {passwords.map((pw) => (
                 <span
                   key={pw}
-                  className="inline-flex items-center gap-1.5 rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-2.5 py-1 font-mono text-xs text-[#d0d6e0]"
+                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-2.5 py-1 font-mono text-xs text-[#d0d6e0]"
                 >
-                  <Lock className="size-3 text-[#8a8f98]" />
-                  <span>{pw}</span>
+                  <Lock className="size-3 shrink-0 text-[#8a8f98]" />
+                  <span className="truncate" title={pw}>{pw}</span>
                   <button
                     type="button"
                     onClick={() => void handleRemovePassword(pw)}
                     title={`Remove "${pw}" from dictionary`}
-                    className="ml-1 text-[#8a8f98] hover:text-[#f91880]"
+                    className="ml-1 shrink-0 text-[#8a8f98] transition-none hover:text-[#f91880]"
                   >
                     <X className="size-3" />
                   </button>
@@ -558,9 +558,9 @@ export function SettingsView({
 
       {/* Per-Archive Storage Breakdown Table (Replaces File Extensions Table) */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <FileArchive className="size-4 text-[#8a8f98]" />
+            <FileArchive className="size-4 shrink-0 text-[#8a8f98]" />
             <h2 className="text-sm font-semibold tracking-tight text-[#d0d6e0]">
               Per-Archive Storage Breakdown
             </h2>
@@ -572,7 +572,7 @@ export function SettingsView({
           </span>
         </div>
 
-        <div className="rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
+        <div className="min-w-0 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -589,7 +589,7 @@ export function SettingsView({
               {stats?.archiveBreakdown && stats.archiveBreakdown.length > 0 ? (
                 stats.archiveBreakdown.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-mono text-xs font-medium text-[#d0d6e0] max-w-[320px] truncate">
+                    <TableCell className="font-mono text-xs font-medium text-[#d0d6e0] max-w-[320px] truncate" title={item.filename}>
                       {item.filename}
                     </TableCell>
                     <TableCell>
@@ -618,18 +618,14 @@ export function SettingsView({
                     </TableCell>
                   </TableRow>
                 ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-8 text-center text-xs text-[#62666d]"
-                  >
-                    No archives uploaded yet.
-                  </TableCell>
-                </TableRow>
-              )}
+              ) : null}
             </TableBody>
           </Table>
+          {!stats?.archiveBreakdown?.length ? (
+            <div className="px-4 py-8 text-center text-xs text-[#62666d]">
+              No archives uploaded yet.
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

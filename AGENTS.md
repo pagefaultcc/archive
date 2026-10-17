@@ -231,7 +231,7 @@ Push to `main` triggers `.github/workflows/docker.yml`: backend unit tests + fro
   - **NEVER animate log selection:** Clicking through individual log files in Cookies, Search, or Validator updates the code viewer **instantly** (`transition-none`) with zero layout shift or delay.
   - **NEVER animate profile logout menu:** The profile avatar dropdown menu uses `transition-none` so clicking the user avatar and selecting logout is instant with zero sluggishness.
 - **Non-Blocking Search & Cookies:**
-  - **Blank Search Fast-Path:** Blank queries use `reltuples` estimate and primary key index scan (`ORDER BY e.id DESC`), eliminating the 15-second disk sort across 6.3M rows.
+  - **Blank Search Fast-Path:** Blank queries use a `reltuples` estimate and primary key index scan (`ORDER BY e.id DESC`), avoiding the large disk sort. Unavailable/nonpositive estimates fall back to `count(*) WHERE is_dir = false`; never expose PostgreSQL's unknown-statistics sentinel (`-1`) as a result count.
   - **Abortable Requests:** `GlobalSearchVault` and `CookiesVault` use `AbortController` to abort in-flight queries immediately when navigating away.
   - `ListCookieDomains` limit is capped at 500 (UI renders 300) to keep JSON payloads small (~30 KB) and parse in <2ms.
   - In `ensureCookieDomainsLoaded`, a single-flight `atomic.Bool` (`loading`) prevents multiple concurrent 7.1M-row table scans on cold restarts.
