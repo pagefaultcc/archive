@@ -27,3 +27,21 @@ Backend integration tests use a separate tmpfs-backed PostgreSQL service and res
 ## Production
 
 Replace the bootstrap and database credentials before first startup, use an HTTPS `PUBLIC_ORIGIN`, and terminate TLS at the externally visible frontend origin. The first successful startup creates the immutable root identity; later restarts preserve its username and password hash. Changing Argon2 memory parameters or the API's 512 MiB limit requires reevaluating the process-wide two-derivation concurrency cap.
+
+## CI and automatic image deployment
+
+Every push to `main` runs a lightweight change detector. Tests and production-image publishing run only for the affected components:
+
+| Changed input | Tests and image publishing |
+|---|---|
+| Root guidance/Markdown, `docs/**`, or other files outside the build/deployment inputs below | Neither image |
+| `backend/**` | Backend unit/PostgreSQL integration tests, then API image |
+| `frontend/**` | Frontend build/Vitest, then frontend image |
+| `.github/**`, `deploy/**`, `compose.yaml`, `Caddyfile`, `.env.example` | Both components |
+| Manual workflow dispatch or unavailable comparison baseline | Both components |
+
+Files inside either image context are treated conservatively as build inputs, including Markdown that could be bundled or rendered by the application. Change detection covers the complete push range, including deletions and renames. Runs queue instead of canceling a prior run whose changes affect a different image.
+
+Selected images are published to `ghcr.io/pagefaultcc/archive-api` and `ghcr.io/pagefaultcc/archive-frontend` with `latest` and `sha-<commit>` tags. Unchanged images retain their previous tags; a documentation-only commit does not create new image tags.
+
+The configured VPS timer checks GHCR every five minutes. It pulls both image references but only recreates containers whose image or local Compose configuration changed. Documentation-only changes leave the running application unchanged. Compose, Caddy, and systemd configuration are not delivered through image pulls and must be synchronized separately when edited.
