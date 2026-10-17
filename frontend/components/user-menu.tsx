@@ -109,7 +109,7 @@ export function UserMenu({
               type="button"
               disabled={pending || busy}
               aria-label={`User account for ${username}`}
-              className="relative flex size-9 shrink-0 sm:size-10 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.04] text-[11px] font-semibold text-[#f7f8f8] transition-none hover:bg-white/[0.1] hover:border-white/25 data-[state=open]:bg-white/[0.08] data-[state=open]:border-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]"
+              className="relative flex size-9 shrink-0 sm:size-10 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.04] text-[11px] font-semibold text-[#f7f8f8] outline-none transition-none hover:bg-white/[0.1] hover:border-white/25 data-[state=open]:bg-white/[0.08] data-[state=open]:border-white/25 focus-visible:border-white/40 focus-visible:bg-white/[0.1] disabled:opacity-50 cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]"
             >
               <span className="truncate">{username.slice(0, 2).toUpperCase()}</span>
             </button>
