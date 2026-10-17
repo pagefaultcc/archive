@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import {
   DropdownMenu,
+  DropdownMenuArrow,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -108,7 +109,7 @@ export function UserMenu({
               type="button"
               disabled={pending || busy}
               aria-label={`User account for ${username}`}
-              className="relative flex size-9 shrink-0 sm:size-10 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.04] text-[11px] font-semibold text-[#f7f8f8] transition-none hover:bg-white/[0.1] hover:border-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]"
+              className="relative flex size-9 shrink-0 sm:size-10 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.04] text-[11px] font-semibold text-[#f7f8f8] transition-none hover:bg-white/[0.1] hover:border-white/25 data-[state=open]:bg-white/[0.08] data-[state=open]:border-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]"
             >
               <span className="truncate">{username.slice(0, 2).toUpperCase()}</span>
             </button>
@@ -141,63 +142,81 @@ export function UserMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           side="top"
-          align={compact ? "end" : "start"}
+          align={compact ? "center" : "start"}
           sideOffset={compact ? 12 : 6}
-          className="w-64 min-w-0 max-w-[calc(100vw-2rem)] rounded-[10px] border border-white/[0.12] bg-[#0c0d0e]/95 text-[#f7f8f8] backdrop-blur-2xl shadow-[0_16px_40px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)] transition-none data-[state=open]:animate-none data-[state=closed]:animate-none"
+          collisionPadding={compact ? 16 : undefined}
+          arrowPadding={compact ? 12 : undefined}
+          className={cn(
+            "min-w-0 max-w-[calc(100vw-2rem)] rounded-[10px] border border-white/[0.12] bg-[#0c0d0e]/95 text-[#f7f8f8] backdrop-blur-2xl shadow-[0_16px_40px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)] transition-none data-[state=open]:animate-none data-[state=closed]:animate-none",
+            compact ? "w-56 overflow-visible p-0" : "w-64",
+          )}
         >
-          <DropdownMenuLabel className="p-0 font-normal">
-            <div className="flex items-center gap-2.5 px-3 py-2.5 text-left">
-              <span
-                aria-hidden
-                className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/[0.14] bg-white/[0.05] text-[12px] font-semibold text-white shadow-inner"
-              >
-                {username.slice(0, 2).toUpperCase()}
-              </span>
-              <div className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate text-[13px] font-semibold text-white">
-                  {username}
+          <div
+            className={cn(
+              compact && "max-h-[calc(var(--radix-dropdown-menu-content-available-height)-2px)] overflow-x-hidden overflow-y-auto rounded-[9px] p-1",
+            )}
+          >
+            <DropdownMenuLabel className="p-0 font-normal">
+              <div className="flex items-center gap-2.5 px-3 py-2.5 text-left">
+                <span
+                  aria-hidden
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/[0.14] bg-white/[0.05] text-[12px] font-semibold text-white shadow-inner"
+                >
+                  {username.slice(0, 2).toUpperCase()}
                 </span>
-                <span className="flex min-w-0 items-center gap-1 text-[11px] text-[#8a8f98]">
-                  <ShieldCheck className="size-3 shrink-0 text-[#00ba7c]" aria-hidden />
-                  <span className="truncate">{roleLabel ?? "Authenticated session"}</span>
-                </span>
+                <div className="grid min-w-0 flex-1 text-left leading-tight">
+                  <span className="truncate text-[13px] font-semibold text-white">
+                    {username}
+                  </span>
+                  <span className="flex min-w-0 items-center gap-1 text-[11px] text-[#8a8f98]">
+                    <ShieldCheck className="size-3 shrink-0 text-[#00ba7c]" aria-hidden />
+                    <span className="truncate">{roleLabel ?? "Authenticated session"}</span>
+                  </span>
+                </div>
               </div>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator className="bg-white/[0.06]" />
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-white/[0.06]" />
 
-          {/* User Account Settings */}
-          <DropdownMenuItem
-            onSelect={() => setIsSettingsOpen(true)}
-            className="flex min-h-9 items-center gap-2 cursor-pointer text-xs transition-none"
-          >
-            <User className="size-3.5 text-[#8a8f98]" aria-hidden />
-            <span>User Settings</span>
-          </DropdownMenuItem>
+            {/* User Account Settings */}
+            <DropdownMenuItem
+              onSelect={() => setIsSettingsOpen(true)}
+              className="flex min-h-9 items-center gap-2 cursor-pointer text-xs transition-none"
+            >
+              <User className="size-3.5 text-[#8a8f98]" aria-hidden />
+              <span>User Settings</span>
+            </DropdownMenuItem>
 
-          {/* System Settings Link */}
-          <DropdownMenuItem asChild className="min-h-9 text-xs transition-none">
-            <a href="/settings" className="flex items-center gap-2 cursor-pointer">
-              <Settings className="size-3.5 text-[#8a8f98]" aria-hidden />
-              <span>System Settings</span>
-            </a>
-          </DropdownMenuItem>
+            {/* System Settings Link */}
+            <DropdownMenuItem asChild className="min-h-9 text-xs transition-none">
+              <a href="/settings" className="flex items-center gap-2 cursor-pointer">
+                <Settings className="size-3.5 text-[#8a8f98]" aria-hidden />
+                <span>System Settings</span>
+              </a>
+            </DropdownMenuItem>
 
-          <DropdownMenuSeparator className="bg-white/[0.06]" />
+            <DropdownMenuSeparator className="bg-white/[0.06]" />
 
-          {/* Instant Logout */}
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={(event) => {
-              event.preventDefault();
-              void logout();
-            }}
-            disabled={pending || busy}
-            className="flex min-h-9 items-center gap-2 cursor-pointer text-xs text-[#f91880] transition-none focus:bg-[rgba(249,24,128,0.1)] focus:text-[#f91880]"
-          >
-            <LogOut className="size-3.5" aria-hidden />
-            <span>{busy ? "Signing out…" : "Log out"}</span>
-          </DropdownMenuItem>
+            {/* Instant Logout */}
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={(event) => {
+                event.preventDefault();
+                void logout();
+              }}
+              disabled={pending || busy}
+              className="flex min-h-9 items-center gap-2 cursor-pointer text-xs text-[#f91880] transition-none focus:bg-[rgba(249,24,128,0.1)] focus:text-[#f91880]"
+            >
+              <LogOut className="size-3.5" aria-hidden />
+              <span>{busy ? "Signing out…" : "Log out"}</span>
+            </DropdownMenuItem>
+          </div>
+          {compact && (
+            <DropdownMenuArrow
+              width={12}
+              height={6}
+              className="fill-[#0c0d0e]/95 stroke-white/[0.12]"
+            />
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

@@ -241,7 +241,7 @@ export function AppSidebar({
             <div className="group relative flex shrink-0 flex-col items-center">
               <div
                 role="tooltip"
-                className="hidden sm:block absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
+                className="hidden sm:block group-has-[[data-state=open]]:hidden absolute -top-10 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 translate-y-1.5 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 whitespace-nowrap"
               >
                 <div className="flex max-w-64 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-tight text-[#f7f8f8] bg-[#121316]/90 backdrop-blur-xl border border-white/[0.16] shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.2)]">
                   <span className="truncate">{username} ({roleLabel ?? "user"})</span>
