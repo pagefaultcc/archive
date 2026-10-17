@@ -106,10 +106,12 @@ export function CookiesVault() {
 
   const fetchDomains = useCallback(
     async (q: string, offset: number, append: boolean) => {
+      let signal = domainsAbortRef.current?.signal;
       if (!append) {
         domainsAbortRef.current?.abort();
         const ctrl = new AbortController();
         domainsAbortRef.current = ctrl;
+        signal = ctrl.signal;
       }
       if (offset === 0) setIsLoadingDomains(true);
       else setIsLoadingMore(true);
@@ -119,8 +121,9 @@ export function CookiesVault() {
           q,
           150,
           offset,
-          domainsAbortRef.current?.signal,
+          signal,
         );
+        if (signal?.aborted || (!res.ok && res.aborted)) return;
         if (res.ok) {
           setTotalDomains(res.data.totalDomains);
           setTotalLogs(res.data.totalLogs);
@@ -138,14 +141,22 @@ export function CookiesVault() {
             }
             if (res.data.domains.length > 0) {
               void loadDomainLogs(res.data.domains[0], false);
+            } else {
+              logsReqRef.current++;
+              setSelectedDomain(null);
+              setLogs([]);
+              setSelectedLog(null);
+              setIsLoadingLogs(false);
             }
           }
         }
       } catch {
         // Aborted or network error
       } finally {
-        setIsLoadingDomains(false);
-        setIsLoadingMore(false);
+        if (!signal?.aborted && !domainsAbortRef.current?.signal.aborted) {
+          setIsLoadingDomains(false);
+          setIsLoadingMore(false);
+        }
       }
     },
     [loadDomainLogs],
@@ -158,6 +169,24 @@ export function CookiesVault() {
     };
   }, [fetchDomains]);
 
+  useEffect(() => {
+    const el = domainsContainerRef.current;
+    if (!el) return;
+    if (el.clientHeight > 0) {
+      setContainerHeight(el.clientHeight);
+    }
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = entry.contentRect.height || el.clientHeight;
+        if (h > 0) {
+          setContainerHeight(h);
+        }
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const handleDomainSearch = (val: string) => {
     setDomainQuery(val);
     window.clearTimeout(searchTimerRef.current);
@@ -241,7 +270,9 @@ export function CookiesVault() {
   const isSupportedDomain = Boolean(
     selectedDomain &&
       (selectedDomain.domain === "openai.com" ||
-        selectedDomain.domain.endsWith(".openai.com"))
+        selectedDomain.domain.endsWith(".openai.com") ||
+        selectedDomain.domain === "chatgpt.com" ||
+        selectedDomain.domain.endsWith(".chatgpt.com")),
   );
 
   return (

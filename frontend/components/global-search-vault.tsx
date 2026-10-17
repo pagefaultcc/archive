@@ -99,9 +99,37 @@ export function GlobalSearchVault() {
   const [downloadJob, setDownloadJob] = useState<SearchDownloadJob | null>(null);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [isPreparingDownload, setIsPreparingDownload] = useState(false);
+  const previewReqRef = useRef(0);
+  const searchTimerRef = useRef<number | undefined>(undefined);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const downloadPollRef = useRef<number | undefined>(undefined);
+  const isInitialMountRef = useRef(true);
+
+  const filtersRef = useRef({
+    q,
+    fileName,
+    fileType,
+    minSizeKB,
+    maxSizeKB,
+  });
+  filtersRef.current = {
+    q,
+    fileName,
+    fileType,
+    minSizeKB,
+    maxSizeKB,
+  };
+
+  const clearDownloadPoll = useCallback(() => {
+    if (downloadPollRef.current !== undefined) {
+      window.clearInterval(downloadPollRef.current);
+      downloadPollRef.current = undefined;
+    }
+  }, []);
 
   const startBulkDownload = async () => {
     if (isPreparingDownload) return;
+    clearDownloadPoll();
     setIsPreparingDownload(true);
     setIsDownloadModalOpen(true);
     const targetTotal = Math.min(totalCount, 5000);
@@ -132,13 +160,13 @@ export function GlobalSearchVault() {
     }
 
     const jobId = res.data.jobId;
-    const pollInterval = window.setInterval(async () => {
+    downloadPollRef.current = window.setInterval(async () => {
       const pollRes = await browserGetSearchDownloadJob(jobId);
       if (pollRes.ok) {
         const job = pollRes.data;
         setDownloadJob(job);
         if (job.status === "ready") {
-          window.clearInterval(pollInterval);
+          clearDownloadPoll();
           toast.success(`Search results archive ready (${job.total} files).`);
           if (job.downloadUrl) {
             const a = document.createElement("a");
@@ -149,32 +177,50 @@ export function GlobalSearchVault() {
             document.body.removeChild(a);
           }
         } else if (job.status === "error") {
-          window.clearInterval(pollInterval);
+          clearDownloadPoll();
           toast.error(job.error || "Failed to package archive.");
         }
       }
     }, 450);
   };
 
-  const previewReqRef = useRef(0);
-  const searchTimerRef = useRef<number | undefined>(undefined);
-  const searchAbortRef = useRef<AbortController | null>(null);
+  const openFilePreview = useCallback(
+    async (item: ArchiveSearchResult) => {
+      const reqId = ++previewReqRef.current;
+      setSelectedResult(item);
+      setIsLoadingFile(true);
+      setFileError(null);
+      const res = await browserPreviewArchiveFile(item.archiveId, item.path);
+      if (reqId !== previewReqRef.current) return;
+      setIsLoadingFile(false);
+      if (!res.ok) {
+        if (res.aborted) return;
+        setPreview(null);
+        setFileError(res.error?.message ?? "Failed to read file from archive.");
+        return;
+      }
+      setPreview(res.data);
+    },
+    [],
+  );
 
   const executeSearch = useCallback(
     async (overrideParams?: Partial<SearchParams>) => {
+      window.clearTimeout(searchTimerRef.current);
       searchAbortRef.current?.abort();
       const ctrl = new AbortController();
       searchAbortRef.current = ctrl;
 
       setIsSearching(true);
       const t0 = performance.now();
-      const minBytes = minSizeKB ? Number(minSizeKB) * 1024 : undefined;
-      const maxBytes = maxSizeKB ? Number(maxSizeKB) * 1024 : undefined;
+      const cur = filtersRef.current;
+      const minBytes = cur.minSizeKB ? Number(cur.minSizeKB) * 1024 : undefined;
+      const maxBytes = cur.maxSizeKB ? Number(cur.maxSizeKB) * 1024 : undefined;
 
       const params: SearchParams = {
-        q: q.trim() || undefined,
-        name: fileName.trim() || undefined,
-        type: fileType.trim() || undefined,
+        q: cur.q.trim() || undefined,
+        name: cur.fileName.trim() || undefined,
+        type: cur.fileType.trim() || undefined,
         minSize: minBytes,
         maxSize: maxBytes,
         limit: 100,
@@ -182,8 +228,10 @@ export function GlobalSearchVault() {
       };
 
       try {
-        const res = await browserSearchArchiveEntries(params);
-        if (ctrl.signal.aborted) return;
+        const res = await browserSearchArchiveEntries(params, {
+          signal: ctrl.signal,
+        });
+        if (ctrl.signal.aborted || (!res.ok && res.aborted)) return;
         const dt = Math.round(performance.now() - t0);
         setSearchDurationMs(dt);
 
@@ -191,9 +239,13 @@ export function GlobalSearchVault() {
           setResults(res.data.results);
           setTotalCount(res.data.totalCount);
           if (res.data.results.length > 0) {
-            setSelectedResult(res.data.results[0]);
+            void openFilePreview(res.data.results[0]);
           } else {
+            previewReqRef.current++;
             setSelectedResult(null);
+            setPreview(null);
+            setFileError(null);
+            setIsLoadingFile(false);
           }
         } else {
           toast.error(res.error?.message ?? "Search failed. Check your regex syntax.");
@@ -206,51 +258,39 @@ export function GlobalSearchVault() {
         }
       }
     },
-    [fileName, fileType, maxSizeKB, minSizeKB, q],
+    [openFilePreview],
   );
 
   useEffect(() => {
-    executeSearch();
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      void executeSearch();
+      return;
+    }
+    window.clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = window.setTimeout(() => {
+      void executeSearch();
+    }, 250);
     return () => {
-      searchAbortRef.current?.abort();
+      window.clearTimeout(searchTimerRef.current);
     };
-  }, [executeSearch]);
+  }, [q, fileName, fileType, minSizeKB, maxSizeKB, executeSearch]);
 
-  const openFilePreview = useCallback(
-    async (item: ArchiveSearchResult) => {
-      const reqId = ++previewReqRef.current;
-      setSelectedResult(item);
-      setIsLoadingFile(true);
-      setFileError(null);
-      const res = await browserPreviewArchiveFile(item.archiveId, item.path);
-      if (reqId !== previewReqRef.current) return;
-      setIsLoadingFile(false);
-      if (!res.ok) {
-        setPreview(null);
-        setFileError(res.error?.message ?? "Failed to read file from archive.");
-        return;
-      }
-      setPreview(res.data);
-    },
-    [],
-  );
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(searchTimerRef.current);
+      searchAbortRef.current?.abort();
+      clearDownloadPoll();
+    };
+  }, [clearDownloadPoll]);
 
   const handleGlobalQueryChange = (val: string) => {
     setQ(val);
-    clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = window.setTimeout(() => {
-      executeSearch({ q: val.trim() || undefined });
-    }, 200);
   };
 
   const handleFileNameChange = (val: string) => {
     setFileName(val);
-    clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = window.setTimeout(() => {
-      executeSearch({ name: val.trim() || undefined });
-    }, 200);
   };
-
   const textLines = preview?.kind === "text" && preview.text ? preview.text.split("\n") : [];
 
   return (
@@ -418,10 +458,6 @@ export function GlobalSearchVault() {
                 value={fileType}
                 onChange={(e) => {
                   setFileType(e.target.value);
-                  clearTimeout(searchTimerRef.current);
-                  searchTimerRef.current = window.setTimeout(() => {
-                    executeSearch({ type: e.target.value.trim() || undefined });
-                  }, 200);
                 }}
                 placeholder="e.g. txt, ldb, pdf, json"
                 className="h-8 font-mono text-xs"
@@ -439,10 +475,6 @@ export function GlobalSearchVault() {
                   value={minSizeKB}
                   onChange={(e) => {
                     setMinSizeKB(e.target.value);
-                    clearTimeout(searchTimerRef.current);
-                    searchTimerRef.current = window.setTimeout(() => {
-                      executeSearch();
-                    }, 250);
                   }}
                   placeholder="0"
                   className="h-8 font-mono text-xs"
@@ -458,10 +490,6 @@ export function GlobalSearchVault() {
                   value={maxSizeKB}
                   onChange={(e) => {
                     setMaxSizeKB(e.target.value);
-                    clearTimeout(searchTimerRef.current);
-                    searchTimerRef.current = window.setTimeout(() => {
-                      executeSearch();
-                    }, 250);
                   }}
                   placeholder="No limit"
                   className="h-8 font-mono text-xs"
@@ -735,6 +763,9 @@ export function GlobalSearchVault() {
         open={isDownloadModalOpen}
         onOpenChange={(open) => {
           setIsDownloadModalOpen(open);
+          if (!open) {
+            clearDownloadPoll();
+          }
         }}
       >
         <DialogContent className="border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-md">

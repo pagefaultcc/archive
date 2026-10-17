@@ -44,7 +44,12 @@ export type SearchDownloadJob = {
   error?: string;
 };
 
-export function browserSearchArchiveEntries(params: SearchParams) {
+export function browserSearchArchiveEntries(
+  params: SearchParams,
+  options?: AbortSignal | { signal?: AbortSignal },
+) {
+  const signal =
+    options && "aborted" in options ? options : options?.signal;
   const sp = new URLSearchParams();
   if (params.q) sp.set("q", params.q);
   if (params.name) sp.set("name", params.name);
@@ -60,6 +65,7 @@ export function browserSearchArchiveEntries(params: SearchParams) {
   if (params.offset !== undefined) sp.set("offset", String(params.offset));
   return request<SearchResponse>(`/api/search?${sp.toString()}`, {
     method: "GET",
+    signal,
   });
 }
 

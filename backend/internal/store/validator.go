@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	"archive/backend/internal/archiveidx"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -123,7 +125,11 @@ func (s *Store) ListValidationItems(ctx context.Context, service, status string,
 
 // AddValidationDomain queues all parsed logs for a domain into the validator.
 func (s *Store) AddValidationDomain(ctx context.Context, domain, service string) (int, error) {
-	domain = strings.ToLower(strings.TrimSpace(domain))
+	if norm := archiveidx.NormalizeRootDomain(domain); norm != "" {
+		domain = norm
+	} else {
+		domain = strings.ToLower(strings.TrimSpace(domain))
+	}
 	service = strings.ToLower(strings.TrimSpace(service))
 	if service == "" {
 		service = "chatgpt"
@@ -136,7 +142,7 @@ func (s *Store) AddValidationDomain(ctx context.Context, domain, service string)
 		SELECT c.archive_id, a.filename, c.entry_path, c.domain, c.cookie_count, c.netscape_text
 		FROM archive_cookie_domains c
 		JOIN archives a ON a.id = c.archive_id
-		WHERE c.domain = $1
+		WHERE c.domain = $1 AND a.status = 'indexed'
 		ORDER BY c.cookie_count DESC
 		LIMIT 500;
 	`, domain)
@@ -235,11 +241,14 @@ func (s *Store) AddValidationCustom(ctx context.Context, domain, service, cookie
 	if service == "" {
 		service = "chatgpt"
 	}
-	domain = strings.ToLower(strings.TrimSpace(domain))
+	if norm := archiveidx.NormalizeRootDomain(domain); norm != "" {
+		domain = norm
+	} else {
+		domain = strings.ToLower(strings.TrimSpace(domain))
+	}
 	if domain == "" {
 		domain = "openai.com"
 	}
-
 	cookieText = sanitizePGText(strings.TrimSpace(cookieText))
 	lines := strings.Split(cookieText, "\n")
 	count := 0
@@ -314,28 +323,81 @@ func (s *Store) CheckValidationItems(ctx context.Context, service string, ids []
 	batch := &pgx.Batch{}
 
 	for _, it := range items {
-		status := "valid"
+		status := "not_valid"
 		errMsg := ""
 
 		lowerText := strings.ToLower(it.text)
-		// Specifically check for auth.openai.com cookies and session tokens
-		hasAuthOpenAI := strings.Contains(lowerText, "auth.openai.com") || strings.Contains(lowerText, ".auth.openai.com")
+		hasOpenAIDomain := strings.Contains(lowerText, "openai.com") || strings.Contains(lowerText, "chatgpt.com")
 		hasSessionToken := strings.Contains(lowerText, "__secure-next-auth.session-token") ||
 			strings.Contains(lowerText, "session-token") ||
 			strings.Contains(lowerText, "oai-did") ||
 			strings.Contains(lowerText, "sess-")
 
-		if hasAuthOpenAI && hasSessionToken {
+		var sawValidToken, sawExpiredToken bool
+		for _, rawLine := range strings.Split(it.text, "\n") {
+			t := strings.TrimSpace(rawLine)
+			if t == "" {
+				continue
+			}
+			tLower := strings.ToLower(t)
+			if strings.HasPrefix(t, "#") && !strings.HasPrefix(tLower, "#httponly_") {
+				continue
+			}
+			if strings.HasPrefix(tLower, "#httponly_") {
+				t = t[len("#httponly_"):]
+			}
+			fields := strings.Split(t, "\t")
+			if len(fields) < 6 {
+				fields = strings.Fields(t)
+			}
+			if len(fields) < 6 {
+				continue
+			}
+			dom := strings.ToLower(strings.TrimSpace(fields[0]))
+			if !strings.Contains(dom, "openai.com") && !strings.Contains(dom, "chatgpt.com") {
+				continue
+			}
+			expStr := strings.TrimSpace(fields[4])
+			name := strings.ToLower(strings.TrimSpace(fields[5]))
+			val := ""
+			if len(fields) >= 7 {
+				val = strings.ToLower(strings.TrimSpace(fields[6]))
+			}
+			isTok := strings.Contains(name, "__secure-next-auth.session-token") ||
+				strings.Contains(name, "session-token") ||
+				strings.Contains(name, "oai-did") ||
+				strings.Contains(name, "sess-") ||
+				strings.HasPrefix(val, "sess-")
+			if !isTok {
+				continue
+			}
+			var exp int64
+			if fexp, ferr := strconv.ParseFloat(expStr, 64); ferr == nil {
+				exp = int64(fexp)
+			}
+			if exp > 0 && exp < now.Unix() {
+				sawExpiredToken = true
+			} else {
+				sawValidToken = true
+			}
+		}
+
+		if sawValidToken {
 			status = "valid"
 			errMsg = ""
-		} else if !hasAuthOpenAI {
+		} else if sawExpiredToken {
+			status = "not_valid"
+			errMsg = "Session token expired"
+		} else if !hasOpenAIDomain {
 			status = "not_valid"
 			errMsg = "Missing auth.openai.com session token"
+		} else if hasSessionToken {
+			status = "valid"
+			errMsg = ""
 		} else {
 			status = "not_valid"
 			errMsg = "Malformed or expired auth.openai.com token"
 		}
-
 		batch.Queue(`
 			UPDATE cookie_validation_items
 			SET status = $1, checked_at = $2, error_message = $3

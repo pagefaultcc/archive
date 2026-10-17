@@ -22,8 +22,13 @@ export function SearchTabs() {
         className="w-full sm:w-fit"
       />
 
-      {/* Active Tab View */}
-      {tab === "files" ? <GlobalSearchVault /> : <PasswordsSearch />}
+      {/* Keep both tabs mounted so search state, pagination, and open previews persist across switches */}
+      <div className={tab === "files" ? "block" : "hidden"}>
+        <GlobalSearchVault />
+      </div>
+      <div className={tab === "passwords" ? "block" : "hidden"}>
+        <PasswordsSearch />
+      </div>
     </div>
   );
 }

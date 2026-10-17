@@ -295,6 +295,7 @@ func (h *archiveHandlers) delete(w http.ResponseWriter, r *http.Request) {
 	}
 	h.removeNamedLink(item.Filename)
 	_ = h.Store.MarkArchiveDeleting(r.Context(), id)
+	h.Store.InvalidateCookieCache()
 
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -304,11 +305,13 @@ func (h *archiveHandlers) delete(w http.ResponseWriter, r *http.Request) {
 			h.Log.Error("background archive delete failed", "archive_id", id, "error", err.Error())
 			return
 		}
+		h.Store.InvalidateCookieCache()
 		if storagePath != "" {
-			_ = os.Remove(storagePath)
+			if stillUsed, cerr := h.Store.HasArchiveWithStoragePath(bgCtx, storagePath); cerr == nil && !stillUsed {
+				_ = os.Remove(storagePath)
+			}
 		}
 	}()
-
 	WriteNoContent(w)
 }
 
@@ -619,16 +622,23 @@ func (h *archiveHandlers) reindexAll(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		status := "indexed"
-		if res.IsEncrypted && a.ArchivePassword == "" {
-			status = "locked"
+		if res.PasswordRequired {
+			status = "password_required"
+		}
+		effectivePw := a.ArchivePassword
+		if effectivePw == "" && res.MatchedPassword != "" {
+			effectivePw = res.MatchedPassword
+			_ = h.Store.SetArchivePassword(r.Context(), a.ID, effectivePw)
 		}
 		_, err = h.Store.ApplyReindexedEntries(r.Context(), a.ID, actor.ID, storeEntryInputs(res), status)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("%s: %v", a.Filename, err))
 			continue
 		}
-		h.indexArchiveCookies(r.Context(), a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
-		h.indexArchiveCredentials(r.Context(), a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
+		if status == "indexed" {
+			h.indexArchiveCookies(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
+			h.indexArchiveCredentials(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
+		}
 		reindexed++
 	}
 
@@ -670,8 +680,13 @@ func (h *archiveHandlers) reindexOne(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	status := "indexed"
-	if res.IsEncrypted && a.ArchivePassword == "" {
-		status = "locked"
+	if res.PasswordRequired {
+		status = "password_required"
+	}
+	effectivePw := a.ArchivePassword
+	if effectivePw == "" && res.MatchedPassword != "" {
+		effectivePw = res.MatchedPassword
+		_ = h.Store.SetArchivePassword(r.Context(), a.ID, effectivePw)
 	}
 	item, err := h.Store.ApplyReindexedEntries(r.Context(), a.ID, actor.ID, storeEntryInputs(res), status)
 	if err != nil {
@@ -679,7 +694,9 @@ func (h *archiveHandlers) reindexOne(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, InternalServerError)
 		return
 	}
-	h.indexArchiveCookies(r.Context(), a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
-	h.indexArchiveCredentials(r.Context(), a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
+	if status == "indexed" {
+		h.indexArchiveCookies(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
+		h.indexArchiveCredentials(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
+	}
 	WriteJSON(w, http.StatusOK, map[string]any{"archive": item})
 }

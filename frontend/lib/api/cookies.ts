@@ -50,11 +50,18 @@ export function browserListCookieDomains(
   });
 }
 
-export function browserListCookieDomainLogs(domain: string, q?: string) {
+export function browserListCookieDomainLogs(
+  domain: string,
+  q?: string,
+  options?: AbortSignal | { signal?: AbortSignal },
+) {
+  const signal =
+    options && "aborted" in options ? options : options?.signal;
   const params = new URLSearchParams({ domain });
   if (q && q.trim()) params.set("q", q.trim());
   return request<CookieDomainLogsResponse>(`/api/cookies?${params.toString()}`, {
     method: "GET",
+    signal,
   });
 }
 

@@ -6,8 +6,8 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -152,35 +152,7 @@ func (h *archiveHandlers) downloadSearchResults(w http.ResponseWriter, r *http.R
 	}
 	zw := zip.NewWriter(zf)
 
-	seenMembers := make(map[string]int)
-	for _, item := range results {
-		archiveFilename, storagePath, format, archivePassword, _, err := h.Store.GetArchiveEntryForRead(r.Context(), item.ArchiveID, item.Path)
-		if err != nil {
-			continue
-		}
-		activePath := h.syncNamedLink(archiveFilename, storagePath)
-		data, _, err := archiveidx.ReadEntry(r.Context(), activePath, format, archivePassword, item.Path, 50*1024*1024)
-		if err != nil || len(data) == 0 {
-			continue
-		}
-
-		relPath := strings.TrimPrefix(filepath.ToSlash(item.Path), "/")
-		archName := strings.TrimSuffix(filepath.Base(item.ArchiveFilename), filepath.Ext(item.ArchiveFilename))
-		memberName := fmt.Sprintf("%s/%s", archName, relPath)
-		if count := seenMembers[memberName]; count > 0 {
-			seenMembers[memberName]++
-			dir, base := filepath.Split(memberName)
-			memberName = fmt.Sprintf("%s%d_%s", dir, count, base)
-		} else {
-			seenMembers[memberName] = 1
-		}
-
-		wEntry, cerr := zw.Create(memberName)
-		if cerr != nil {
-			continue
-		}
-		_, _ = wEntry.Write(data)
-	}
+	h.writeBatchedSearchResultsToZip(r.Context(), zw, results, nil)
 	_ = zw.Close()
 	_ = zf.Close()
 
@@ -280,35 +252,12 @@ func (h *archiveHandlers) prepareSearchDownload(w http.ResponseWriter, r *http.R
 			return
 		}
 		zw := zip.NewWriter(zf)
-		seenMembers := make(map[string]int)
-
-		for idx, item := range results {
-			archiveFilename, storagePath, format, archivePassword, _, err := h.Store.GetArchiveEntryForRead(context.Background(), item.ArchiveID, item.Path)
-			if err == nil {
-				activePath := h.syncNamedLink(archiveFilename, storagePath)
-				data, _, rerr := archiveidx.ReadEntry(context.Background(), activePath, format, archivePassword, item.Path, 50*1024*1024)
-				if rerr == nil && len(data) > 0 {
-					relPath := strings.TrimPrefix(filepath.ToSlash(item.Path), "/")
-					archName := strings.TrimSuffix(filepath.Base(item.ArchiveFilename), filepath.Ext(item.ArchiveFilename))
-					memberName := fmt.Sprintf("%s/%s", archName, relPath)
-					if count := seenMembers[memberName]; count > 0 {
-						seenMembers[memberName]++
-						dir, base := filepath.Split(memberName)
-						memberName = fmt.Sprintf("%s%d_%s", dir, count, base)
-					} else {
-						seenMembers[memberName] = 1
-					}
-					wEntry, cerr := zw.Create(memberName)
-					if cerr == nil {
-						_, _ = wEntry.Write(data)
-					}
-				}
-			}
+		h.writeBatchedSearchResultsToZip(context.Background(), zw, results, func(processed int) {
 			h.jobsMu.Lock()
-			job.Processed = idx + 1
+			job.Processed = processed
 			job.Percent = int(float64(job.Processed) / float64(job.Total) * 100)
 			h.jobsMu.Unlock()
-		}
+		})
 		_ = zw.Close()
 		_ = zf.Close()
 
@@ -330,6 +279,117 @@ func (h *archiveHandlers) prepareSearchDownload(w http.ResponseWriter, r *http.R
 		"jobId": jobID,
 		"total": job.Total,
 	})
+}
+
+func (h *archiveHandlers) writeBatchedSearchResultsToZip(
+	ctx context.Context,
+	zw *zip.Writer,
+	results []store.ArchiveSearchResult,
+	onProgress func(processed int),
+) {
+	var archiveOrder []string
+	byArchive := make(map[string][]store.ArchiveSearchResult)
+	for _, item := range results {
+		if _, exists := byArchive[item.ArchiveID]; !exists {
+			archiveOrder = append(archiveOrder, item.ArchiveID)
+		}
+		byArchive[item.ArchiveID] = append(byArchive[item.ArchiveID], item)
+	}
+
+	seenMembers := make(map[string]int)
+	processed := 0
+
+	writeMember := func(archiveFilename, itemPath string, r io.Reader) {
+		relPath := strings.TrimPrefix(filepath.ToSlash(itemPath), "/")
+		archName := strings.TrimSuffix(filepath.Base(archiveFilename), filepath.Ext(archiveFilename))
+		memberName := fmt.Sprintf("%s/%s", archName, relPath)
+		if count := seenMembers[memberName]; count > 0 {
+			seenMembers[memberName]++
+			dir, base := filepath.Split(memberName)
+			memberName = fmt.Sprintf("%s%d_%s", dir, count, base)
+		} else {
+			seenMembers[memberName] = 1
+		}
+		if wEntry, cerr := zw.Create(memberName); cerr == nil {
+			_, _ = io.Copy(wEntry, io.LimitReader(r, 50*1024*1024))
+		}
+	}
+
+	for _, archiveID := range archiveOrder {
+		group := byArchive[archiveID]
+		rec, err := h.Store.GetArchiveForReindex(ctx, archiveID)
+		if err != nil {
+			processed += len(group)
+			if onProgress != nil {
+				onProgress(processed)
+			}
+			continue
+		}
+		activePath := h.syncNamedLink(rec.Filename, rec.StoragePath)
+		cleanPw := strings.Trim(strings.TrimSpace(rec.ArchivePassword), "`'\"")
+
+		// Fast path for unencrypted ZIP archives: open container once in memory
+		if rec.Format == "zip" && cleanPw == "" && !rec.IsEncrypted {
+			if zr, zerr := zip.OpenReader(activePath); zerr == nil {
+				fileMap := make(map[string]*zip.File, len(zr.File))
+				for _, f := range zr.File {
+					if !f.FileInfo().IsDir() {
+						fileMap[strings.ToLower(strings.TrimPrefix(filepath.ToSlash(f.Name), "/"))] = f
+					}
+				}
+				for _, item := range group {
+					key := strings.ToLower(strings.TrimPrefix(filepath.ToSlash(item.Path), "/"))
+					if zf, ok := fileMap[key]; ok {
+						if rc, oerr := zf.Open(); oerr == nil {
+							writeMember(rec.Filename, item.Path, rc)
+							_ = rc.Close()
+						}
+					}
+					processed++
+					if onProgress != nil {
+						onProgress(processed)
+					}
+				}
+				_ = zr.Close()
+				continue
+			}
+		}
+
+		// General path: extract all matched entries for this archive in one batch
+		extractDir, terr := os.MkdirTemp("", "search-batch-*")
+		if terr == nil {
+			paths := make([]string, 0, len(group))
+			for _, item := range group {
+				paths = append(paths, item.Path)
+			}
+			_ = archiveidx.ExtractBatchToDir(ctx, activePath, rec.Format, rec.ArchivePassword, paths, extractDir)
+			for _, item := range group {
+				rel := strings.TrimPrefix(filepath.ToSlash(item.Path), "/")
+				extractedFile := filepath.Join(extractDir, filepath.FromSlash(rel))
+				if rf, oerr := os.Open(extractedFile); oerr == nil {
+					writeMember(rec.Filename, item.Path, rf)
+					_ = rf.Close()
+				} else if data, _, rerr := archiveidx.ReadEntry(ctx, activePath, rec.Format, rec.ArchivePassword, item.Path, 50*1024*1024); rerr == nil && len(data) > 0 {
+					writeMember(rec.Filename, item.Path, strings.NewReader(string(data)))
+				}
+				processed++
+				if onProgress != nil {
+					onProgress(processed)
+				}
+			}
+			_ = os.RemoveAll(extractDir)
+		} else {
+			for _, item := range group {
+				if data, _, rerr := archiveidx.ReadEntry(ctx, activePath, rec.Format, rec.ArchivePassword, item.Path, 50*1024*1024); rerr == nil && len(data) > 0 {
+					writeMember(rec.Filename, item.Path, strings.NewReader(string(data)))
+				}
+				processed++
+				if onProgress != nil {
+					onProgress(processed)
+				}
+			}
+		}
+	}
 }
 
 // getSearchDownloadJob handles GET /api/search/download-job/{id}

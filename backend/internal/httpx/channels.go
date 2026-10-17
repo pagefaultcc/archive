@@ -78,6 +78,27 @@ func (h *channelHandlers) logInternal(ctx context.Context, msg string, err error
 	h.Log.Error(msg, "request_id", RequestID(ctx), "error", err.Error())
 }
 
+func (h *channelHandlers) byNameDir() string {
+	dir := filepath.Join(h.StorageDir, "by-name")
+	_ = os.MkdirAll(dir, 0o755)
+	return dir
+}
+
+func (h *channelHandlers) syncNamedLink(filename, storagePath string) string {
+	if filename == "" || storagePath == "" {
+		return storagePath
+	}
+	byName := h.byNameDir()
+	safeName := filepath.Base(filepath.FromSlash(filename))
+	linkPath := filepath.Join(byName, safeName)
+	_ = os.Remove(linkPath)
+	if err := os.Symlink(storagePath, linkPath); err != nil {
+		if err := os.Link(storagePath, linkPath); err != nil {
+			return storagePath
+		}
+	}
+	return linkPath
+}
 func findScriptEnginePath() string {
 	candidates := []string{
 		"/app/scraper/tg_engine.py",
@@ -129,10 +150,16 @@ func (h *channelHandlers) updateSettings(w http.ResponseWriter, r *http.Request)
 		WriteError(w, err)
 		return
 	}
+	sessionStr := strings.TrimSpace(req.SessionString)
+	if sessionStr == "" || strings.Contains(sessionStr, "...") {
+		if existing, err := h.Store.GetTelegramSettings(r.Context()); err == nil && existing.SessionString != "" {
+			sessionStr = existing.SessionString
+		}
+	}
 	set := store.UserBotSettings{
 		APIID:         req.APIID,
 		APIHash:       strings.TrimSpace(req.APIHash),
-		SessionString: strings.TrimSpace(req.SessionString),
+		SessionString: sessionStr,
 	}
 	if err := h.Store.SetTelegramSettings(r.Context(), set, actor.ID); err != nil {
 		h.logInternal(r.Context(), "saving telegram settings failed", err)
@@ -140,7 +167,11 @@ func (h *channelHandlers) updateSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	set.IsConfigured = set.APIID > 0 && set.APIHash != "" && set.SessionString != ""
-	WriteJSON(w, http.StatusOK, map[string]any{"settings": set})
+	masked := set
+	if len(masked.SessionString) > 12 {
+		masked.SessionString = masked.SessionString[:6] + "..." + masked.SessionString[len(masked.SessionString)-4:]
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"settings": masked})
 }
 
 // POST /api/channels/test-connection
@@ -640,7 +671,7 @@ func (h *channelHandlers) importFiles(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Try indexing with the resolved password
-		activePath := storagePath
+		activePath := h.syncNamedLink(item.Filename, storagePath)
 		res, ierr := archiveidx.IndexFile(r.Context(), activePath, format, item.Password)
 		if ierr != nil {
 			// Password failure fallback: "Some file passwords can be wrong, if its failed because of password just drop it and go on next one"
@@ -663,11 +694,15 @@ func (h *channelHandlers) importFiles(w http.ResponseWriter, r *http.Request) {
 		if savedPassword == "" && res.MatchedPassword != "" {
 			savedPassword = res.MatchedPassword
 		}
+		status := "indexed"
+		if res.PasswordRequired {
+			status = "password_required"
+		}
 
 		archItem, aerr := h.Store.CreateArchive(r.Context(), store.CreateArchiveInput{
 			OwnerID: actor.ID, Filename: item.Filename, Format: format,
 			SizeBytes: info.Size(), SHA256: sha, IsEncrypted: res.IsEncrypted,
-			ArchivePassword: savedPassword, Status: "indexed", StoragePath: storagePath,
+			ArchivePassword: savedPassword, Status: status, StoragePath: storagePath,
 			Entries: storeEntryInputs(res),
 		})
 		if aerr != nil {
@@ -675,9 +710,10 @@ func (h *channelHandlers) importFiles(w http.ResponseWriter, r *http.Request) {
 			failedCount++
 			continue
 		}
-		h.indexDownloadedCookies(archItem.ID, activePath, format, savedPassword, res.Entries)
-
-		importedCount++
+		if status == "indexed" {
+			h.indexDownloadedCookies(archItem.ID, activePath, format, savedPassword, res.Entries)
+			h.indexDownloadedCredentials(archItem.ID, activePath, format, savedPassword, res.Entries)
+		}
 		results = append(results, map[string]any{
 			"filename": item.Filename,
 			"status":   "imported",
@@ -1103,7 +1139,7 @@ func (h *channelHandlers) processQueueItem(item *telegramQueueItem) {
 		return
 	}
 
-	activePath := storagePath
+	activePath := h.syncNamedLink(item.Filename, storagePath)
 	res, ierr := archiveidx.IndexFile(ctx, activePath, format, item.Password)
 	if ierr != nil {
 		h.logInternal(ctx, fmt.Sprintf("password/indexing failed for %s", item.Filename), ierr)
@@ -1120,6 +1156,10 @@ func (h *channelHandlers) processQueueItem(item *telegramQueueItem) {
 	if savedPassword == "" && res.MatchedPassword != "" {
 		savedPassword = res.MatchedPassword
 	}
+	status := "indexed"
+	if res.PasswordRequired {
+		status = "password_required"
+	}
 
 	archItem, aerr := h.Store.CreateArchive(ctx, store.CreateArchiveInput{
 		OwnerID:         item.ActorID,
@@ -1129,7 +1169,7 @@ func (h *channelHandlers) processQueueItem(item *telegramQueueItem) {
 		SHA256:          sha,
 		IsEncrypted:     res.IsEncrypted,
 		ArchivePassword: savedPassword,
-		Status:          "indexed",
+		Status:          status,
 		StoragePath:     storagePath,
 		Entries:         storeEntryInputs(res),
 	})
@@ -1142,10 +1182,17 @@ func (h *channelHandlers) processQueueItem(item *telegramQueueItem) {
 		return
 	}
 
-	h.indexDownloadedCookies(archItem.ID, activePath, format, savedPassword, res.Entries)
+	if status == "indexed" {
+		h.indexDownloadedCookies(archItem.ID, activePath, format, savedPassword, res.Entries)
+		h.indexDownloadedCredentials(archItem.ID, activePath, format, savedPassword, res.Entries)
+	}
 	h.queueMu.Lock()
 	item.Stage = "done"
-	item.StatusText = "Indexed into vault"
+	if status == "password_required" {
+		item.StatusText = "Archived (password required)"
+	} else {
+		item.StatusText = "Indexed into vault"
+	}
 	item.ArchiveID = archItem.ID
 	h.queueMu.Unlock()
 }
@@ -1189,6 +1236,31 @@ func (h *channelHandlers) indexDownloadedCookies(archiveID, activePath, format, 
 		}
 		if err := h.Store.SaveArchiveCookieDomains(bgCtx, archiveID, inputs); err != nil {
 			h.logInternal(bgCtx, "saving telegram archive cookie domains failed", err)
+		}
+	}()
+}
+
+func (h *channelHandlers) indexDownloadedCredentials(archiveID, activePath, format, password string, entries []archiveidx.Entry) {
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		defer cancel()
+		chunks := archiveidx.ExtractCredentials(bgCtx, activePath, format, password, entries)
+		if len(chunks) == 0 {
+			return
+		}
+		inputs := make([]store.CredentialInput, 0, len(chunks))
+		for _, ch := range chunks {
+			inputs = append(inputs, store.CredentialInput{
+				EntryPath: ch.EntryPath,
+				EntryName: ch.EntryName,
+				URL:       ch.URL,
+				Domain:    ch.Domain,
+				Login:     ch.Login,
+				Password:  ch.Password,
+			})
+		}
+		if err := h.Store.SaveArchiveCredentials(bgCtx, archiveID, inputs); err != nil {
+			h.logInternal(bgCtx, "saving telegram archive credentials failed", err)
 		}
 	}()
 }

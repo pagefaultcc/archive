@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // storageStats handles GET /api/settings/storage
@@ -35,7 +36,9 @@ func (h *archiveHandlers) storageStats(w http.ResponseWriter, r *http.Request) {
 // directories, orphaned storage blobs not present in the database, and broken symlinks.
 // Returns the total bytes freed and number of items removed.
 func (h *archiveHandlers) CleanTempFilesNow(ctx context.Context) (freedBytes int64, removedCount int, err error) {
-	// 1. Clean temporary upload files in StorageDir and os.TempDir()/archive-uploads
+	cutoff := time.Now().Add(-15 * time.Minute)
+
+	// 1. Clean temporary upload files older than 15 minutes in StorageDir and os.TempDir()/archive-uploads
 	dirs := []string{h.StorageDir, filepath.Join(os.TempDir(), "archive-uploads")}
 	for _, dir := range dirs {
 		entries, rerr := os.ReadDir(dir)
@@ -51,10 +54,10 @@ func (h *archiveHandlers) CleanTempFilesNow(ctx context.Context) (freedBytes int
 				continue
 			}
 			info, ierr := e.Info()
-			var size int64
-			if ierr == nil {
-				size = info.Size()
+			if ierr != nil || info.IsDir() || info.ModTime().After(cutoff) {
+				continue
 			}
+			size := info.Size()
 			full := filepath.Join(dir, name)
 			if os.Remove(full) == nil {
 				freedBytes += size
@@ -63,15 +66,19 @@ func (h *archiveHandlers) CleanTempFilesNow(ctx context.Context) (freedBytes int
 		}
 	}
 
-	// 2. Clean staged downloads in os.TempDir()/archive-downloads
+	// 2. Clean staged downloads older than 15 minutes in os.TempDir()/archive-downloads
 	dlRoot := filepath.Join(os.TempDir(), "archive-downloads")
 	if dlEntries, rerr := os.ReadDir(dlRoot); rerr == nil {
 		for _, e := range dlEntries {
+			info, ierr := e.Info()
+			if ierr != nil || info.ModTime().After(cutoff) {
+				continue
+			}
 			full := filepath.Join(dlRoot, e.Name())
 			var dirSize int64
-			_ = filepath.Walk(full, func(_ string, info os.FileInfo, err error) error {
-				if err == nil && info != nil && !info.IsDir() {
-					dirSize += info.Size()
+			_ = filepath.Walk(full, func(_ string, fi os.FileInfo, err error) error {
+				if err == nil && fi != nil && !fi.IsDir() {
+					dirSize += fi.Size()
 				}
 				return nil
 			})
@@ -82,7 +89,7 @@ func (h *archiveHandlers) CleanTempFilesNow(ctx context.Context) (freedBytes int
 		}
 	}
 
-	// 3. Clean orphaned archive blobs in StorageDir that have no database record
+	// 3. Clean orphaned archive blobs in StorageDir that have no database record and are older than 15 minutes
 	dbArchives, derr := h.Store.GetAllArchivesForReindex(ctx)
 	if derr == nil {
 		validPaths := make(map[string]bool, len(dbArchives))
@@ -94,12 +101,17 @@ func (h *archiveHandlers) CleanTempFilesNow(ctx context.Context) (freedBytes int
 				if e.IsDir() {
 					continue
 				}
-				full := filepath.Clean(filepath.Join(h.StorageDir, e.Name()))
+				name := e.Name()
+				if strings.HasPrefix(name, "tg-download-") || strings.HasPrefix(name, "upload-") {
+					continue
+				}
+				info, ierr := e.Info()
+				if ierr != nil || info.ModTime().After(cutoff) {
+					continue
+				}
+				full := filepath.Clean(filepath.Join(h.StorageDir, name))
 				if !validPaths[full] {
-					var size int64
-					if info, ierr := e.Info(); ierr == nil {
-						size = info.Size()
-					}
+					size := info.Size()
 					if os.Remove(full) == nil {
 						freedBytes += size
 						removedCount++
@@ -108,7 +120,6 @@ func (h *archiveHandlers) CleanTempFilesNow(ctx context.Context) (freedBytes int
 			}
 		}
 	}
-
 	// 4. Clean dangling symlinks in by-name
 	h.sweepNamedLinks()
 

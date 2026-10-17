@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode/utf8"
 )
 
@@ -34,7 +36,7 @@ func ExtractCredentials(
 ) []CredentialChunk {
 	var candidates []Entry
 	for _, e := range entries {
-		if !e.IsDir && isCandidatePasswordFile(e.Path, e.Name, e.SizeBytes) {
+		if !e.IsDir && e.SizeBytes > 0 && e.SizeBytes <= 15*1024*1024 && isCandidatePasswordFile(e.Path, e.Name, e.SizeBytes) {
 			candidates = append(candidates, e)
 		}
 	}
@@ -46,7 +48,7 @@ func ExtractCredentials(
 	// Ultra-fast path: stream candidate password files straight from the zip
 	// central directory in memory with no temporary disk files.
 	if format == "zip" && cleanPw == "" {
-		if chunks := extractZipCandidateCredentials(filePath, candidates); len(chunks) > 0 {
+		if chunks, ok := extractZipCandidateCredentials(filePath, candidates); ok {
 			return chunks
 		}
 	}
@@ -63,19 +65,24 @@ func ExtractCredentials(
 	effectivePath := ResolvePrimaryArchiveVolume(filePath)
 
 	if ok {
+		var relPaths []string
+		for _, c := range candidates {
+			if np := normalizePath(c.Path); np != "" {
+				relPaths = append(relPaths, np)
+			}
+		}
+		if len(relPaths) == 0 {
+			return nil
+		}
+		listFilePath := filepath.Join(tmpDir, "listfile.txt")
+		if err := os.WriteFile(listFilePath, []byte(strings.Join(relPaths, "\n")+"\n"), 0o600); err != nil {
+			return nil
+		}
 		args := []string{
-			"x", "-y", "-bso0", "-bse0", "-mmt=on",
+			"x", "-y", "-spd", "-bso0", "-bse0", "-mmt=on",
 			"-p" + cleanPw,
 			"-o" + tmpDir,
-			"-ir!*password*", "-ir!*Password*", "-ir!*PASSWORD*",
-			"-ir!*passwd*", "-ir!*Passwd*", "-ir!*PASSWD*",
-			"-ir!*credential*", "-ir!*Credential*", "-ir!*CREDENTIAL*",
-			"-ir!*creds*", "-ir!*Creds*",
-			"-xr!*.exe", "-xr!*.dll", "-xr!*.zip", "-xr!*.rar",
-			"-xr!*.7z", "-xr!*.tar", "-xr!*.gz", "-xr!*.sqlite",
-			"-xr!*.sqlite3", "-xr!*.db", "-xr!*.pdf",
-			"-xr!*.png", "-xr!*.jpg", "-xr!*.jpeg", "-xr!*.gif",
-			"-xr!*.mp4", "-xr!*.mp3",
+			"@" + listFilePath,
 			"--", effectivePath,
 		}
 		out, err := run7z(ctx, bin, args)
@@ -84,6 +91,7 @@ func ExtractCredentials(
 			_, _ = run7z(ctx, bin, args)
 		}
 		_ = out
+		_ = os.Remove(listFilePath)
 	} else if format == "zip" {
 		extractZipCredentialsToDir(filePath, tmpDir)
 		if effectivePath != filePath {
@@ -92,7 +100,6 @@ func ExtractCredentials(
 	} else {
 		return nil
 	}
-
 	var result []CredentialChunk
 	_ = filepath.Walk(tmpDir, func(fullPath string, info os.FileInfo, err error) error {
 		if err != nil || info == nil || info.IsDir() {
@@ -205,21 +212,26 @@ func extractZipCredentialsToDir(filePath, tmpDir string) {
 		return
 	}
 	defer zr.Close()
+	cleanTmp := filepath.Clean(tmpDir) + string(filepath.Separator)
 	for _, f := range zr.File {
 		if f.FileInfo().IsDir() {
 			continue
 		}
 		np := normalizePath(f.Name)
-		if !isCandidatePasswordFile(np, filepath.Base(np), int64(f.UncompressedSize64)) {
+		if np == "" || !isCandidatePasswordFile(np, filepath.Base(np), int64(f.UncompressedSize64)) {
+			continue
+		}
+		dest := filepath.Join(tmpDir, filepath.FromSlash(np))
+		cleanDest := filepath.Clean(dest)
+		if !strings.HasPrefix(cleanDest, cleanTmp) {
 			continue
 		}
 		rc, err := f.Open()
 		if err != nil {
 			continue
 		}
-		dest := filepath.Join(tmpDir, filepath.FromSlash(np))
-		_ = os.MkdirAll(filepath.Dir(dest), 0o755)
-		out, err := os.Create(dest)
+		_ = os.MkdirAll(filepath.Dir(cleanDest), 0o755)
+		out, err := os.Create(cleanDest)
 		if err == nil {
 			_, _ = io.Copy(out, io.LimitReader(rc, 15*1024*1024))
 			_ = out.Close()
@@ -228,10 +240,10 @@ func extractZipCredentialsToDir(filePath, tmpDir string) {
 	}
 }
 
-func extractZipCandidateCredentials(filePath string, candidates []Entry) []CredentialChunk {
+func extractZipCandidateCredentials(filePath string, candidates []Entry) ([]CredentialChunk, bool) {
 	zr, err := zip.OpenReader(filePath)
 	if err != nil {
-		return nil
+		return nil, false
 	}
 	defer zr.Close()
 
@@ -249,11 +261,14 @@ func extractZipCandidateCredentials(filePath string, candidates []Entry) []Crede
 
 	var matchedJobs []fileJob
 	for _, f := range zr.File {
+		if f.Flags&0x1 != 0 {
+			return nil, false
+		}
 		if f.FileInfo().IsDir() {
 			continue
 		}
 		np := normalizePath(f.Name)
-		if f.UncompressedSize64 == 0 || f.UncompressedSize64 > 15*1024*1024 {
+		if np == "" || f.UncompressedSize64 == 0 || f.UncompressedSize64 > 15*1024*1024 {
 			continue
 		}
 		base := filepath.Base(np)
@@ -268,7 +283,7 @@ func extractZipCandidateCredentials(filePath string, candidates []Entry) []Crede
 	}
 
 	if len(matchedJobs) == 0 {
-		return nil
+		return nil, true
 	}
 
 	numWorkers := runtime.NumCPU() * 2
@@ -287,6 +302,7 @@ func extractZipCandidateCredentials(filePath string, candidates []Entry) []Crede
 
 	var wg sync.WaitGroup
 	resultsCh := make(chan []CredentialChunk, numWorkers)
+	var openFailed atomic.Bool
 
 	for range numWorkers {
 		wg.Add(1)
@@ -296,6 +312,7 @@ func extractZipCandidateCredentials(filePath string, candidates []Entry) []Crede
 			for job := range jobsCh {
 				rc, err := job.f.Open()
 				if err != nil {
+					openFailed.Store(true)
 					continue
 				}
 				raw, rerr := io.ReadAll(io.LimitReader(rc, 15*1024*1024))
@@ -321,7 +338,10 @@ func extractZipCandidateCredentials(filePath string, candidates []Entry) []Crede
 	for chunkList := range resultsCh {
 		totalChunks = append(totalChunks, chunkList...)
 	}
-	return totalChunks
+	if openFailed.Load() && len(totalChunks) == 0 {
+		return nil, false
+	}
+	return totalChunks, true
 }
 
 // cleanCredentialField strips NUL bytes, BOMs, invisible characters, and
@@ -350,11 +370,24 @@ func looksLikeURL(s string) bool {
 	if strings.ContainsAny(s, " \t") {
 		return false
 	}
-	dot := strings.LastIndex(low, ".")
-	if dot <= 0 || dot == len(low)-1 {
+	if ip := net.ParseIP(s); ip != nil {
+		return true
+	}
+	hostPart := low
+	if slash := strings.IndexByte(hostPart, '/'); slash >= 0 {
+		hostPart = hostPart[:slash]
+	}
+	if h, p, err := net.SplitHostPort(hostPart); err == nil && isDigits(p) {
+		hostPart = h
+	}
+	if ip := net.ParseIP(hostPart); ip != nil {
+		return true
+	}
+	dot := strings.LastIndex(hostPart, ".")
+	if dot <= 0 || dot == len(hostPart)-1 {
 		return false
 	}
-	tld := low[dot+1:]
+	tld := hostPart[dot+1:]
 	if len(tld) < 2 || len(tld) > 24 {
 		return false
 	}
@@ -538,21 +571,23 @@ func splitColonLine(t string) (login, pass, url string, ok bool) {
 			}
 			return segs[2], strings.Join(segs[3:], ":"), t[:idx+3+ci], true
 		}
-		// Path present: first ':' after the path splits login:pass.
+		// Path present: parse credential separators from right-to-left so URLs
+		// with embedded ':' in path/query parameters are not split mid-URL.
 		after := rest[slash+1:]
-		ci := strings.Index(after, ":")
-		if ci < 0 {
+		lastColon := strings.LastIndex(after, ":")
+		if lastColon < 0 {
 			return "", "", "", false
 		}
-		ci += slash + 1 // absolute index in rest
-		abs := idx + 3 + ci
-		li := strings.Index(t[abs+1:], ":")
-		if li < 0 {
+		passPart := after[lastColon+1:]
+		beforeLast := after[:lastColon]
+		prevColon := strings.LastIndex(beforeLast, ":")
+		if prevColon < 0 || strings.HasPrefix(beforeLast[prevColon+1:], "//") {
 			// "url:pass" — no login
-			return "", t[abs+1:], t[:abs], true
+			abs := idx + 3 + slash + 1 + lastColon
+			return "", passPart, t[:abs], true
 		}
-		li += abs + 1
-		return t[abs+1 : li], t[li+1:], t[:abs], true
+		abs := idx + 3 + slash + 1 + prevColon
+		return beforeLast[prevColon+1:], passPart, t[:abs], true
 	}
 
 	// 2. No scheme. Split from the left; password may contain colons, so the

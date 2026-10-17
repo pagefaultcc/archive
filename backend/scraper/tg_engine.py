@@ -131,12 +131,12 @@ async def scrape_messages(api_id: int, api_hash: str, session_str: str, channel_
 
 async def parallel_download_document(client, doc, dest_path, progress_callback=None, max_workers=8):
     from telethon import utils
+    from telethon.errors import FloodWaitError
     from telethon.network import MTProtoSender
     from telethon.tl.alltlobjects import LAYER
     from telethon.tl.functions import InvokeWithLayerRequest
     from telethon.tl.functions.auth import ExportAuthorizationRequest, ImportAuthorizationRequest
     from telethon.tl.functions.upload import GetFileRequest
-
     file_size = getattr(doc, "size", 0)
     if file_size <= 0:
         return await client.download_media(doc, file=dest_path, progress_callback=progress_callback)
@@ -183,11 +183,14 @@ async def parallel_download_document(client, doc, dest_path, progress_callback=N
     with open(dest_path, "wb") as f:
         f.truncate(file_size)
 
+    out_file = open(dest_path, "r+b")
+
     queue = asyncio.Queue()
     for part in range(total_parts):
         queue.put_nowait(part)
 
     downloaded = 0
+    completed_parts = 0
     lock = asyncio.Lock()
     part_retries = {}
     consecutive_errors = 0
@@ -195,12 +198,12 @@ async def parallel_download_document(client, doc, dest_path, progress_callback=N
     abort_event = asyncio.Event()
 
     async def worker(sender):
-        nonlocal downloaded, consecutive_errors, worker_error
-        while not queue.empty() and not abort_event.is_set():
+        nonlocal downloaded, completed_parts, consecutive_errors, worker_error
+        while completed_parts < total_parts and not abort_event.is_set():
             try:
-                part = queue.get_nowait()
-            except asyncio.QueueEmpty:
-                break
+                part = await asyncio.wait_for(queue.get(), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
 
             offset = part * chunk_size
             # Telegram MTProto specification requires limit to be divisible by 4096 (4 KiB)
@@ -213,16 +216,20 @@ async def parallel_download_document(client, doc, dest_path, progress_callback=N
                     client._call(sender, GetFileRequest(location, offset=offset, limit=limit)),
                     timeout=40.0
                 )
-                with open(dest_path, "r+b") as f:
-                    f.seek(offset)
-                    f.write(res.bytes)
-
                 async with lock:
+                    out_file.seek(offset)
+                    out_file.write(res.bytes)
                     downloaded += len(res.bytes)
+                    completed_parts += 1
                     consecutive_errors = 0
                     if progress_callback:
                         progress_callback(downloaded, file_size)
                 queue.task_done()
+            except FloodWaitError as e:
+                await queue.put(part)
+                queue.task_done()
+                wait_secs = min(getattr(e, "seconds", 5) + 1, 60)
+                await asyncio.sleep(wait_secs)
             except Exception as e:
                 async with lock:
                     consecutive_errors += 1
@@ -233,14 +240,17 @@ async def parallel_download_document(client, doc, dest_path, progress_callback=N
                 if "file reference" in err_str or "filereference" in err_str:
                     worker_error = e
                     abort_event.set()
+                    queue.task_done()
                     break
 
                 if err_cnt > 3 or consecutive_errors > 12:
                     worker_error = e
                     abort_event.set()
+                    queue.task_done()
                     break
 
                 await queue.put(part)
+                queue.task_done()
                 await asyncio.sleep(0.5)
 
     try:
@@ -250,6 +260,10 @@ async def parallel_download_document(client, doc, dest_path, progress_callback=N
         if downloaded < file_size:
             raise RuntimeError(f"Parallel download incomplete: {downloaded}/{file_size} bytes downloaded")
     finally:
+        try:
+            out_file.close()
+        except Exception:
+            pass
         for s in all_senders:
             try:
                 await s.disconnect()

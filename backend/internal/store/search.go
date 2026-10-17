@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -51,13 +50,7 @@ func detectQueryMode(raw string) (cleaned string, mode string) {
 	if strings.ContainsAny(s, `^$*+?()[]{}|\\`) {
 		return s, "regex"
 	}
-	if !strings.ContainsAny(s, ` /\\`) && strings.Contains(s, ".") {
-		ext := filepath.Ext(s)
-		if len(ext) >= 2 && len(ext) <= 6 && !strings.HasPrefix(s, ".") {
-			return s, "exact"
-		}
-	}
-	// 4. Default: substring
+	// 3. Default: substring (including domain/filename queries like openai.com or passwords.txt)
 	return s, "substring"
 }
 
@@ -75,7 +68,12 @@ func (s *Store) SearchArchiveEntries(ctx context.Context, f SearchFilters) ([]Ar
 		var countTotal int64
 		err := s.pool.QueryRow(ctx, `SELECT reltuples::bigint FROM pg_class WHERE relname = 'archive_entries'`).Scan(&countTotal)
 		if err != nil || countTotal <= 0 {
-			if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM archive_entries WHERE is_dir = false`).Scan(&countTotal); err != nil {
+			if err := s.pool.QueryRow(ctx, `
+				SELECT count(*)
+				FROM archive_entries e
+				JOIN archives a ON a.id = e.archive_id
+				WHERE e.is_dir = false AND a.status = 'indexed'
+			`).Scan(&countTotal); err != nil {
 				return nil, 0, fmt.Errorf("counting archive entries: %w", err)
 			}
 		}
@@ -85,7 +83,7 @@ func (s *Store) SearchArchiveEntries(ctx context.Context, f SearchFilters) ([]Ar
 			       e.size_bytes, e.packed_bytes, e.crc32, e.encrypted, e.modified_at
 			FROM archive_entries e
 			JOIN archives a ON a.id = e.archive_id
-			WHERE e.is_dir = false
+			WHERE e.is_dir = false AND a.status = 'indexed'
 			ORDER BY e.id DESC
 			LIMIT $1 OFFSET $2;
 		`, f.Limit, f.Offset)
@@ -111,10 +109,9 @@ func (s *Store) SearchArchiveEntries(ctx context.Context, f SearchFilters) ([]Ar
 		return results, countTotal, rows.Err()
 	}
 
-	whereClauses := []string{"e.is_dir = false"}
+	whereClauses := []string{"e.is_dir = false", "a.status = 'indexed'"}
 	args := []any{}
 	argID := 1
-
 	addCond := func(clause string, val any) {
 		whereClauses = append(whereClauses, fmt.Sprintf(clause, argID))
 		args = append(args, val)
@@ -142,7 +139,8 @@ func (s *Store) SearchArchiveEntries(ctx context.Context, f SearchFilters) ([]Ar
 		} else if f.IsRegex || mode == "regex" {
 			addCond("e.name ~* $%d", fn)
 		} else {
-			addCond("lower(e.name) LIKE '%%' || lower($%d) || '%%'", fn)
+			escapedFn := escapeLike(fn)
+			addCond("lower(e.name) LIKE '%%' || lower($%d) || '%%' ESCAPE '\\'", escapedFn)
 		}
 	}
 
@@ -156,9 +154,10 @@ func (s *Store) SearchArchiveEntries(ctx context.Context, f SearchFilters) ([]Ar
 			args = append(args, q, q)
 			argID += 2
 		} else {
-			clause := fmt.Sprintf("(lower(e.name) LIKE '%%' || lower($%d) || '%%' OR lower(e.path) LIKE '%%' || lower($%d) || '%%')", argID, argID+1)
+			escapedQ := escapeLike(q)
+			clause := fmt.Sprintf("(lower(e.name) LIKE '%%' || lower($%d) || '%%' ESCAPE '\\' OR lower(e.path) LIKE '%%' || lower($%d) || '%%' ESCAPE '\\')", argID, argID+1)
 			whereClauses = append(whereClauses, clause)
-			args = append(args, q, q)
+			args = append(args, escapedQ, escapedQ)
 			argID += 2
 		}
 	}
@@ -167,7 +166,7 @@ func (s *Store) SearchArchiveEntries(ctx context.Context, f SearchFilters) ([]Ar
 
 	// Get count (capped timeout/estimate for instant response)
 	var countTotal int64
-	countSQL := fmt.Sprintf("SELECT count(*) FROM archive_entries e WHERE %s", whereSQL)
+	countSQL := fmt.Sprintf("SELECT count(*) FROM archive_entries e JOIN archives a ON a.id = e.archive_id WHERE %s", whereSQL)
 	cctx, ccancel := context.WithTimeout(ctx, 3*time.Second)
 	_ = s.pool.QueryRow(cctx, countSQL, args...).Scan(&countTotal)
 	ccancel()

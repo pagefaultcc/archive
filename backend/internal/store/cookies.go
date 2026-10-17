@@ -6,6 +6,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"archive/backend/internal/archiveidx"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -74,11 +75,16 @@ func (s *Store) InvalidateCookieCache() {
 	s.cookieCache.domainLogs = make(map[string][]CookieDomainLogItem)
 	s.cookieCache.logsMu.Unlock()
 
-	// Asynchronously warm without setting allDomains to nil
+	s.cookieCache.mu.Lock()
+	s.cookieCache.populated = false
+	s.cookieCache.version++
+	s.cookieCache.mu.Unlock()
+
+	// Asynchronously reload domain summaries without clearing allDomains mid-flight
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		_ = s.ensureCookieDomainsLoaded(ctx)
+		_ = s.reloadCookieDomains(ctx)
 	}()
 }
 
@@ -91,20 +97,74 @@ func (s *Store) ensureCookieDomainsLoaded(ctx context.Context) error {
 	}
 	s.cookieCache.mu.RUnlock()
 
-	// Single-flight guard: only 1 background loader runs at a time
-	if !s.cookieCache.loading.CompareAndSwap(false, true) {
-		return nil
-	}
-	defer s.cookieCache.loading.Store(false)
+	return s.reloadCookieDomains(ctx)
+}
 
+// reloadCookieDomains executes the domain aggregation query outside any lock and
+// atomically swaps the in-memory cookie domain summary cache.
+func (s *Store) reloadCookieDomains(ctx context.Context) error {
+	for {
+		s.cookieCache.mu.Lock()
+		if s.cookieCache.waitCh != nil {
+			ch := s.cookieCache.waitCh
+			s.cookieCache.mu.Unlock()
+			select {
+			case <-ch:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+			s.cookieCache.mu.RLock()
+			pop := s.cookieCache.populated
+			s.cookieCache.mu.RUnlock()
+			if pop {
+				return nil
+			}
+			continue
+		}
+		ch := make(chan struct{})
+		s.cookieCache.waitCh = ch
+		startVer := s.cookieCache.version
+		s.cookieCache.loading.Store(true)
+		s.cookieCache.mu.Unlock()
+
+		all, tLogs, tCookies, err := s.queryCookieDomainSummaries(ctx)
+
+		s.cookieCache.mu.Lock()
+		s.cookieCache.loading.Store(false)
+		s.cookieCache.waitCh = nil
+		if err == nil {
+			s.cookieCache.allDomains = all
+			s.cookieCache.totalDomains = int64(len(all))
+			s.cookieCache.totalLogs = tLogs
+			s.cookieCache.totalCookies = tCookies
+			if s.cookieCache.version == startVer {
+				s.cookieCache.populated = true
+			}
+		}
+		close(ch)
+		needRerun := err == nil && s.cookieCache.version != startVer
+		s.cookieCache.mu.Unlock()
+
+		if err != nil {
+			return err
+		}
+		if !needRerun {
+			return nil
+		}
+	}
+}
+
+func (s *Store) queryCookieDomainSummaries(ctx context.Context) ([]CookieDomainSummary, int64, int64, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT domain, count(*) AS log_count, coalesce(sum(cookie_count), 0) AS total_cookies
-		FROM archive_cookie_domains
-		GROUP BY domain
-		ORDER BY log_count DESC, total_cookies DESC, domain ASC;
+		SELECT c.domain, count(*) AS log_count, coalesce(sum(c.cookie_count), 0) AS total_cookies
+		FROM archive_cookie_domains c
+		JOIN archives a ON a.id = c.archive_id
+		WHERE a.status = 'indexed'
+		GROUP BY c.domain
+		ORDER BY log_count DESC, total_cookies DESC, c.domain ASC;
 	`)
 	if err != nil {
-		return err
+		return nil, 0, 0, err
 	}
 	defer rows.Close()
 
@@ -113,26 +173,19 @@ func (s *Store) ensureCookieDomainsLoaded(ctx context.Context) error {
 	for rows.Next() {
 		var d CookieDomainSummary
 		if err := rows.Scan(&d.Domain, &d.LogCount, &d.TotalCookies); err != nil {
-			return err
+			return nil, 0, 0, err
 		}
 		all = append(all, d)
 		tLogs += d.LogCount
 		tCookies += d.TotalCookies
 	}
 	if err := rows.Err(); err != nil {
-		return err
+		return nil, 0, 0, err
 	}
 	if all == nil {
 		all = []CookieDomainSummary{}
 	}
-	s.cookieCache.mu.Lock()
-	s.cookieCache.allDomains = all
-	s.cookieCache.totalDomains = int64(len(all))
-	s.cookieCache.totalLogs = tLogs
-	s.cookieCache.totalCookies = tCookies
-	s.cookieCache.populated = true
-	s.cookieCache.mu.Unlock()
-	return nil
+	return all, tLogs, tCookies, nil
 }
 
 // CookieDomainSummary aggregates stats for a single root domain across all archives.
@@ -225,6 +278,11 @@ func (s *Store) ListLogsForCookieDomain(ctx context.Context, domain, query strin
 	if limit <= 0 || limit > 500 {
 		limit = 250
 	}
+	if norm := archiveidx.NormalizeRootDomain(domain); norm != "" {
+		domain = norm
+	} else {
+		domain = strings.ToLower(strings.TrimSpace(domain))
+	}
 
 	s.cookieCache.logsMu.RLock()
 	cachedLogs, ok := s.cookieCache.domainLogs[domain]
@@ -235,7 +293,7 @@ func (s *Store) ListLogsForCookieDomain(ctx context.Context, domain, query strin
 			SELECT c.id, c.archive_id, a.filename, c.entry_path, c.entry_name, c.domain, c.cookie_count, c.netscape_text, c.json_text
 			FROM archive_cookie_domains c
 			JOIN archives a ON a.id = c.archive_id
-			WHERE c.domain = $1
+			WHERE c.domain = $1 AND a.status = 'indexed'
 			ORDER BY c.cookie_count DESC, c.id DESC
 			LIMIT 250;
 		`, domain)
@@ -297,6 +355,11 @@ func (s *Store) ListLogsForCookieDomain(ctx context.Context, domain, query strin
 
 // GetCookieLogsForDownload fetches all or N random log cookie files for a domain.
 func (s *Store) GetCookieLogsForDownload(ctx context.Context, domain string, randomCount int) ([]CookieDomainLogItem, error) {
+	if norm := archiveidx.NormalizeRootDomain(domain); norm != "" {
+		domain = norm
+	} else {
+		domain = strings.ToLower(strings.TrimSpace(domain))
+	}
 	var rows pgx.Rows
 	var err error
 	if randomCount > 0 {
@@ -304,7 +367,7 @@ func (s *Store) GetCookieLogsForDownload(ctx context.Context, domain string, ran
 			SELECT c.id, c.archive_id, a.filename, c.entry_path, c.entry_name, c.domain, c.cookie_count, c.netscape_text, c.json_text
 			FROM archive_cookie_domains c
 			JOIN archives a ON a.id = c.archive_id
-			WHERE c.domain = $1
+			WHERE c.domain = $1 AND a.status = 'indexed'
 			ORDER BY random()
 			LIMIT $2;
 		`, domain, randomCount)
@@ -313,7 +376,7 @@ func (s *Store) GetCookieLogsForDownload(ctx context.Context, domain string, ran
 			SELECT c.id, c.archive_id, a.filename, c.entry_path, c.entry_name, c.domain, c.cookie_count, c.netscape_text, c.json_text
 			FROM archive_cookie_domains c
 			JOIN archives a ON a.id = c.archive_id
-			WHERE c.domain = $1
+			WHERE c.domain = $1 AND a.status = 'indexed'
 			ORDER BY c.id ASC;
 		`, domain)
 	}

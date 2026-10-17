@@ -26,8 +26,27 @@ export type ApiError = {
 
 export type ApiResult<T> =
   | { ok: true; data: T }
-  | { ok: false; status: number; error: ApiError | null; networkError?: boolean };
+  | {
+      ok: false;
+      status: number;
+      error: ApiError | null;
+      networkError?: boolean;
+      aborted?: boolean;
+    };
 
+export function formatApiError(
+  error: ApiError | null | undefined,
+  fallback = "Operation failed",
+): string {
+  if (!error) return fallback;
+  if (error.fields) {
+    const firstFieldMsg = Object.values(error.fields).find(
+      (v) => typeof v === "string" && v.trim().length > 0,
+    );
+    if (firstFieldMsg) return firstFieldMsg;
+  }
+  return error.message || fallback;
+}
 export class ApiRequestError extends Error {
   readonly status: number;
   readonly code: ApiErrorCode | null;
@@ -69,7 +88,14 @@ export async function request<T>(
   let response: Response;
   try {
     response = await fetch(path, { ...init, cache: "no-store" });
-  } catch {
+  } catch (err) {
+    if (
+      init.signal?.aborted ||
+      (err instanceof DOMException && err.name === "AbortError") ||
+      (err instanceof Error && err.name === "AbortError")
+    ) {
+      return { ok: false, status: 0, error: null, aborted: true };
+    }
     return { ok: false, status: 0, error: null, networkError: true };
   }
 
@@ -80,7 +106,14 @@ export async function request<T>(
   let body: unknown = null;
   try {
     body = await response.json();
-  } catch {
+  } catch (err) {
+    if (
+      init.signal?.aborted ||
+      (err instanceof DOMException && err.name === "AbortError") ||
+      (err instanceof Error && err.name === "AbortError")
+    ) {
+      return { ok: false, status: 0, error: null, aborted: true };
+    }
     body = null;
   }
 
@@ -90,6 +123,9 @@ export async function request<T>(
       status: response.status,
       error: parseErrorEnvelope(body),
     };
+  }
+  if (body === null) {
+    return { ok: false, status: response.status, error: null, networkError: true };
   }
   return { ok: true, data: body as T };
 }

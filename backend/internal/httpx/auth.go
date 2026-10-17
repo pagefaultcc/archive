@@ -330,6 +330,19 @@ func (h *AuthHandlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, WithFields(map[string]string{"newPassword": "New password must be between 8 and 128 characters."}))
 		return
 	}
+	if h.Limiter != nil {
+		release, err := h.Limiter.Acquire(r.Context(), dummyVerifyWait)
+		if err != nil {
+			if errors.Is(err, auth.ErrBusy) {
+				w.Header().Set("Retry-After", "2")
+				WriteError(w, AuthenticationBusy)
+				return
+			}
+			WriteError(w, InternalServerError)
+			return
+		}
+		defer release()
+	}
 
 	// 1. Verify current password
 	hash, err := h.Store.GetUserPasswordHash(r.Context(), actor.ID)

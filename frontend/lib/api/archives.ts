@@ -66,22 +66,31 @@ export function browserListArchives() {
 export function browserGetArchive(
   archiveId: string,
   params?: { parent?: string; q?: string },
+  options?: AbortSignal | { signal?: AbortSignal },
 ) {
+  const signal =
+    options && "aborted" in options ? options : options?.signal;
   const qs = new URLSearchParams();
   if (params?.parent !== undefined) qs.set("parent", params.parent);
   if (params?.q) qs.set("q", params.q);
   const query = qs.toString();
   return request<ArchiveDetail>(
     `/api/archives/${encodeURIComponent(archiveId)}${query ? `?${query}` : ""}`,
-    { method: "GET" },
+    { method: "GET", signal },
   );
 }
 
-export function browserPreviewArchiveFile(archiveId: string, path: string) {
+export function browserPreviewArchiveFile(
+  archiveId: string,
+  path: string,
+  options?: AbortSignal | { signal?: AbortSignal },
+) {
+  const signal =
+    options && "aborted" in options ? options : options?.signal;
   const qs = new URLSearchParams({ path });
   return request<ArchiveFilePreview>(
     `/api/archives/${encodeURIComponent(archiveId)}/file?${qs.toString()}`,
-    { method: "GET" },
+    { method: "GET", signal },
   );
 }
 

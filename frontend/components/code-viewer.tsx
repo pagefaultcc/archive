@@ -30,11 +30,18 @@ export function CodeViewer({
     return normalizedContent.split("\n");
   }, [normalizedContent]);
 
+  const MAX_PREVIEW_LINES = 2500;
+  const isCapped = lines.length > MAX_PREVIEW_LINES;
+  const visibleLines = useMemo(
+    () => (isCapped ? lines.slice(0, MAX_PREVIEW_LINES) : lines),
+    [isCapped, lines],
+  );
+
   const isJSON = ext === "json";
 
   return (
     <div className="rounded-[6px] border border-[rgba(255,255,255,0.05)] bg-[#08090a] p-3 font-mono text-[12.5px] leading-[20px]">
-      {lines.map((line, idx) => {
+      {visibleLines.map((line, idx) => {
         const renderedLine = isJSON ? highlightJSONLine(line) : highlightTextLine(line);
 
         return (
@@ -58,6 +65,11 @@ export function CodeViewer({
           </div>
         );
       })}
+      {isCapped ? (
+        <div className="mt-2 border-t border-[rgba(255,255,255,0.05)] pt-2 text-center font-sans text-xs text-[#8a8f98]">
+          Preview capped at 2,500 lines — download file for full contents
+        </div>
+      ) : null}
     </div>
   );
 }

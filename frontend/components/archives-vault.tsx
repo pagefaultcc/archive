@@ -151,6 +151,9 @@ export function ArchivesVault({
 }) {
   const router = useRouter();
   const [archives, setArchives] = useState<ArchiveItem[]>(initialArchives);
+  useEffect(() => {
+    setArchives(initialArchives);
+  }, [initialArchives]);
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
@@ -338,7 +341,11 @@ export function ArchivesVault({
       );
 
       router.refresh();
-      if (files.length === 1 && lastUploadedArchive) {
+      if (
+        files.length === 1 &&
+        lastUploadedArchive &&
+        lastUploadedArchive.status === "indexed"
+      ) {
         router.push(`/archives/${lastUploadedArchive.id}`);
       }
     },
@@ -529,6 +536,8 @@ export function ArchivesVault({
     }
   }, [passwordOverrideMap, scrapedItems, selectedChannelId, selectedMsgMap]);
 
+  const seenCompletedRef = useRef<Set<string> | null>(null);
+
   // Periodic server queue monitor (runs even when modal is closed)
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -538,11 +547,29 @@ export function ArchivesVault({
       const res = await browserGetTelegramQueue();
       if (!cancelled && res.ok) {
         setServerQueue(res.data);
-        if (res.data.active && res.data.active.stage === "done") {
-          router.refresh();
+        const completedDoneIds = (res.data.completed ?? [])
+          .filter((it) => it.stage === "done")
+          .map((it) => it.id);
+        if (seenCompletedRef.current === null) {
+          seenCompletedRef.current = new Set(completedDoneIds);
+        } else {
+          let sawNewCompletion = false;
+          for (const id of completedDoneIds) {
+            if (!seenCompletedRef.current.has(id)) {
+              seenCompletedRef.current.add(id);
+              sawNewCompletion = true;
+            }
+          }
+          if (
+            sawNewCompletion ||
+            (res.data.active && res.data.active.stage === "done")
+          ) {
+            router.refresh();
+          }
         }
       }
-      const hasActive = res.ok && (res.data.active !== null || res.data.pendingCount > 0);
+      const hasActive =
+        res.ok && (res.data.active !== null || res.data.pendingCount > 0);
       const nextDelay = hasActive ? 1000 : 5000;
       if (!cancelled) {
         timer = setTimeout(poll, nextDelay);
@@ -1037,6 +1064,7 @@ export function ArchivesVault({
             const pendingId = unlockArchive.id;
             setUnlockArchive(null);
             setUnlockError(null);
+            setArchives((prev) => prev.filter((a) => a.id !== pendingId));
             void browserDeleteArchive(pendingId);
           }
         }}

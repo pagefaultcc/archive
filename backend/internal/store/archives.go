@@ -121,8 +121,8 @@ func (s *Store) CreateArchive(ctx context.Context, in CreateArchiveInput) (Archi
 			 file_count, dir_count, uncompressed_bytes, storage_path)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id::text, created_at
-	`, in.OwnerID, in.Filename, in.Format, in.SizeBytes, in.SHA256, in.IsEncrypted,
-		in.ArchivePassword, in.Status, stats.FileCount, stats.DirCount,
+	`, in.OwnerID, sanitizePGText(in.Filename), in.Format, in.SizeBytes, in.SHA256, in.IsEncrypted,
+		sanitizePGText(in.ArchivePassword), in.Status, stats.FileCount, stats.DirCount,
 		stats.UncompressedBytes, in.StoragePath).Scan(&id, &createdAt)
 	if err != nil {
 		return ArchiveItem{}, fmt.Errorf("inserting archive: %w", err)
@@ -135,8 +135,18 @@ func (s *Store) CreateArchive(ctx context.Context, in CreateArchiveInput) (Archi
 				"size_bytes", "packed_bytes", "crc32", "encrypted", "modified_at"},
 			pgx.CopyFromSlice(len(in.Entries), func(i int) ([]any, error) {
 				e := in.Entries[i]
-				return []any{id, e.Path, e.ParentPath, e.Name, e.IsDir,
-					e.SizeBytes, e.PackedBytes, e.CRC32, e.Encrypted, e.ModifiedAt}, nil
+				return []any{
+					id,
+					sanitizePGText(e.Path),
+					sanitizePGText(e.ParentPath),
+					sanitizePGText(e.Name),
+					e.IsDir,
+					e.SizeBytes,
+					e.PackedBytes,
+					sanitizePGText(e.CRC32),
+					e.Encrypted,
+					e.ModifiedAt,
+				}, nil
 			})); err != nil {
 			return ArchiveItem{}, fmt.Errorf("inserting archive entries: %w", err)
 		}
@@ -225,14 +235,15 @@ func (s *Store) GetArchiveDetail(ctx context.Context, id, parentPath, query stri
 
 	var entries []ArchiveEntry
 	if query != "" {
+		escapedQuery := escapeLike(strings.ToLower(sanitizePGText(query)))
 		rows, err := s.pool.Query(ctx, `
 			SELECT id, path, parent_path, name, is_dir, size_bytes, packed_bytes,
 			       crc32, encrypted, modified_at
 			FROM archive_entries
-			WHERE archive_id = $1 AND position(lower($2) in lower(path)) > 0
+			WHERE archive_id = $1 AND lower(path) LIKE '%' || $2 || '%' ESCAPE '\'
 			ORDER BY path ASC
 			LIMIT 1000
-		`, id, query)
+		`, id, escapedQuery)
 		if err != nil {
 			return ArchiveDetail{}, fmt.Errorf("searching archive entries: %w", err)
 		}
@@ -328,8 +339,18 @@ func (s *Store) UnlockArchive(ctx context.Context, id, actorID, archivePassword 
 				"size_bytes", "packed_bytes", "crc32", "encrypted", "modified_at"},
 			pgx.CopyFromSlice(len(entries), func(i int) ([]any, error) {
 				e := entries[i]
-				return []any{id, e.Path, e.ParentPath, e.Name, e.IsDir,
-					e.SizeBytes, e.PackedBytes, e.CRC32, e.Encrypted, e.ModifiedAt}, nil
+				return []any{
+					id,
+					sanitizePGText(e.Path),
+					sanitizePGText(e.ParentPath),
+					sanitizePGText(e.Name),
+					e.IsDir,
+					e.SizeBytes,
+					e.PackedBytes,
+					sanitizePGText(e.CRC32),
+					e.Encrypted,
+					e.ModifiedAt,
+				}, nil
 			})); err != nil {
 			return ArchiveItem{}, fmt.Errorf("inserting archive entries: %w", err)
 		}
@@ -353,8 +374,14 @@ func (s *Store) MarkArchiveDeleting(ctx context.Context, id string) error {
 // DeleteArchive removes the archives row (cascading entries), deletes the
 // stored file, and writes the archive.deleted audit row in one transaction.
 func (s *Store) DeleteArchive(ctx context.Context, id, actorID string) (storagePath string, err error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("beginning archive delete: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	var path string
-	err = s.pool.QueryRow(ctx, `SELECT storage_path FROM archives WHERE id = $1`, id).Scan(&path)
+	err = tx.QueryRow(ctx, `SELECT storage_path FROM archives WHERE id = $1`, id).Scan(&path)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", ErrNotFound
 	}
@@ -362,19 +389,17 @@ func (s *Store) DeleteArchive(ctx context.Context, id, actorID string) (storageP
 		return "", fmt.Errorf("loading archive for delete: %w", err)
 	}
 
-	// Direct indexed deletes run far faster than cascade triggers on large tables
-	_, _ = s.pool.Exec(ctx, `DELETE FROM archive_cookie_domains WHERE archive_id = $1`, id)
-	_, _ = s.pool.Exec(ctx, `DELETE FROM archive_credentials WHERE archive_id = $1`, id)
-	_, _ = s.pool.Exec(ctx, `DELETE FROM archive_entries WHERE archive_id = $1`, id)
-
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return "", fmt.Errorf("beginning archive delete: %w", err)
+	// Direct indexed deletes inside the transaction
+	if _, err := tx.Exec(ctx, `DELETE FROM archive_cookie_domains WHERE archive_id = $1`, id); err != nil {
+		return "", fmt.Errorf("deleting archive cookie domains: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	_, err = tx.Exec(ctx, `DELETE FROM archives WHERE id = $1`, id)
-	if err != nil {
+	if _, err := tx.Exec(ctx, `DELETE FROM archive_credentials WHERE archive_id = $1`, id); err != nil {
+		return "", fmt.Errorf("deleting archive credentials: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM archive_entries WHERE archive_id = $1`, id); err != nil {
+		return "", fmt.Errorf("deleting archive entries: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM archives WHERE id = $1`, id); err != nil {
 		return "", fmt.Errorf("deleting archive: %w", err)
 	}
 	if err := txAudit(ctx, tx, actorID, "archive.deleted", "archive", id,
@@ -386,6 +411,20 @@ func (s *Store) DeleteArchive(ctx context.Context, id, actorID string) (storageP
 	}
 	s.InvalidateCookieCache()
 	return path, nil
+}
+
+// HasArchiveWithStoragePath reports whether any archive row still references storagePath.
+func (s *Store) HasArchiveWithStoragePath(ctx context.Context, storagePath string) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM archives WHERE storage_path = $1)`, storagePath).Scan(&exists)
+	return exists, err
+}
+
+// SetArchivePassword updates the stored archive_password for an archive.
+func (s *Store) SetArchivePassword(ctx context.Context, id, password string) error {
+	password = sanitizePGText(strings.Trim(strings.TrimSpace(password), "`'\""))
+	_, err := s.pool.Exec(ctx, `UPDATE archives SET archive_password = $2 WHERE id = $1`, id, password)
+	return err
 }
 
 // GetArchiveEntryForRead resolves one indexed entry by path along with the
@@ -503,8 +542,18 @@ func (s *Store) ApplyReindexedEntries(
 				"size_bytes", "packed_bytes", "crc32", "encrypted", "modified_at"},
 			pgx.CopyFromSlice(len(entries), func(i int) ([]any, error) {
 				e := entries[i]
-				return []any{id, e.Path, e.ParentPath, e.Name, e.IsDir,
-					e.SizeBytes, e.PackedBytes, e.CRC32, e.Encrypted, e.ModifiedAt}, nil
+				return []any{
+					id,
+					sanitizePGText(e.Path),
+					sanitizePGText(e.ParentPath),
+					sanitizePGText(e.Name),
+					e.IsDir,
+					e.SizeBytes,
+					e.PackedBytes,
+					sanitizePGText(e.CRC32),
+					e.Encrypted,
+					e.ModifiedAt,
+				}, nil
 			})); err != nil {
 			return ArchiveItem{}, fmt.Errorf("inserting reindexed entries: %w", err)
 		}

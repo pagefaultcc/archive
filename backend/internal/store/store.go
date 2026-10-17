@@ -63,7 +63,9 @@ type Store struct {
 type cookieDomainCache struct {
 	mu           sync.RWMutex
 	populated    bool
+	version      uint64
 	loading      atomic.Bool
+	waitCh       chan struct{}
 	allDomains   []CookieDomainSummary
 	totalDomains int64
 	totalLogs    int64

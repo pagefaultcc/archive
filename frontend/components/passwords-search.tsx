@@ -44,55 +44,57 @@ export function PasswordsSearch() {
   const searchTimerRef = useRef<number | undefined>(undefined);
   const searchAbortRef = useRef<AbortController | null>(null);
   const offsetRef = useRef(0);
+  const qRef = useRef(q);
+  qRef.current = q;
 
-  const executeSearch = useCallback(
-    async (queryOverride?: string) => {
-      searchAbortRef.current?.abort();
-      const ctrl = new AbortController();
-      searchAbortRef.current = ctrl;
+  const executeSearch = useCallback(async (queryOverride?: string) => {
+    searchAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    searchAbortRef.current = ctrl;
 
-      setIsSearching(true);
-      const query = (queryOverride !== undefined ? queryOverride : q).trim();
-      const t0 = performance.now();
+    setIsSearching(true);
+    const query = (
+      queryOverride !== undefined ? queryOverride : qRef.current
+    ).trim();
+    const t0 = performance.now();
 
-      try {
-        const res = await browserSearchCredentials(
-          {
-            q: query || undefined,
-            limit: PAGE_SIZE,
-            offset: 0,
-          },
-          { signal: ctrl.signal },
-        );
-        if (ctrl.signal.aborted) return;
-        const dt = Math.round(performance.now() - t0);
-        setSearchDurationMs(dt);
+    try {
+      const res = await browserSearchCredentials(
+        {
+          q: query || undefined,
+          limit: PAGE_SIZE,
+          offset: 0,
+        },
+        { signal: ctrl.signal },
+      );
+      if (ctrl.signal.aborted || (!res.ok && res.aborted)) return;
+      const dt = Math.round(performance.now() - t0);
+      setSearchDurationMs(dt);
 
-        if (res.ok) {
-          setResults(res.data.results);
-          setTotalCount(res.data.totalCount);
-          setHasMore(res.data.hasMore);
-          offsetRef.current = res.data.results.length;
-        } else {
-          toast.error(res.error?.message ?? "Failed to search credentials.");
-        }
-      } catch {
-        // Aborted or network error
-      } finally {
-        if (!ctrl.signal.aborted) {
-          setIsSearching(false);
-        }
+      if (res.ok) {
+        setResults(res.data.results);
+        setTotalCount(res.data.totalCount);
+        setHasMore(res.data.hasMore);
+        offsetRef.current = res.data.results.length;
+      } else {
+        toast.error(res.error?.message ?? "Failed to search credentials.");
       }
-    },
-    [q],
-  );
+    } catch {
+      // Aborted or network error
+    } finally {
+      if (!ctrl.signal.aborted) {
+        setIsSearching(false);
+      }
+    }
+  }, []);
 
   const loadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
 
-    const query = q.trim();
+    const query = qRef.current.trim();
     const currentOffset = offsetRef.current;
+    const signal = searchAbortRef.current?.signal;
 
     try {
       const res = await browserSearchCredentials(
@@ -101,9 +103,9 @@ export function PasswordsSearch() {
           limit: PAGE_SIZE,
           offset: currentOffset,
         },
-        { signal: searchAbortRef.current?.signal },
+        { signal },
       );
-      if (searchAbortRef.current?.signal.aborted) return;
+      if (signal?.aborted || (!res.ok && res.aborted)) return;
 
       if (res.ok) {
         setResults((prev) => [...prev, ...res.data.results]);
@@ -116,25 +118,27 @@ export function PasswordsSearch() {
     } catch {
       // Aborted or network error
     } finally {
-      setIsLoadingMore(false);
+      if (!signal?.aborted) {
+        setIsLoadingMore(false);
+      }
     }
-  }, [hasMore, isLoadingMore, q]);
+  }, [hasMore, isLoadingMore]);
 
   const handleQueryChange = (val: string) => {
     setQ(val);
     clearTimeout(searchTimerRef.current);
     searchTimerRef.current = window.setTimeout(() => {
-      executeSearch(val);
+      void executeSearch(val);
     }, 250);
   };
 
   const handleImmediateSearch = () => {
     clearTimeout(searchTimerRef.current);
-    executeSearch(q);
+    void executeSearch(q);
   };
 
   useEffect(() => {
-    executeSearch();
+    void executeSearch("");
     return () => {
       searchAbortRef.current?.abort();
       clearTimeout(searchTimerRef.current);

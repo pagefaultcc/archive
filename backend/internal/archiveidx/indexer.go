@@ -163,10 +163,8 @@ func IndexFile(ctx context.Context, filePath, format, password string) (Result, 
 		return res, fmt.Errorf("%w: %s", ErrNoTool, format)
 	}
 	args := []string{"l", "-slt", "-p" + password, "--", filePath}
-	out, err := run7z(ctx, bin, args)
-
-	entries, perr := parseListing(out)
-	if perr == nil && len(entries) > 0 {
+	entries, out, err := run7zListing(ctx, bin, args)
+	if len(entries) > 0 {
 		firstEncryptedPath := ""
 		for _, e := range entries {
 			if e.Encrypted {
@@ -206,15 +204,12 @@ func IndexFile(ctx context.Context, filePath, format, password string) (Result, 
 			res.IsEncrypted = true
 			res.HeaderEncrypted = true
 			for _, cand := range DefaultPasswords() {
-				outCand, errCand := run7z(ctx, bin, []string{"l", "-slt", "-p" + cand, "--", filePath})
-				if errCand == nil {
-					entriesCand, perrCand := parseListing(outCand)
-					if perrCand == nil && len(entriesCand) > 0 {
-						res.MatchedPassword = cand
-						res.PasswordRequired = false
-						res.Entries = entriesCand
-						return res, nil
-					}
+				entriesCand, _, errCand := run7zListing(ctx, bin, []string{"l", "-slt", "-p" + cand, "--", filePath})
+				if errCand == nil && len(entriesCand) > 0 {
+					res.MatchedPassword = cand
+					res.PasswordRequired = false
+					res.Entries = entriesCand
+					return res, nil
 				}
 			}
 			if password == "" {
@@ -237,7 +232,7 @@ func IndexFile(ctx context.Context, filePath, format, password string) (Result, 
 // verify runs `7z t` on the first encrypted entry (or the archive if none) to
 // validate the password in memory without decompressing the entire archive.
 func verify(ctx context.Context, bin, filePath, password, targetEntry string) error {
-	args := []string{"t", "-p" + password}
+	args := []string{"t", "-spd", "-p" + password}
 	if targetEntry != "" {
 		args = append(args, "-i!"+targetEntry)
 	}
@@ -274,6 +269,43 @@ func run7zExec(ctx context.Context, bin string, args []string) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
+func run7zListing(ctx context.Context, bin string, args []string) ([]Entry, []byte, error) {
+	finalArgs := make([]string, 0, len(args)+1)
+	hasMmt := false
+	for _, a := range args {
+		if strings.HasPrefix(a, "-mmt") {
+			hasMmt = true
+			break
+		}
+	}
+	if !hasMmt {
+		finalArgs = append(finalArgs, "-mmt=on")
+	}
+	finalArgs = append(finalArgs, args...)
+	cmd := exec.CommandContext(ctx, bin, finalArgs...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, nil, err
+	}
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdin = nil
+	if err := cmd.Start(); err != nil {
+		return nil, stderr.Bytes(), err
+	}
+	var headBuf bytes.Buffer
+	entries, perr := parseListingStream(stdout, &headBuf)
+	werr := cmd.Wait()
+	if stderr.Len() > 0 {
+		headBuf.WriteByte('\n')
+		headBuf.Write(stderr.Bytes())
+	}
+	if werr != nil {
+		return entries, headBuf.Bytes(), werr
+	}
+	return entries, headBuf.Bytes(), perr
+}
+
 // isPasswordError detects 7-Zip's wrong-password diagnostics in its output.
 func isPasswordError(out []byte) bool {
 	lower := strings.ToLower(string(out))
@@ -287,8 +319,12 @@ func isPasswordError(out []byte) bool {
 
 // parseListing parses `7z l -slt` technical blocks separated by blank lines.
 func parseListing(out []byte) ([]Entry, error) {
+	return parseListingStream(bytes.NewReader(out), nil)
+}
+
+func parseListingStream(r io.Reader, diag *bytes.Buffer) ([]Entry, error) {
 	var entries []Entry
-	sc := bufio.NewScanner(bytes.NewReader(out))
+	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	var cur map[string]string
 	inEntries := false
@@ -312,11 +348,14 @@ func parseListing(out []byte) ([]Entry, error) {
 			inEntries = true
 			continue
 		}
+		if !inEntries && diag != nil && diag.Len() < 16*1024 {
+			diag.WriteString(line)
+			diag.WriteByte('\n')
+		}
 		if trimmed == "" {
 			flush()
 			continue
 		}
-		if k, v, ok := strings.Cut(line, " = "); ok {
 			if cur == nil {
 				cur = map[string]string{}
 			}
@@ -430,9 +469,13 @@ func normalizeTree(entries []Entry) []Entry {
 
 func normalizePath(p string) string {
 	p = strings.ReplaceAll(p, "\\", "/")
+	if strings.TrimSpace(p) == "" {
+		return ""
+	}
+	p = path.Clean("/" + p)
 	p = strings.TrimPrefix(p, "/")
-	for strings.HasPrefix(p, "./") {
-		p = p[2:]
+	if p == "" || p == "." || strings.HasPrefix(p, "../") || strings.Contains(p, "/../") {
+		return ""
 	}
 	return p
 }
@@ -848,22 +891,27 @@ func extractTarget(ctx context.Context, filePath, format, password, clean string
 		if err == nil {
 			defer zr.Close()
 			prefix := clean + "/"
+			cleanTmp := filepath.Clean(extractDir) + string(filepath.Separator)
 			for _, f := range zr.File {
 				np := normalizePath(f.Name)
-				if np != clean && (!isDir || !strings.HasPrefix(np, prefix)) {
+				if np == "" || (np != clean && (!isDir || !strings.HasPrefix(np, prefix))) {
 					continue
 				}
 				dest := filepath.Join(extractDir, filepath.FromSlash(np))
-				if f.FileInfo().IsDir() || strings.HasSuffix(f.Name, "/") {
-					_ = os.MkdirAll(dest, 0o755)
+				cleanDest := filepath.Clean(dest)
+				if !strings.HasPrefix(cleanDest, cleanTmp) {
 					continue
 				}
-				_ = os.MkdirAll(filepath.Dir(dest), 0o755)
+				if f.FileInfo().IsDir() || strings.HasSuffix(f.Name, "/") {
+					_ = os.MkdirAll(cleanDest, 0o755)
+					continue
+				}
+				_ = os.MkdirAll(filepath.Dir(cleanDest), 0o755)
 				rc, oerr := f.Open()
 				if oerr != nil {
 					continue
 				}
-				wf, cerr := os.Create(dest)
+				wf, cerr := os.Create(cleanDest)
 				if cerr != nil {
 					_ = rc.Close()
 					continue
@@ -884,6 +932,108 @@ func extractTarget(ctx context.Context, filePath, format, password, clean string
 	}
 
 	return fmt.Errorf("this entry cannot be extracted from this volume (split archive volume missing preceding parts)")
+}
+
+// ExtractBatchToDir extracts a set of normalized entry paths from an archive into
+// extractDir using a single 7-Zip invocation (or pure-Go fallback when 7zz is absent).
+func ExtractBatchToDir(ctx context.Context, filePath, format, password string, entryPaths []string, extractDir string) error {
+	var relPaths []string
+	seen := make(map[string]bool, len(entryPaths))
+	for _, p := range entryPaths {
+		if np := normalizePath(p); np != "" && !seen[np] {
+			seen[np] = true
+			relPaths = append(relPaths, np)
+		}
+	}
+	if len(relPaths) == 0 {
+		return nil
+	}
+
+	effectivePath := ResolvePrimaryArchiveVolume(filePath)
+	var passwordsToTry []string
+	cleanPw := strings.Trim(strings.TrimSpace(password), "`'\"")
+	if cleanPw != "" {
+		passwordsToTry = append(passwordsToTry, cleanPw)
+	}
+	if password != cleanPw && password != "" {
+		passwordsToTry = append(passwordsToTry, password)
+	}
+	if len(passwordsToTry) == 0 {
+		passwordsToTry = append(passwordsToTry, "")
+		passwordsToTry = append(passwordsToTry, DefaultPasswords()...)
+	}
+
+	if bin, ok := sevenZBin(); ok {
+		listFile, err := os.CreateTemp("", "7z-batch-*.txt")
+		if err == nil {
+			listFilePath := listFile.Name()
+			_, _ = listFile.WriteString(strings.Join(relPaths, "\n") + "\n")
+			_ = listFile.Close()
+			defer os.Remove(listFilePath)
+
+			pathsToTry := []string{effectivePath}
+			if effectivePath != filePath {
+				pathsToTry = append(pathsToTry, filePath)
+			}
+			for _, p := range pathsToTry {
+				for _, pw := range passwordsToTry {
+					args := []string{
+						"x", "-y", "-spd", "-bso0", "-bse0", "-mmt=on",
+						"-p" + pw,
+						"-o" + extractDir,
+						"@" + listFilePath,
+						"--", p,
+					}
+					if _, err := run7z(ctx, bin, args); err == nil {
+						return nil
+					}
+				}
+			}
+		}
+	}
+
+	if format == "zip" {
+		zr, err := zip.OpenReader(filePath)
+		if err == nil {
+			defer zr.Close()
+			cleanTmp := filepath.Clean(extractDir) + string(filepath.Separator)
+			for _, f := range zr.File {
+				if f.FileInfo().IsDir() {
+					continue
+				}
+				np := normalizePath(f.Name)
+				if np == "" || !seen[np] {
+					continue
+				}
+				dest := filepath.Join(extractDir, filepath.FromSlash(np))
+				cleanDest := filepath.Clean(dest)
+				if !strings.HasPrefix(cleanDest, cleanTmp) {
+					continue
+				}
+				_ = os.MkdirAll(filepath.Dir(cleanDest), 0o755)
+				rc, oerr := f.Open()
+				if oerr != nil {
+					continue
+				}
+				wf, cerr := os.Create(cleanDest)
+				if cerr == nil {
+					_, _ = io.Copy(wf, io.LimitReader(rc, 50*1024*1024))
+					_ = wf.Close()
+				}
+				_ = rc.Close()
+			}
+			return nil
+		}
+	}
+
+	if format == "rar" {
+		for _, pw := range passwordsToTry {
+			for _, np := range relPaths {
+				_ = extractRarTargetGo(effectivePath, pw, np, false, extractDir)
+			}
+		}
+	}
+	return nil
 }
 
 func zipPathToFile(srcRoot, rootName, destZip string) error {
@@ -1105,6 +1255,7 @@ func extractRarTargetGo(filePath, password, clean string, isDir bool, extractDir
 	}
 	defer rc.Close()
 	prefix := clean + "/"
+	cleanTmp := filepath.Clean(extractDir) + string(filepath.Separator)
 	for {
 		hdr, err := rc.Next()
 		if err == io.EOF {
@@ -1114,20 +1265,24 @@ func extractRarTargetGo(filePath, password, clean string, isDir bool, extractDir
 			return err
 		}
 		np := normalizePath(hdr.Name)
-		if np != clean && (!isDir || !strings.HasPrefix(np, prefix)) {
+		if np == "" || (np != clean && (!isDir || !strings.HasPrefix(np, prefix))) {
 			continue
 		}
 		dest := filepath.Join(extractDir, filepath.FromSlash(np))
+		cleanDest := filepath.Clean(dest)
+		if !strings.HasPrefix(cleanDest, cleanTmp) {
+			continue
+		}
 		if hdr.IsDir {
-			if err := os.MkdirAll(dest, 0o755); err != nil {
+			if err := os.MkdirAll(cleanDest, 0o755); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(cleanDest), 0o755); err != nil {
 			return err
 		}
-		wf, err := os.Create(dest)
+		wf, err := os.Create(cleanDest)
 		if err != nil {
 			return err
 		}

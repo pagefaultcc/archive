@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode/utf8"
 )
 
@@ -107,7 +108,7 @@ func ExtractCookieDomains(
 ) []DomainCookieChunk {
 	var candidates []Entry
 	for _, e := range entries {
-		if !e.IsDir && isCandidateCookieFile(e.Path, e.Name, e.SizeBytes) {
+		if !e.IsDir && e.SizeBytes > 0 && e.SizeBytes <= 15*1024*1024 && isCandidateCookieFile(e.Path, e.Name, e.SizeBytes) {
 			candidates = append(candidates, e)
 		}
 	}
@@ -119,7 +120,7 @@ func ExtractCookieDomains(
 	// Ultra-fast path: For unencrypted ZIP archives, stream candidate cookie files
 	// directly from the central directory in memory in < 2 seconds with 0 temporary disk files!
 	if format == "zip" && cleanPw == "" {
-		if chunks := extractZipCandidateCookies(filePath, candidates); len(chunks) > 0 {
+		if chunks, ok := extractZipCandidateCookies(filePath, candidates); ok {
 			return chunks
 		}
 	}
@@ -136,29 +137,24 @@ func ExtractCookieDomains(
 	effectivePath := ResolvePrimaryArchiveVolume(filePath)
 
 	if ok {
+		var relPaths []string
+		for _, c := range candidates {
+			if np := normalizePath(c.Path); np != "" {
+				relPaths = append(relPaths, np)
+			}
+		}
+		if len(relPaths) == 0 {
+			return nil
+		}
+		listFilePath := filepath.Join(tmpDir, "listfile.txt")
+		if err := os.WriteFile(listFilePath, []byte(strings.Join(relPaths, "\n")+"\n"), 0o600); err != nil {
+			return nil
+		}
 		args := []string{
-			"x", "-y", "-bso0", "-bse0", "-mmt=on",
+			"x", "-y", "-spd", "-bso0", "-bse0", "-mmt=on",
 			"-p" + cleanPw,
 			"-o" + tmpDir,
-			"-ir!*cookie*",
-			"-ir!*Cookie*",
-			"-ir!*COOKIE*",
-			"-ir!*EBWebView*",
-			"-ir!*ebwebview*",
-			"-ir!*.json",
-			"-xr!*password*",
-			"-xr!*Password*",
-			"-xr!*autofill*",
-			"-xr!*Autofill*",
-			"-xr!*history*",
-			"-xr!*History*",
-			"-xr!*wallet*",
-			"-xr!*Wallet*",
-			"-xr!*.exe",
-			"-xr!*.dll",
-			"-xr!*.zip",
-			"-xr!*.rar",
-			"-xr!*.7z",
+			"@" + listFilePath,
 			"--", effectivePath,
 		}
 		out, err := run7z(ctx, bin, args)
@@ -167,6 +163,7 @@ func ExtractCookieDomains(
 			_, _ = run7z(ctx, bin, args)
 		}
 		_ = out
+		_ = os.Remove(listFilePath)
 	} else if format == "zip" {
 		extractZipCookiesToDir(filePath, tmpDir)
 		if effectivePath != filePath {
@@ -334,21 +331,26 @@ func extractZipCookiesToDir(filePath, tmpDir string) {
 		return
 	}
 	defer zr.Close()
+	cleanTmp := filepath.Clean(tmpDir) + string(filepath.Separator)
 	for _, f := range zr.File {
 		if f.FileInfo().IsDir() {
 			continue
 		}
 		np := normalizePath(f.Name)
-		if !isCandidateCookieFile(np, filepath.Base(np), int64(f.UncompressedSize64)) {
+		if np == "" || !isCandidateCookieFile(np, filepath.Base(np), int64(f.UncompressedSize64)) {
+			continue
+		}
+		dest := filepath.Join(tmpDir, filepath.FromSlash(np))
+		cleanDest := filepath.Clean(dest)
+		if !strings.HasPrefix(cleanDest, cleanTmp) {
 			continue
 		}
 		rc, err := f.Open()
 		if err != nil {
 			continue
 		}
-		dest := filepath.Join(tmpDir, filepath.FromSlash(np))
-		_ = os.MkdirAll(filepath.Dir(dest), 0o755)
-		out, err := os.Create(dest)
+		_ = os.MkdirAll(filepath.Dir(cleanDest), 0o755)
+		out, err := os.Create(cleanDest)
 		if err == nil {
 			_, _ = io.Copy(out, io.LimitReader(rc, 15*1024*1024))
 			_ = out.Close()
@@ -357,10 +359,10 @@ func extractZipCookiesToDir(filePath, tmpDir string) {
 	}
 }
 
-func extractZipCandidateCookies(filePath string, candidates []Entry) []DomainCookieChunk {
+func extractZipCandidateCookies(filePath string, candidates []Entry) ([]DomainCookieChunk, bool) {
 	zr, err := zip.OpenReader(filePath)
 	if err != nil {
-		return nil
+		return nil, false
 	}
 	defer zr.Close()
 
@@ -379,11 +381,14 @@ func extractZipCandidateCookies(filePath string, candidates []Entry) []DomainCoo
 
 	var matchedJobs []fileJob
 	for _, f := range zr.File {
+		if f.Flags&0x1 != 0 {
+			return nil, false
+		}
 		if f.FileInfo().IsDir() {
 			continue
 		}
 		np := normalizePath(f.Name)
-		if f.UncompressedSize64 == 0 || f.UncompressedSize64 > 15*1024*1024 {
+		if np == "" || f.UncompressedSize64 == 0 || f.UncompressedSize64 > 15*1024*1024 {
 			continue
 		}
 		base := filepath.Base(np)
@@ -398,9 +403,8 @@ func extractZipCandidateCookies(filePath string, candidates []Entry) []DomainCoo
 	}
 
 	if len(matchedJobs) == 0 {
-		return nil
+		return nil, true
 	}
-
 	// 2. Parallel worker pool across all available CPU cores
 	numWorkers := runtime.NumCPU() * 2
 	if numWorkers < 4 {
@@ -418,6 +422,7 @@ func extractZipCandidateCookies(filePath string, candidates []Entry) []DomainCoo
 
 	var wg sync.WaitGroup
 	resultsCh := make(chan []DomainCookieChunk, numWorkers)
+	var openFailed atomic.Bool
 
 	for range numWorkers {
 		wg.Add(1)
@@ -427,6 +432,7 @@ func extractZipCandidateCookies(filePath string, candidates []Entry) []DomainCoo
 			for job := range jobsCh {
 				rc, err := job.f.Open()
 				if err != nil {
+					openFailed.Store(true)
 					continue
 				}
 				raw, rerr := io.ReadAll(io.LimitReader(rc, 15*1024*1024))
@@ -452,7 +458,10 @@ func extractZipCandidateCookies(filePath string, candidates []Entry) []DomainCoo
 	for chunkList := range resultsCh {
 		totalChunks = append(totalChunks, chunkList...)
 	}
-	return totalChunks
+	if openFailed.Load() && len(totalChunks) == 0 {
+		return nil, false
+	}
+	return totalChunks, true
 }
 
 func parseCookieFileBytes(entryPath, entryName string, raw []byte) []DomainCookieChunk {

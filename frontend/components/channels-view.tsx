@@ -120,7 +120,7 @@ export function ChannelsView() {
         sRes.data.settings.apiId > 0 ? String(sRes.data.settings.apiId) : "",
       );
       setApiHashInput(sRes.data.settings.apiHash || "");
-      setSessionInput(sRes.data.settings.sessionString || "");
+      setSessionInput("");
     }
   }
 
@@ -139,6 +139,7 @@ export function ChannelsView() {
     setIsSavingSettings(false);
     if (res.ok) {
       setTgSettings(res.data.settings);
+      setSessionInput("");
       toast.success("Saved Telegram UserBot configuration.");
     } else {
       toast.error(res.error?.message ?? "Failed to save settings.");
@@ -396,7 +397,11 @@ export function ChannelsView() {
               type="password"
               value={sessionInput}
               onChange={(e) => setSessionInput(e.target.value)}
-              placeholder="1BJWb... string session"
+              placeholder={
+                tgSettings.isConfigured
+                  ? "Configured (leave blank to keep current)"
+                  : "1BJWb... string session"
+              }
               className="h-8 font-mono text-xs"
             />
           </div>

@@ -83,6 +83,9 @@ func TestParseCredentialFileBytes_ColonOnly(t *testing.T) {
 		{"https://site.com:mail@x.com:pass", "https://site.com", "mail@x.com", "pass"},
 		{"site.com:login:pass", "site.com", "login", "pass"},
 		{"site.com:8080:login:pass", "site.com", "login", "pass"},
+		{"https://site.com/login?redirect=https://site.com/home:mail@x.com:pass", "https://site.com/login?redirect=https://site.com/home", "mail@x.com", "pass"},
+		{"http://192.168.1.1/admin:admin:secret", "http://192.168.1.1/admin", "admin", "secret"},
+		{"192.168.1.1:admin:secret", "192.168.1.1", "admin", "secret"},
 	}
 	for _, tt := range tests {
 		chunks := parseCredentialFileBytes("passwords.txt", "passwords.txt", []byte(tt.line+"\n"))
@@ -252,5 +255,20 @@ func TestExtractCredentials_ZipFastPath(t *testing.T) {
 	}
 	if c.EntryPath != "Browser/Chrome/passwords.txt" {
 		t.Errorf("entry path = %q", c.EntryPath)
+	}
+}
+
+func TestNormalizePath_ZipSlipProtection(t *testing.T) {
+	if got := normalizePath("../../etc/passwd"); got != "etc/passwd" {
+		t.Fatalf("normalizePath(../../etc/passwd) = %q, want etc/passwd", got)
+	}
+	if got := normalizePath("..\\..\\Windows\\win.ini"); got != "Windows/win.ini" {
+		t.Fatalf("normalizePath(..\\\\..\\\\Windows\\\\win.ini) = %q, want Windows/win.ini", got)
+	}
+	if got := normalizePath("."); got != "" {
+		t.Fatalf("normalizePath(.) = %q, want empty", got)
+	}
+	if got := normalizePath("/"); got != "" {
+		t.Fatalf("normalizePath(/) = %q, want empty", got)
 	}
 }

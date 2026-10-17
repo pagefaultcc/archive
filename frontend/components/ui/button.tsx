@@ -17,12 +17,12 @@ const buttonVariants = cva(
         secondary:
           "border border-[rgba(255,255,255,0.05)] bg-[#0f1011] text-[#f7f8f8] hover:bg-[rgba(255,255,255,0.05)]",
         ghost:
-          "bg-transparent font-normal text-[#8a8f98] hover:bg-[rgba(255,255,255,0.05)] hover:text-[#f7f8f8]",
-        link: "text-[#f7f8f8] underline-offset-4 hover:underline",
+          "bg-transparent font-normal text-[#8a8f98] transition-none hover:scale-100 active:scale-100 hover:bg-[rgba(255,255,255,0.05)] hover:text-[#f7f8f8]",
+        link: "text-[#f7f8f8] underline-offset-4 transition-none hover:scale-100 active:scale-100 hover:underline",
       },
       size: {
         default: "h-10 px-3.5",
-        xs: "h-7 gap-1 px-2.5 text-[12px]",
+        xs: "h-7 gap-1 px-2.5 text-[12px] transition-none hover:scale-100 active:scale-100",
         sm: "h-8 gap-1.5 px-3 text-[13px]",
         lg: "h-10 px-5",
         icon: "size-10",
