@@ -39,7 +39,7 @@ gh api --method PUT repos/pagefaultcc/archive/branches/main/protection \
   --input .github/main-protection.json
 ```
 
-This requires an up-to-date branch, `Review gate` from GitHub Actions, one other person's approval after the last push, dismissal of stale approvals, linear history, and no force-push or branch deletion; administrators are included. Protected branches in a private repository require a supported GitHub Pro/Team/Enterprise plan. Repository policy changes can replace existing rules: inspect the current protection before applying this file.
+This requires an up-to-date branch, `Review gate` from GitHub Actions, one other person's approval after the last push, dismissal of stale approvals, linear history, and no force-push or branch deletion; administrators are included. The repository is public, so protected branches are available on the free plan. Repository policy changes can replace existing rules: inspect the current protection before applying this file.
 
 ## Production
 
@@ -71,11 +71,11 @@ To mark a release, run the **release** workflow from the Actions tab (or `gh wor
 
 ## Private PR previews
 
-Previews run on a **separate dedicated Linux amd64 VPS**, never the production host. Each enabled same-repository, non-draft PR gets an isolated API, frontend, PostgreSQL instance, upload storage, network, random disposable credentials, and synthetic example data. Builds use trusted host-installed definitions and local images; they do not wait for GHCR publication or the production timer. A preview still needs a source build and health checks. Each push replaces its disposable data; closing the PR removes its resources.
+Previews run on a **separate dedicated Linux amd64 VPS**, never the production host. Each enabled same-repository, non-draft PR gets an isolated API, frontend, PostgreSQL instance, upload storage, network, random disposable credentials, and synthetic example data. Builds use trusted host-installed definitions and local images; they do not wait for GHCR publication or the production timer. A preview still needs a source build and health checks. Each push replaces its disposable data; closing the PR removes its resources. Dependabot dependency-update PRs skip previews — GitHub does not pass Actions secrets to Dependabot-triggered runs — while still receiving full review checks.
 
 The gateway binds only to the preview host's loopback interface. Reviewers connect through SSH; there is no public preview endpoint or production-data connection. Hostnames such as `pr-42.localhost` separate browser sessions between previews, which different ports alone cannot do. Runtime networks have no normal external egress; do not use previews for real Telegram imports or account/service validation.
 
-The configured preview host is `archive-preview@5.22.211.183` (administrator: `root@5.22.211.183`), separate from production. Its rootless service account has an aggregate 6 GiB memory, 3.5 CPU, and 4096-task ceiling. The initial reviewer identity is the administrator's existing SSH key, distinct from the Actions deployment key. Additional reviewers need their own public key installed with the same restricted review role.
+The configured preview host details live with the operators (not in this public repository): `archive-preview@<preview-host>` with a separate administrator identity, kept apart from production. Its rootless service account has an aggregate 6 GiB memory, 3.5 CPU, and 4096-task ceiling. The initial reviewer identity is the administrator's existing SSH key, distinct from the Actions deployment key. Additional reviewers need their own public key installed with the same restricted review role.
 
 ### Prepare and install the preview host
 
