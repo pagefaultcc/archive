@@ -294,7 +294,10 @@ func (h *archiveHandlers) delete(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.removeNamedLink(item.Filename)
-	_ = h.Store.MarkArchiveDeleting(r.Context(), id)
+	if err := h.Store.MarkArchiveDeleting(r.Context(), id); err != nil {
+		h.writeArchiveStoreError(w, r, err)
+		return
+	}
 	h.Store.InvalidateCookieCache()
 
 	go func() {
