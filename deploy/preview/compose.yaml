@@ -113,4 +113,8 @@ services:
 
 networks:
   preview:
-    internal: true
+    # A custom bridge network still isolates each PR's containers; rootless
+    # Docker (slirp4netns) cannot publish ports from --internal networks,
+    # which breaks the loopback-only gateway. Branch code cannot reach other
+    # previews' published loopback ports.
+    driver: bridge
