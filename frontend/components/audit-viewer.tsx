@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,7 @@ function filterParams(action: string, targetType: string) {
 }
 
 export function AuditViewer({ initialPage }: { initialPage: AuditPage }) {
+  const router = useRouter();
   const [page, setPage] = useState<AuditPage>(initialPage);
   const [entries, setEntries] = useState<AuditEntry[]>(initialPage.entries);
   const [actionFilter, setActionFilter] = useState("");
@@ -107,7 +109,7 @@ export function AuditViewer({ initialPage }: { initialPage: AuditPage }) {
       return;
     }
     if (result.status === 401) {
-      window.location.assign("/login");
+      router.push("/login");
       return;
     }
     setError(

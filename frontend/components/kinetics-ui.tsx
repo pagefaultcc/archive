@@ -119,9 +119,14 @@ export function SpringCounter({
 
   useEffect(() => {
     if (reducedMotion) return;
-    setBump(true);
+    const frame = window.requestAnimationFrame(() => {
+      setBump(true);
+    });
     const timer = window.setTimeout(() => setBump(false), 420);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
   }, [value, reducedMotion]);
 
   return (

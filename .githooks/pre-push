@@ -1,0 +1,28 @@
+#!/bin/sh
+# Pre-push: the checks CI gates on, minus anything needing a database.
+# Integrations with PostgreSQL run only in CI (see .github/workflows/review.yml).
+set -eu
+
+status=0
+
+echo "pre-push: gofmt + go vet (backend)"
+(cd backend && if unformatted="$(gofmt -l .)" && [ -n "$unformatted" ]; then
+  echo "files need gofmt:"; echo "$unformatted"; exit 1
+fi && go vet ./...) || status=1
+
+if [ -d frontend/node_modules ]; then
+  echo "pre-push: ESLint + production build (frontend)"
+  (cd frontend && npm run lint && npm run build) || status=1
+else
+  echo "pre-push: frontend/node_modules missing; skipping frontend checks" >&2
+fi
+
+if command -v golangci-lint >/dev/null 2>&1; then
+  echo "pre-push: golangci-lint (backend)"
+  (cd backend && golangci-lint run --new-from-rev "$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD)") || status=1
+fi
+
+if [ "$status" -ne 0 ]; then
+  echo "pre-push: fix the issues above before pushing" >&2
+fi
+exit $status

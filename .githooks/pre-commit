@@ -1,0 +1,35 @@
+#!/bin/sh
+# Fast pre-commit: formatting and lint on staged files only. Full suites run
+# in CI; this hook catches problems while you type. Install with:
+#   git config core.hooksPath .githooks
+set -eu
+
+changed() {
+  git diff --cached --name-only --diff-filter=ACMR -- "$@"
+}
+
+go_files="$(changed '*.go')"
+ts_files="$(changed 'frontend/**/*.ts' 'frontend/**/*.tsx' 'frontend/*.mjs' 'frontend/*.js')"
+
+status=0
+
+if [ -n "$go_files" ]; then
+  if ! command -v gofmt >/dev/null 2>&1; then
+    echo "pre-commit: gofmt not found; skipping Go formatting check" >&2
+  elif unformatted="$(gofmt -l $go_files)" && [ -n "$unformatted" ]; then
+    echo "pre-commit: these staged Go files need gofmt:" >&2
+    echo "$unformatted" >&2
+    status=1
+  fi
+fi
+
+if [ -n "$ts_files" ] && [ -d frontend/node_modules ]; then
+  (cd frontend && npx eslint $ts_files) || status=1
+elif [ -n "$ts_files" ]; then
+  echo "pre-commit: frontend/node_modules missing; skipping ESLint" >&2
+fi
+
+if [ "$status" -ne 0 ]; then
+  echo "pre-commit: fix the issues above (or commit with --no-verify in a real pinch)" >&2
+fi
+exit $status
