@@ -1,0 +1,14 @@
+{
+	admin off
+	auto_https off
+}
+
+:3000 {
+	@api path /api /api/* /health /health/*
+	handle @api {
+		reverse_proxy api:8080
+	}
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
