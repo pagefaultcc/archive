@@ -7,22 +7,11 @@ import {
   Copy,
   Eye,
   EyeOff,
-  KeyRound,
   Loader2,
   Search,
   Zap,
 } from "lucide-react";
-import { SpringCounter } from "@/components/kinetics-ui";
-import { MotionSurface } from "@/components/motion-surface";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   browserSearchCredentials,
   type CredentialItem,
@@ -132,11 +121,6 @@ export function PasswordsSearch() {
     }, 250);
   };
 
-  const handleImmediateSearch = () => {
-    clearTimeout(searchTimerRef.current);
-    void executeSearch(q);
-  };
-
   useEffect(() => {
     void executeSearch("");
     return () => {
@@ -146,82 +130,24 @@ export function PasswordsSearch() {
   }, [executeSearch]);
 
   return (
-    <div className="flex flex-1 flex-col gap-5 spring-enter">
-      {/* SpinupMail 3-Card Telemetry Header */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MotionSurface busy={isSearching}>
-          <div className="spinup-card flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <KeyRound className="size-4 text-neutral-400" />
-                <span>Credential Matches</span>
-              </div>
-              <span className="spinup-pill">URL + Domain</span>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
-                <SpringCounter value={totalCount} />
-              </span>
-              <span className="text-xs text-neutral-500">pairs</span>
-            </div>
-          </div>
-        </MotionSurface>
-
-        <MotionSurface>
-          <div className="spinup-card flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <Zap className="size-4 text-neutral-400" />
-                <span>Query Latency</span>
-              </div>
-              <span className="spinup-pill">Trigram GIN</span>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
-                {searchDurationMs !== null ? `${searchDurationMs}` : "—"}
-              </span>
-              <span className="text-xs text-neutral-500">ms</span>
-            </div>
-          </div>
-        </MotionSurface>
-
-        <MotionSurface>
-          <div className="spinup-card flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                {showPasswords ? (
-                  <Eye className="size-4 text-neutral-400" />
-                ) : (
-                  <EyeOff className="size-4 text-neutral-400" />
-                )}
-                <span>Password Visibility</span>
-              </div>
-              <span className="spinup-pill">{showPasswords ? "Revealed" : "Masked"}</span>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-xl font-semibold tracking-tight text-white">
-                {results.length.toLocaleString()} loaded
-              </span>
-              <span className="text-xs text-neutral-500">({PAGE_SIZE}/page)</span>
-            </div>
-          </div>
-        </MotionSurface>
-      </section>
-
-      {/* Search Input Bar */}
-      <section className="spinup-card flex flex-col gap-3 p-4">
+    <div className="flex min-w-0 w-full flex-1 flex-col gap-4">
+      {/* Credential Search Command Bar */}
+      <section className="obsidian-panel flex flex-col gap-2.5 p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-10 min-w-0 basis-full items-center gap-2.5 rounded-lg border border-white/[0.08] bg-[#0e0f11] px-3.5 transition-none focus-within:border-white/20 sm:flex-1 sm:basis-0">
-            <Search className="size-4 shrink-0 text-neutral-400" />
+          <div className="flex h-9 min-w-0 basis-full items-center gap-2.5 rounded-lg border border-white/[0.08] bg-[#101216] px-3 focus-within:border-white/20 sm:flex-1 sm:basis-0">
+            <Search className="size-3.5 shrink-0 text-[#6b707b]" />
             <input
               type="search"
               value={q}
               onChange={(e) => handleQueryChange(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleImmediateSearch();
+                if (e.key === "Enter") {
+                  clearTimeout(searchTimerRef.current);
+                  void executeSearch(q);
+                }
               }}
-              placeholder="Search by URL or domain (e.g. auth.openai.com)"
-              className="min-w-0 w-full bg-transparent font-mono text-xs text-white outline-none placeholder:text-neutral-500"
+              placeholder="Filter credentials by URL or root domain (e.g. auth.openai.com, github.com)..."
+              className="min-w-0 w-full bg-transparent font-mono text-xs text-[#f3f4f6] outline-none placeholder:text-[#5c606a]"
             />
           </div>
 
@@ -231,19 +157,25 @@ export function PasswordsSearch() {
             size="sm"
             onClick={() => setShowPasswords((s) => !s)}
             aria-pressed={showPasswords}
-            className="h-10 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-xs text-neutral-200 transition-none hover:scale-100 active:scale-100 hover:bg-white/[0.04] hover:text-white"
+            className="h-9 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-3 text-xs text-[#c8ccd4] hover:bg-white/[0.04] hover:text-white"
           >
-            {showPasswords ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            {showPasswords ? "Mask passwords" : "Show passwords"}
+            {showPasswords ? (
+              <EyeOff className="size-3.5" />
+            ) : (
+              <Eye className="size-3.5" />
+            )}
+            {showPasswords ? "Mask Passwords" : "Reveal Passwords"}
           </Button>
 
           <Button
             type="button"
-            variant="default"
             size="sm"
-            onClick={handleImmediateSearch}
+            onClick={() => {
+              clearTimeout(searchTimerRef.current);
+              void executeSearch(q);
+            }}
             disabled={isSearching}
-            className="motion-sheen h-10 gap-1.5 rounded-lg text-xs transition-none hover:scale-100 active:scale-100"
+            className="h-9 gap-1.5 rounded-lg bg-[#f3f4f6] px-4 text-xs font-medium text-[#050506] hover:bg-white"
           >
             {isSearching ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -253,53 +185,76 @@ export function PasswordsSearch() {
             Search
           </Button>
         </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] text-[#8b909a]">
+          <span>
+            Showing{" "}
+            <strong className="text-[#f3f4f6]">
+              {results.length.toLocaleString()}
+            </strong>{" "}
+            of{" "}
+            <strong className="text-[#f3f4f6]">
+              {totalCount.toLocaleString()}
+            </strong>{" "}
+            credential pairs
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Zap className="size-3 text-[#10b981]" />
+            {searchDurationMs !== null ? `${searchDurationMs} ms` : "—"}
+          </span>
+        </div>
       </section>
 
-      {/* SpinupMail Results Table Card */}
-      <section className="spinup-card flex min-w-0 flex-col overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-white/[0.07] bg-[#0e0f11]/60 hover:bg-transparent">
-                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400 min-w-[200px]">
-                  URL
-                </TableHead>
-                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400 min-w-[160px]">
+      {/* Credentials Ledger */}
+      <section className="obsidian-panel flex min-w-0 flex-col overflow-hidden">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[820px] border-collapse text-left text-xs">
+            <thead>
+              <tr className="border-b border-white/[0.06] bg-[#101216]/70 text-[11px] font-medium text-[#8b909a]">
+                <th className="py-2.5 px-4 font-medium min-w-[220px]">
+                  URL / Origin
+                </th>
+                <th className="py-2.5 px-4 font-medium min-w-[160px]">
                   Login
-                </TableHead>
-                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400 min-w-[180px]">
+                </th>
+                <th className="py-2.5 px-4 font-medium min-w-[180px]">
                   Password
-                </TableHead>
-                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400 min-w-[220px]">
-                  Archive
-                </TableHead>
-                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400 min-w-[150px]">
-                  Source file
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                </th>
+                <th className="py-2.5 px-4 font-medium min-w-[200px]">
+                  Container
+                </th>
+                <th className="py-2.5 px-4 font-medium min-w-[140px]">
+                  Source File
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
               {results.map((item, idx) => (
-                <TableRow
+                <tr
                   key={`${item.id}-${idx}`}
-                  className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-none"
+                  className="transition-colors hover:bg-white/[0.02]"
                 >
-                  <TableCell className="max-w-[260px] py-3 px-4 font-mono text-xs text-white">
-                    <span className="block truncate" title={item.url || item.domain || "—"}>
+                  <td className="max-w-[260px] py-2.5 px-4 font-mono text-xs text-[#f3f4f6]">
+                    <span
+                      className="block truncate"
+                      title={item.url || item.domain || "—"}
+                    >
                       {item.url || item.domain || "—"}
                     </span>
-                  </TableCell>
-                  <TableCell className="max-w-[200px] py-3 px-4 font-mono text-xs text-neutral-200">
+                  </td>
+                  <td className="max-w-[200px] py-2.5 px-4 font-mono text-xs text-[#c8ccd4]">
                     <span className="block truncate" title={item.login || "—"}>
                       {item.login || "—"}
                     </span>
-                  </TableCell>
-                  <TableCell className="py-3 px-4">
+                  </td>
+                  <td className="py-2.5 px-4">
                     <div className="flex items-center gap-2">
                       <span
                         className={cn(
-                          "font-mono text-xs max-w-[160px] truncate select-all",
-                          showPasswords ? "text-white" : "text-neutral-500 tracking-widest",
+                          "max-w-[160px] truncate select-all font-mono text-xs",
+                          showPasswords
+                            ? "text-[#f3f4f6]"
+                            : "tracking-widest text-[#6b707b]",
                         )}
                         title={showPasswords ? item.password : undefined}
                       >
@@ -309,88 +264,81 @@ export function PasswordsSearch() {
                         type="button"
                         onClick={async () => {
                           await copyToClipboard(item.password);
-                          toast.success("Copied");
+                          toast.success("Copied password");
                         }}
-                        className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-neutral-400 hover:bg-white/[0.06] hover:text-white transition-none outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+                        className="inline-flex size-6 shrink-0 items-center justify-center rounded text-[#8b909a] hover:bg-white/[0.06] hover:text-white cursor-pointer"
                         title="Copy password"
                       >
-                        <Copy className="size-3.5" />
+                        <Copy className="size-3" />
                       </button>
                     </div>
-                  </TableCell>
-                  <TableCell className="max-w-[240px] py-3 px-4">
-                    <div className="flex flex-col gap-0.5">
-                      <Link
-                        href={`/archives/${item.archiveId}`}
-                        className="font-mono text-xs text-white hover:underline truncate"
-                        title={item.archiveFilename}
-                      >
-                        {item.archiveFilename}
-                      </Link>
-                      <span
-                        className="font-mono text-[11px] text-neutral-500 truncate"
-                        title={item.entryPath}
-                      >
-                        {item.entryPath}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-[180px] py-3 px-4">
+                  </td>
+                  <td className="max-w-[240px] py-2.5 px-4">
+                    <Link
+                      href={`/archives/${item.archiveId}`}
+                      className="block truncate font-mono text-xs text-[#f3f4f6] hover:underline"
+                      title={item.archiveFilename}
+                    >
+                      {item.archiveFilename}
+                    </Link>
+                  </td>
+                  <td className="max-w-[180px] py-2.5 px-4">
                     <span
-                      className="spinup-pill font-mono text-[11px] truncate inline-block max-w-full"
+                      className="obsidian-pill max-w-full truncate font-mono text-[10px]"
                       title={item.entryPath || item.entryName}
                     >
                       {item.entryName || item.entryPath || "—"}
                     </span>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
+
         {results.length === 0 ? (
           isSearching ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-xs text-neutral-400">
+            <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8b909a]">
               <Loader2 className="size-4 animate-spin" />
-              Searching credentials...
+              Searching credential index…
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center text-xs text-neutral-500">
+            <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center text-xs text-[#6b707b]">
               <p>
-                No credentials matched. Password files are parsed when archives are indexed/reindexed.
+                No credentials matched. Password files are mined automatically during archive indexing.
               </p>
-              <p className="text-[11px] text-neutral-400">
-                Hint: Existing archives need reindex (
-                <Link href="/settings" className="underline hover:text-white">
-                  Settings → Reindex
-                </Link>
-                ) to backfill.
+              <p className="text-[11px]">
+                Run{" "}
+                <Link href="/settings" className="text-[#c8ccd4] underline hover:text-white">
+                  Settings → Reindex All
+                </Link>{" "}
+                to backfill existing archives.
               </p>
             </div>
           )
         ) : null}
 
-        {hasMore && (
+        {hasMore ? (
           <div className="flex justify-center border-t border-white/[0.06] py-3">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={loadMore}
+              onClick={() => void loadMore()}
               disabled={isLoadingMore}
-              className="h-9 gap-2 rounded-lg border-white/[0.08] bg-[#0e0f11] px-6 text-xs text-neutral-200 transition-none hover:bg-white/[0.04]"
+              className="h-8 gap-2 rounded-lg border-white/[0.08] bg-[#101216] px-5 text-xs text-[#e5e7eb] hover:bg-white/[0.05]"
             >
               {isLoadingMore ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  Loading...
+                  Loading…
                 </>
               ) : (
                 `Load more (${results.length} of ${totalCount.toLocaleString()})`
               )}
             </Button>
           </div>
-        )}
+        ) : null}
       </section>
     </div>
   );

@@ -1,0 +1,272 @@
+name: preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, closed]
+
+permissions:
+  contents: read
+
+# Never cancel host operations halfway through, or replace a pending close event.
+# Live API checks below, not queue ordering, decide whether an event is current.
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  lifecycle:
+    name: Private preview lifecycle
+    if: >-
+      vars.ARCHIVE_PREVIEW_ENABLED == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action == 'closed' || !github.event.pull_request.draft)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      action: ${{ steps.remote.outputs.action }}
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      EVENT_ACTION: ${{ github.event.action }}
+    steps:
+      - name: Validate event identifiers
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          pr = os.environ['PR_NUMBER']
+          sha = os.environ['HEAD_SHA']
+          if not re.fullmatch(r'[1-9][0-9]{0,4}', pr) or not 1 <= int(pr) <= 40000:
+              raise SystemExit('Preview PR number must be between 1 and 40000')
+          if not re.fullmatch(r'[0-9a-f]{40}', sha):
+              raise SystemExit('Preview head SHA must be exactly 40 lowercase hexadecimal characters')
+          PY
+
+      # Source is data only: no branch scripts, actions, Dockerfiles, or hooks run here.
+      - uses: actions/checkout@v4
+        if: github.event.action != 'closed'
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: source
+          persist-credentials: false
+
+      - name: Revalidate live PR and operate trusted preview controller
+        id: remote
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCHIVE_PREVIEW_SSH_TARGET: ${{ vars.ARCHIVE_PREVIEW_SSH_TARGET }}
+          ARCHIVE_PREVIEW_SSH_PORT: ${{ vars.ARCHIVE_PREVIEW_SSH_PORT }}
+          ARCHIVE_PREVIEW_SSH_KEY: ${{ secrets.ARCHIVE_PREVIEW_SSH_KEY }}
+          ARCHIVE_PREVIEW_KNOWN_HOSTS: ${{ secrets.ARCHIVE_PREVIEW_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          for name in ARCHIVE_PREVIEW_SSH_TARGET ARCHIVE_PREVIEW_SSH_KEY ARCHIVE_PREVIEW_KNOWN_HOSTS; do
+            if [[ -z "${!name}" ]]; then
+              printf '::error::Preview is enabled but %s is missing\n' "$name"
+              exit 1
+            fi
+          done
+          umask 077
+          ssh_dir="$(mktemp -d)"
+          trap 'rm -rf -- "$ssh_dir"' EXIT
+          export PREVIEW_KEY_FILE="$ssh_dir/key"
+          export PREVIEW_HOSTS_FILE="$ssh_dir/known_hosts"
+          printf '%s\n' "$ARCHIVE_PREVIEW_SSH_KEY" > "$PREVIEW_KEY_FILE"
+          printf '%s\n' "$ARCHIVE_PREVIEW_KNOWN_HOSTS" > "$PREVIEW_HOSTS_FILE"
+          chmod 600 "$PREVIEW_KEY_FILE" "$PREVIEW_HOSTS_FILE"
+          unset ARCHIVE_PREVIEW_SSH_KEY ARCHIVE_PREVIEW_KNOWN_HOSTS
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import urllib.request
+
+          pr = int(os.environ['PR_NUMBER'])
+          sha = os.environ['HEAD_SHA']
+          target = os.environ['ARCHIVE_PREVIEW_SSH_TARGET']
+          port = os.environ.get('ARCHIVE_PREVIEW_SSH_PORT') or '22'
+          if not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_-]*@(?:[a-zA-Z0-9][a-zA-Z0-9.-]*|\[[0-9a-fA-F:]+\])', target):
+              raise SystemExit('ARCHIVE_PREVIEW_SSH_TARGET must be user@preview-host, without SSH options')
+          if not re.fullmatch(r'[0-9]{1,5}', port) or not 1 <= int(port) <= 65535:
+              raise SystemExit('ARCHIVE_PREVIEW_SSH_PORT must be between 1 and 65535')
+          ssh = [
+              'ssh', '-F', '/dev/null', '-i', os.environ['PREVIEW_KEY_FILE'],
+              '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
+              '-o', 'StrictHostKeyChecking=yes',
+              '-o', 'UserKnownHostsFile=' + os.environ['PREVIEW_HOSTS_FILE'],
+              '-o', 'GlobalKnownHostsFile=/dev/null',
+              '-o', 'ConnectTimeout=15', '-o', 'ConnectionAttempts=2',
+              '-o', 'ServerAliveInterval=30', '-o', 'ServerAliveCountMax=4',
+              '-p', port, target,
+          ]
+          # Keep the GitHub token out of git/SSH child environments and off the host.
+          token = os.environ.pop('GH_TOKEN')
+          request = urllib.request.Request(
+              f"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/pulls/{pr}",
+              headers={
+                  'Authorization': 'Bearer ' + token,
+                  'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              current = json.load(response)
+          same_repo = (current.get('head', {}).get('repo') or {}).get('full_name') == os.environ['GITHUB_REPOSITORY']
+          if not same_repo:
+              raise SystemExit('Live PR no longer belongs to this repository')
+          if os.environ['EVENT_ACTION'] == 'closed':
+              action = 'destroy' if current['state'] == 'closed' else 'skip'
+          else:
+              action = 'deploy' if (
+                  current['state'] == 'open' and not current['draft']
+                  and current['head']['sha'] == sha and current['base']['ref'] == 'main'
+              ) else 'skip'
+          if action == 'skip':
+              print('Skipping stale event: live PR state or head no longer matches.')
+              raise SystemExit(0)
+
+          if action == 'deploy':
+              actual = subprocess.check_output(['git', '-C', 'source', 'rev-parse', 'HEAD'], text=True).strip()
+              if actual != sha:
+                  raise SystemExit('Checked-out HEAD does not match the validated preview SHA')
+              archive = subprocess.Popen(['git', '-C', 'source', 'archive', '--format=tar', 'HEAD'], stdout=subprocess.PIPE)
+              try:
+                  result = subprocess.run(
+                      ssh + [f'deploy {pr} {sha}'], stdin=archive.stdout,
+                      stdout=subprocess.PIPE, text=True, timeout=2700, check=True,
+                  )
+                  archive.stdout.close()
+                  if archive.wait(timeout=30) != 0:
+                      raise SystemExit('git archive failed; preview is not reported as ready')
+              finally:
+                  if archive.poll() is None:
+                      archive.kill()
+                      archive.wait()
+          else:
+              result = subprocess.run(
+                  ssh + [f'destroy {pr}'], stdin=subprocess.DEVNULL,
+                  stdout=subprocess.PIPE, text=True, timeout=300, check=True,
+              )
+          report = json.loads(result.stdout)
+          expected_port = 20000 + pr
+          expected_url = f'http://pr-{pr}.localhost:{expected_port}'
+          if report.get('pr') != pr:
+              raise SystemExit('Preview controller returned an unexpected PR number')
+          if action == 'deploy' and (
+              report.get('status') != 'ready' or report.get('sha') != sha
+              or report.get('port') != expected_port or report.get('url') != expected_url
+          ):
+              raise SystemExit('Preview controller did not confirm the exact SHA and private ready URL')
+          if action == 'destroy' and report.get('status') != 'removed':
+              raise SystemExit('Preview controller did not confirm removal')
+          # Only validated, nonsecret state crosses into the write-token comment job.
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'action={action}\n')
+          print(f'Preview {pr}: {"ready at " + expected_url if action == "deploy" else "removed"}')
+          PY
+
+  comment:
+    name: Private preview comment
+    needs: lifecycle
+    if: needs.lifecycle.outputs.action == 'deploy' || needs.lifecycle.outputs.action == 'destroy'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      # No checkout or branch commands in this job; its write token stays here.
+      - name: Update nonsecret sticky preview comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PREVIEW_ACTION: ${{ needs.lifecycle.outputs.action }}
+          SSH_TARGET: ${{ vars.ARCHIVE_PREVIEW_SSH_TARGET }}
+          SSH_PORT: ${{ vars.ARCHIVE_PREVIEW_SSH_PORT }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import shlex
+          import urllib.request
+
+          pr_text = os.environ['PR_NUMBER']
+          sha = os.environ['HEAD_SHA']
+          if not re.fullmatch(r'[1-9][0-9]{0,4}', pr_text) or not 1 <= int(pr_text) <= 40000:
+              raise SystemExit('Invalid preview PR number')
+          if not re.fullmatch(r'[0-9a-f]{40}', sha):
+              raise SystemExit('Invalid preview SHA')
+          pr = int(pr_text)
+          repo = os.environ['GITHUB_REPOSITORY']
+          api = os.environ['GITHUB_API_URL']
+          headers = {
+              'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+          }
+          def request(path, method='GET', payload=None):
+              data = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(api + path, data=data, headers=headers, method=method)
+              if data is not None:
+                  req.add_header('Content-Type', 'application/json')
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  return json.load(response)
+
+          current = request(f'/repos/{repo}/pulls/{pr}')
+          if (current.get('head', {}).get('repo') or {}).get('full_name') != repo:
+              raise SystemExit('Live PR no longer belongs to this repository')
+          action = os.environ['PREVIEW_ACTION']
+          marker = '<!-- archive-preview -->'
+          if action == 'deploy':
+              if current['state'] != 'open' or current['draft'] or current['head']['sha'] != sha or current['base']['ref'] != 'main':
+                  print('Skipping outdated ready comment; live PR changed during deployment.')
+                  raise SystemExit(0)
+              port = 20000 + pr
+              target = os.environ['SSH_TARGET']
+              ssh_port = os.environ.get('SSH_PORT') or '22'
+              if not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_-]*@(?:[a-zA-Z0-9][a-zA-Z0-9.-]*|\[[0-9a-fA-F:]+\])', target):
+                  raise SystemExit('Invalid SSH target for tunnel instruction')
+              if not re.fullmatch(r'[0-9]{1,5}', ssh_port) or not 1 <= int(ssh_port) <= 65535:
+                  raise SystemExit('Invalid SSH port for tunnel instruction')
+              tunnel = shlex.join(['ssh', '-N', '-L', f'127.0.0.1:{port}:127.0.0.1:{port}', '-p', ssh_port, target])
+              body = (
+                  f'{marker}\n### Private PR preview\n\n'
+                  f'Ready for exact commit `{sha}`.\n\n'
+                  f'URL: http://pr-{pr}.localhost:{port}\n\n'
+                  'Using your separately provisioned **REVIEW SSH identity**, open this loopback-only tunnel:\n\n'
+                  f'```sh\n{tunnel}\n```\n\n'
+                  'Keep the tunnel open while browsing. The deployment key cannot open tunnels. '
+                  'Obtain the disposable login with your REVIEW identity using '
+                  f'`ssh -p {ssh_port} {shlex.quote(target)} credentials {pr}`; never post it here. '
+                  'The SSH host key must match the administrator-provided fingerprint.\n'
+              )
+          elif action == 'destroy':
+              if current['state'] != 'closed':
+                  print('Skipping outdated removal comment; PR was reopened.')
+                  raise SystemExit(0)
+              body = f'{marker}\n### Private PR preview\n\nRemoved after this PR closed. Last event head: `{sha}`.\n'
+          else:
+              raise SystemExit('Unexpected preview action')
+
+          existing = None
+          page = 1
+          while True:
+              comments = request(f'/repos/{repo}/issues/{pr}/comments?per_page=100&page={page}')
+              for comment in comments:
+                  if comment['user']['login'] == 'github-actions[bot]' and marker in (comment.get('body') or ''):
+                      existing = comment['id']
+                      break
+              if existing is not None or len(comments) < 100:
+                  break
+              page += 1
+          if existing is None:
+              request(f'/repos/{repo}/issues/{pr}/comments', 'POST', {'body': body})
+          else:
+              request(f'/repos/{repo}/issues/comments/{existing}', 'PATCH', {'body': body})
+          PY

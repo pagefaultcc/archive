@@ -10,22 +10,19 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
+  CornerLeftUp,
   Download,
   FileArchive,
   FileCode,
   FileText,
   Folder,
   FolderOpen,
-  CornerLeftUp,
   Loader2,
   Lock,
   Search,
   WrapText,
 } from "lucide-react";
-import { Icon3D } from "@/components/kinetics-ui";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { CodeViewer } from "@/components/code-viewer";
 import { copyToClipboard } from "@/lib/utils";
 import {
@@ -65,7 +62,6 @@ export function ArchiveExplorer({
   const [isLoadingDir, setIsLoadingDir] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Folder tree cache: parentPath -> child directory entries
   const [treeDirs, setTreeDirs] = useState<Record<string, ArchiveEntry[]>>(() => ({
     "": initialDetail.entries.filter((e) => e.isDir),
   }));
@@ -76,7 +72,6 @@ export function ArchiveExplorer({
     Record<string, boolean>
   >({});
 
-  // Selected file preview state
   const [selectedFile, setSelectedFile] = useState<ArchiveEntry | null>(null);
   const [preview, setPreview] = useState<ArchiveFilePreview | null>(null);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
@@ -87,6 +82,7 @@ export function ArchiveExplorer({
   const searchTimerRef = useRef<number | undefined>(undefined);
   const dirRequestRef = useRef(0);
   const fileRequestRef = useRef(0);
+
   const openFilePreview = useCallback(
     async (entry: ArchiveEntry) => {
       if (entry.isDir) return;
@@ -128,7 +124,6 @@ export function ArchiveExplorer({
           ...prev,
           [folderPath]: res.data.entries.filter((e) => e.isDir),
         }));
-        // Expand ancestor folders in tree
         if (folderPath) {
           const parts = folderPath.split("/");
           const nextExpanded: Record<string, boolean> = { "": true };
@@ -168,12 +163,12 @@ export function ArchiveExplorer({
     [archive.id, expandedFolders, navigateFolder, treeDirs],
   );
 
-  // Auto-open initialFilePath if specified, otherwise the first file in the root directory
   useEffect(() => {
     if (initialFilePath) {
       const lastSlash = initialFilePath.lastIndexOf("/");
       const parentDir = lastSlash >= 0 ? initialFilePath.slice(0, lastSlash) : "";
-      const baseName = lastSlash >= 0 ? initialFilePath.slice(lastSlash + 1) : initialFilePath;
+      const baseName =
+        lastSlash >= 0 ? initialFilePath.slice(lastSlash + 1) : initialFilePath;
       void navigateFolder(parentDir, "");
       void openFilePreview({
         id: 0,
@@ -234,38 +229,38 @@ export function ArchiveExplorer({
             <li key={dir.path}>
               <div
                 className={cn(
-                  "group flex items-center justify-between gap-1 rounded-[6px] pr-1.5 transition-none",
+                  "group flex items-center justify-between gap-1 rounded-md pr-1.5 transition-none",
                   isActive
-                    ? "bg-[rgba(255,255,255,0.08)] text-[#ffffff]"
-                    : "text-[#8a8f98] hover:bg-[rgba(255,255,255,0.04)] hover:text-[#f7f8f8]",
+                    ? "bg-white/[0.07] text-[#f3f4f6]"
+                    : "text-[#8b909a] hover:bg-white/[0.03] hover:text-[#e5e7eb]",
                 )}
                 style={{ paddingLeft: `${depth * 12 + 6}px` }}
               >
                 <button
                   type="button"
                   onClick={() => void toggleTreeFolder(dir.path)}
-                  className="flex min-w-0 flex-1 items-center gap-1.5 py-1.5 text-left text-[13px]"
+                  className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left text-xs cursor-pointer"
                 >
                   {isLoading ? (
-                    <Loader2 className="size-3.5 shrink-0 animate-spin text-[#62666d]" />
+                    <Loader2 className="size-3 shrink-0 animate-spin text-[#5c606a]" />
                   ) : isOpen ? (
-                    <ChevronDown className="size-3.5 shrink-0 text-[#62666d]" />
+                    <ChevronDown className="size-3 shrink-0 text-[#5c606a]" />
                   ) : (
-                    <ChevronRight className="size-3.5 shrink-0 text-[#62666d]" />
+                    <ChevronRight className="size-3 shrink-0 text-[#5c606a]" />
                   )}
                   {isOpen ? (
-                    <FolderOpen className="size-3.5 shrink-0 text-[#f7f8f8]" />
+                    <FolderOpen className="size-3.5 shrink-0 text-[#e5e7eb]" />
                   ) : (
-                    <Folder className="size-3.5 shrink-0 text-[#8a8f98]" />
+                    <Folder className="size-3.5 shrink-0 text-[#8b909a]" />
                   )}
-                  <span className="truncate font-[510]">{dir.name}</span>
+                  <span className="truncate font-medium">{dir.name}</span>
                 </button>
                 <a
                   href={archiveDownloadUrl(archive.id, dir.path, true)}
                   download
-                  title={`Download ${dir.name}.zip (auto-deleted from /tmp)`}
+                  title={`Download ${dir.name}.zip`}
                   aria-label={`Download ${dir.name} folder as zip`}
-                  className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-[#8a8f98] opacity-75 transition-none hover:bg-[rgba(255,255,255,0.08)] hover:text-[#ffffff] group-hover:opacity-100"
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded text-[#6b707b] opacity-0 transition-none hover:bg-white/[0.08] hover:text-white group-hover:opacity-100"
                 >
                   <Download className="size-3" />
                 </a>
@@ -278,77 +273,75 @@ export function ArchiveExplorer({
     );
   };
 
-  const textLines = useMemo(() => {
-    if (preview?.kind !== "text" || preview.text === undefined) return [];
-    return preview.text.split("\n");
-  }, [preview]);
-
   return (
-    <div className="flex flex-1 flex-col gap-4 spring-enter">
-      {/* Top Explorer Header Bar */}
-      <section className="flex flex-col gap-3 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
+    <div className="flex flex-1 flex-col gap-4">
+      {/* Container Header Bar */}
+      <section className="obsidian-panel flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2.5 sm:flex-1">
-            <Button asChild variant="outline" size="sm">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 rounded-md border-white/[0.08] bg-[#101216] px-2.5 text-xs text-[#c8ccd4] hover:text-white"
+            >
               <Link href="/archives">
                 <ArrowLeft className="size-3.5" />
-                Archives
+                Back
               </Link>
             </Button>
-            <Icon3D
-              name={archive.isEncrypted ? "lock" : "tools"}
-              size="sm"
-            />
-            <div className="min-w-0 max-w-full flex-1 basis-48">
+
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="max-w-full truncate text-[16px] font-[590] text-[#ffffff]" title={archive.filename}>
+                <h1
+                  className="truncate text-sm font-semibold text-[#f3f4f6]"
+                  title={archive.filename}
+                >
                   {archive.filename}
                 </h1>
-                <Badge variant="outline" className="uppercase font-mono">
+                <span className="obsidian-pill font-mono text-[10px] uppercase">
                   {archive.format}
-                </Badge>
+                </span>
                 {archive.isEncrypted ? (
-                  <Badge variant="secondary">
-                    <Lock className="size-3" />
-                    Password Stored · Indexed
-                  </Badge>
+                  <span className="obsidian-badge-active gap-1 text-[10px]">
+                    <Lock className="size-2.5 text-[#10b981]" />
+                    Unlocked
+                  </span>
                 ) : null}
               </div>
-              <p className="mt-0.5 text-[12px] text-[#8a8f98]">
+              <p className="mt-0.5 font-mono text-[11px] text-[#6b707b]">
                 {archive.fileCount.toLocaleString()} files ·{" "}
-                {archive.dirCount.toLocaleString()} folders ·{" "}
+                {archive.dirCount.toLocaleString()} dirs ·{" "}
                 {formatBytes(archive.sizeBytes)} packed →{" "}
-                {formatBytes(archive.uncompressedBytes)} uncompressed ·{" "}
-                <span className="font-mono text-[#62666d]">
-                  sha256:{archive.sha256.slice(0, 12)}…
-                </span>
+                {formatBytes(archive.uncompressedBytes)} raw · sha256:
+                {archive.sha256.slice(0, 12)}
               </p>
             </div>
           </div>
 
-          <div className="relative w-full sm:w-80">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#62666d]" />
-            <Input
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[#6b707b]" />
+            <input
               type="search"
-              placeholder="Search all files & folders in archive…"
+              placeholder="Filter entries in container…"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="h-9 rounded-full pl-8 text-[13px]"
+              className="obsidian-input h-8 w-full pl-8 pr-3 text-xs"
             />
           </div>
         </div>
       </section>
 
-      {/* 3-Pane File Explorer Grid */}
-      <div className="grid min-h-[640px] grid-cols-1 gap-4 lg:grid-cols-[15rem_minmax(0,1.05fr)_minmax(0,1.15fr)]">
-        {/* Pane 1: Folder Tree Sidebar */}
-        <aside className="flex min-w-0 flex-col rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-3">
-          <div className="mb-2 flex items-center justify-between px-1.5">
-            <span className="text-[11px] font-[510] uppercase tracking-wider text-[#62666d]">
-              Folders ({archive.dirCount})
+      {/* 3-Pane Obsidian Inspector */}
+      <div className="grid min-h-[640px] grid-cols-1 gap-4 lg:grid-cols-[15rem_minmax(0,1fr)_minmax(0,1.2fr)]">
+        {/* Pane 1: Directory Tree */}
+        <aside className="obsidian-panel flex min-w-0 flex-col overflow-hidden">
+          <div className="border-b border-white/[0.06] bg-[#101216]/60 px-3.5 py-2.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6b707b]">
+              Directories ({archive.dirCount})
             </span>
           </div>
-          <div className="flex-1 overflow-y-auto pr-1">
+          <div className="flex-1 overflow-y-auto p-2.5">
             <button
               type="button"
               onClick={() => {
@@ -356,24 +349,23 @@ export function ArchiveExplorer({
                 void navigateFolder("", "");
               }}
               className={cn(
-                "mb-1 flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[13px] font-[510] transition-none",
+                "mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs font-medium transition-none cursor-pointer",
                 currentParent === "" && !searchQuery.trim()
-                  ? "bg-[rgba(255,255,255,0.08)] text-[#ffffff]"
-                  : "text-[#8a8f98] hover:bg-[rgba(255,255,255,0.04)] hover:text-[#f7f8f8]",
+                  ? "bg-white/[0.07] text-[#f3f4f6]"
+                  : "text-[#8b909a] hover:bg-white/[0.03] hover:text-[#e5e7eb]",
               )}
             >
-              <FolderOpen className="size-3.5 shrink-0 text-[#f7f8f8]" />
+              <FolderOpen className="size-3.5 shrink-0 text-[#e5e7eb]" />
               <span className="truncate">/ (Root)</span>
             </button>
             {renderTreeBranch("", 1)}
           </div>
         </aside>
 
-        {/* Pane 2: Directory Contents & Search List */}
-        <section className="flex min-w-0 flex-col rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
-          {/* Breadcrumb & Current Folder Download Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] px-3.5 py-2.5">
-            <div className="flex min-w-0 flex-wrap items-center gap-1 text-[13px]">
+        {/* Pane 2: Folder Entries */}
+        <section className="obsidian-panel flex min-w-0 flex-col overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] bg-[#101216]/60 px-3.5 py-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-1 text-xs">
               <button
                 type="button"
                 onClick={() => {
@@ -381,10 +373,10 @@ export function ArchiveExplorer({
                   void navigateFolder("", "");
                 }}
                 className={cn(
-                  "rounded-full px-2 py-0.5 transition-none hover:bg-[rgba(255,255,255,0.05)]",
+                  "rounded px-1.5 py-0.5 transition-none hover:bg-white/[0.05] cursor-pointer",
                   currentParent === "" && !searchQuery.trim()
-                    ? "font-[590] text-[#ffffff]"
-                    : "text-[#8a8f98]",
+                    ? "font-semibold text-[#f3f4f6]"
+                    : "text-[#8b909a]",
                 )}
               >
                 Root
@@ -392,8 +384,11 @@ export function ArchiveExplorer({
               {breadcrumbs.map((crumb, index) => {
                 const isLast = index === breadcrumbs.length - 1;
                 return (
-                  <span key={crumb.path} className="inline-flex min-w-0 max-w-full items-center gap-1">
-                    <span className="text-[#62666d]">/</span>
+                  <span
+                    key={crumb.path}
+                    className="inline-flex min-w-0 items-center gap-1"
+                  >
+                    <span className="text-[#5c606a]">/</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -401,10 +396,10 @@ export function ArchiveExplorer({
                         void navigateFolder(crumb.path, "");
                       }}
                       className={cn(
-                        "max-w-[16ch] truncate rounded-full px-2 py-0.5 transition-none hover:bg-[rgba(255,255,255,0.05)]",
+                        "max-w-[16ch] truncate rounded px-1.5 py-0.5 transition-none hover:bg-white/[0.05] cursor-pointer",
                         isLast && !searchQuery.trim()
-                          ? "font-[590] text-[#ffffff]"
-                          : "text-[#8a8f98]",
+                          ? "font-semibold text-[#f3f4f6]"
+                          : "text-[#8b909a]",
                       )}
                     >
                       {crumb.label}
@@ -413,48 +408,52 @@ export function ArchiveExplorer({
                 );
               })}
               {searchQuery.trim() ? (
-                <Badge variant="secondary" className="ml-1 min-w-0 max-w-full">
-                  <span className="truncate" title={`Search: “${searchQuery.trim()}”`}>Search: “{searchQuery.trim()}”</span>
-                </Badge>
+                <span className="obsidian-pill ml-1 font-mono text-[10px]">
+                  Filter: &ldquo;{searchQuery.trim()}&rdquo;
+                </span>
               ) : null}
             </div>
 
             {currentParent ? (
-              <Button asChild variant="outline" size="xs">
+              <Button
+                asChild
+                variant="outline"
+                size="xs"
+                className="h-6 gap-1 rounded border-white/[0.08] bg-[#101216] text-[11px]"
+              >
                 <a
                   href={archiveDownloadUrl(archive.id, currentParent, true)}
                   download
                 >
                   <FileArchive className="size-3" />
-                  Download folder .zip
+                  Folder .zip
                 </a>
               </Button>
             ) : null}
           </div>
 
-          {/* Directory Entries List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-[rgba(255,255,255,0.04)]">
+          <div className="flex-1 divide-y divide-white/[0.04] overflow-y-auto">
             {parentFolderOfCurrent !== null && !searchQuery.trim() ? (
               <button
                 type="button"
                 onClick={() => void navigateFolder(parentFolderOfCurrent, "")}
-                className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-[13px] text-[#8a8f98] transition-none hover:bg-[rgba(255,255,255,0.03)] hover:text-[#f7f8f8]"
+                className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs text-[#8b909a] transition-none hover:bg-white/[0.025] hover:text-[#f3f4f6] cursor-pointer"
               >
-                <CornerLeftUp className="size-3.5 shrink-0 text-[#62666d]" />
+                <CornerLeftUp className="size-3.5 shrink-0 text-[#5c606a]" />
                 <span className="font-mono">..</span>
-                <span className="text-[12px] text-[#62666d]">Parent folder</span>
+                <span className="text-[11px] text-[#6b707b]">Parent directory</span>
               </button>
             ) : null}
 
             {isLoadingDir ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-[13px] text-[#8a8f98]">
+              <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8b909a]">
                 <Loader2 className="size-4 animate-spin" />
-                Loading indexed directory…
+                Loading directory…
               </div>
             ) : entries.length === 0 ? (
-              <div className="break-words px-3.5 py-12 text-center text-[13px] text-[#8a8f98]">
+              <div className="px-4 py-12 text-center text-xs text-[#6b707b]">
                 {searchQuery.trim()
-                  ? `No indexed entries match “${searchQuery.trim()}”.`
+                  ? `No entries match "${searchQuery.trim()}".`
                   : "This directory is empty."}
               </div>
             ) : (
@@ -466,8 +465,8 @@ export function ArchiveExplorer({
                     className={cn(
                       "group flex items-center justify-between gap-2 px-3.5 py-2 transition-none",
                       isSelected
-                        ? "bg-[rgba(255,255,255,0.07)]"
-                        : "hover:bg-[rgba(255,255,255,0.03)]",
+                        ? "bg-white/[0.06]"
+                        : "hover:bg-white/[0.02]",
                     )}
                   >
                     <button
@@ -480,49 +479,49 @@ export function ArchiveExplorer({
                           void openFilePreview(entry);
                         }
                       }}
-                      className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                      className="flex min-w-0 flex-1 items-center gap-2.5 text-left cursor-pointer"
                     >
                       {entry.isDir ? (
-                        <Folder className="size-4 shrink-0 text-[#f7f8f8]" />
+                        <Folder className="size-3.5 shrink-0 text-[#e5e7eb]" />
                       ) : (
-                        <FileText className="size-4 shrink-0 text-[#8a8f98]" />
+                        <FileText className="size-3.5 shrink-0 text-[#8b909a]" />
                       )}
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-[13.5px] font-[510] text-[#f7f8f8]" title={entry.name}>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="truncate text-xs font-medium text-[#f3f4f6]"
+                            title={entry.name}
+                          >
                             {entry.name}
                           </span>
                           {entry.encrypted ? (
                             <Lock
                               aria-label="Encrypted entry"
-                              className="size-3 shrink-0 text-[#62666d]"
+                              className="size-3 shrink-0 text-[#6b707b]"
                             />
                           ) : null}
                         </div>
-                        {searchQuery.trim() || entry.crc32 ? (
-                          <p className="truncate font-mono text-[11px] text-[#62666d]">
-                            {searchQuery.trim()
-                              ? entry.path
-                              : entry.isDir
-                                ? "Folder"
-                                : `${formatBytes(entry.sizeBytes)} · CRC32 ${entry.crc32}`}
-                          </p>
-                        ) : null}
+                        <p className="truncate font-mono text-[10.5px] text-[#6b707b]">
+                          {searchQuery.trim()
+                            ? entry.path
+                            : entry.isDir
+                              ? "Directory"
+                              : `${formatBytes(entry.sizeBytes)}${entry.crc32 ? ` · ${entry.crc32}` : ""}`}
+                        </p>
                       </div>
                     </button>
 
-                    {/* Per-entry Download Controls (both Folders and Files) */}
-                    <div className="flex shrink-0 items-center gap-1.5">
+                    <div className="flex shrink-0 items-center gap-1">
                       {entry.isDir ? (
-                        <Button asChild variant="outline" size="xs">
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="xs"
+                          className="h-6 gap-1 rounded border-white/[0.08] bg-[#101216] px-2 text-[11px]"
+                        >
                           <a
-                            href={archiveDownloadUrl(
-                              archive.id,
-                              entry.path,
-                              true,
-                            )}
+                            href={archiveDownloadUrl(archive.id, entry.path, true)}
                             download
-                            title={`Pack ${entry.name} into .zip and download (auto-deleted from /tmp)`}
                           >
                             <Download className="size-3" />
                             .zip
@@ -530,7 +529,12 @@ export function ArchiveExplorer({
                         </Button>
                       ) : (
                         <>
-                          <Button asChild variant="ghost" size="xs">
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="xs"
+                            className="h-6 px-2 text-[11px] text-[#8b909a] hover:text-white"
+                          >
                             <a
                               href={archiveDownloadUrl(
                                 archive.id,
@@ -538,13 +542,17 @@ export function ArchiveExplorer({
                                 false,
                               )}
                               download
-                              title={`Download ${entry.name} (staged in /tmp & auto-deleted)`}
                             >
                               <Download className="size-3" />
-                              File
+                              Raw
                             </a>
                           </Button>
-                          <Button asChild variant="outline" size="xs">
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="xs"
+                            className="h-6 gap-1 rounded border-white/[0.08] bg-[#101216] px-2 text-[11px]"
+                          >
                             <a
                               href={archiveDownloadUrl(
                                 archive.id,
@@ -552,7 +560,6 @@ export function ArchiveExplorer({
                                 true,
                               )}
                               download
-                              title={`Download ${entry.name} packed as .zip (auto-deleted from /tmp)`}
                             >
                               <FileArchive className="size-3" />
                               .zip
@@ -568,42 +575,47 @@ export function ArchiveExplorer({
           </div>
         </section>
 
-        {/* Pane 3: Zero-Extraction File Viewer */}
-        <section className="flex min-w-0 flex-col rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
+        {/* Pane 3: In-Memory File Preview */}
+        <section className="obsidian-panel flex min-w-0 flex-col overflow-hidden">
           {selectedFile === null ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
-              <FileCode className="size-6 text-[#62666d]" />
-              <p className="text-[14px] font-[510] text-[#f7f8f8]">
-                Select any file to view its contents
+              <FileCode className="size-6 text-[#5c606a]" />
+              <p className="text-xs font-medium text-[#e5e7eb]">
+                Select a file to inspect
               </p>
-              <p className="max-w-xs text-[12px] text-[#8a8f98]">
-                Files are streamed directly from the archive in memory using the
-                stored password — never extracted to disk.
+              <p className="max-w-xs text-[11px] text-[#6b707b]">
+                Files stream directly into memory without extracting the archive to disk.
               </p>
             </div>
           ) : (
             <>
-              {/* File Viewer Header */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] px-3.5 py-2.5">
-                <div className="min-w-0 max-w-full">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] bg-[#101216]/60 px-3.5 py-2">
+                <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="min-w-0 max-w-full truncate text-[13.5px] font-[590] text-[#ffffff]" title={selectedFile.name}>
+                    <span
+                      className="truncate font-mono text-xs font-semibold text-[#f3f4f6]"
+                      title={selectedFile.name}
+                    >
                       {selectedFile.name}
                     </span>
-                    <Badge variant="secondary" className="font-mono text-[11px]">
+                    <span className="obsidian-pill font-mono text-[10px]">
                       {formatBytes(selectedFile.sizeBytes)}
-                    </Badge>
+                    </span>
                     {preview?.truncated ? (
-                      <Badge variant="outline">First 512 KiB preview</Badge>
+                      <span className="obsidian-pill text-[10px]">
+                        First 512 KiB
+                      </span>
                     ) : null}
                   </div>
-                  <p className="truncate font-mono text-[11px] text-[#62666d]" title={selectedFile.path}>
+                  <p
+                    className="truncate font-mono text-[10.5px] text-[#6b707b]"
+                    title={selectedFile.path}
+                  >
                     {selectedFile.path}
-                    {selectedFile.crc32 ? ` · CRC32 ${selectedFile.crc32}` : ""}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1">
                   {preview?.kind === "text" && preview.text !== undefined ? (
                     <>
                       <Button
@@ -611,10 +623,10 @@ export function ArchiveExplorer({
                         variant="ghost"
                         size="xs"
                         onClick={() => setWrapLines((w) => !w)}
-                        title="Toggle line wrap"
+                        className="h-6 gap-1 px-2 text-[11px] text-[#8b909a] hover:text-white"
                       >
                         <WrapText className="size-3" />
-                        {wrapLines ? "Wrapped" : "No wrap"}
+                        {wrapLines ? "Wrap" : "No wrap"}
                       </Button>
                       <Button
                         type="button"
@@ -630,9 +642,10 @@ export function ArchiveExplorer({
                             toast.error("Failed to copy to clipboard.");
                           }
                         }}
+                        className="h-6 gap-1 px-2 text-[11px] text-[#8b909a] hover:text-white"
                       >
                         {copied ? (
-                          <Check className="size-3" />
+                          <Check className="size-3 text-[#10b981]" />
                         ) : (
                           <Copy className="size-3" />
                         )}
@@ -640,7 +653,12 @@ export function ArchiveExplorer({
                       </Button>
                     </>
                   ) : null}
-                  <Button asChild variant="outline" size="xs">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="xs"
+                    className="h-6 gap-1 rounded border-white/[0.08] bg-[#101216] px-2 text-[11px]"
+                  >
                     <a
                       href={archiveDownloadUrl(
                         archive.id,
@@ -653,58 +671,22 @@ export function ArchiveExplorer({
                       Download
                     </a>
                   </Button>
-                  <Button asChild variant="outline" size="xs">
-                    <a
-                      href={archiveDownloadUrl(
-                        archive.id,
-                        selectedFile.path,
-                        true,
-                      )}
-                      download
-                    >
-                      <FileArchive className="size-3" />
-                      .zip
-                    </a>
-                  </Button>
                 </div>
               </div>
 
-              {/* File Viewer Body */}
-              <div className="flex-1 overflow-auto p-3.5">
+              <div className="flex-1 overflow-auto p-3">
                 {isLoadingFile ? (
-                  <div className="flex items-center justify-center gap-2 py-12 text-[13px] text-[#8a8f98]">
+                  <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8b909a]">
                     <Loader2 className="size-4 animate-spin" />
-                    Reading {selectedFile.name} from archive…
+                    Streaming {selectedFile.name}…
                   </div>
                 ) : fileError ? (
-                  <div className="flex flex-col gap-2 rounded-[6px] border border-[rgba(249,24,128,0.3)] bg-[rgba(249,24,128,0.08)] p-4 text-[13px] text-[#ffffff]">
-                    <div className="flex items-center gap-2 font-medium text-[#f91880]">
+                  <div className="flex flex-col gap-2 rounded-lg border border-rose-500/25 bg-rose-500/10 p-4 text-xs text-[#f3f4f6]">
+                    <div className="flex items-center gap-2 font-medium text-[#f43f5e]">
                       <AlertCircle className="size-4 shrink-0" />
-                      <span>Cannot preview file</span>
+                      <span>Preview unavailable</span>
                     </div>
-                    <p className="text-[12.5px] leading-relaxed text-[#d0d6e0]">
-                      {fileError}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Button asChild variant="outline" size="xs">
-                        <a
-                          href={archiveDownloadUrl(archive.id, selectedFile.path, false)}
-                          download
-                        >
-                          <Download className="size-3" />
-                          Direct file download
-                        </a>
-                      </Button>
-                      <Button asChild variant="outline" size="xs">
-                        <a
-                          href={archiveDownloadUrl(archive.id, selectedFile.path, true)}
-                          download
-                        >
-                          <FileArchive className="size-3" />
-                          Download as .zip
-                        </a>
-                      </Button>
-                    </div>
+                    <p className="text-[#c8ccd4]">{fileError}</p>
                   </div>
                 ) : preview?.kind === "image" && preview.base64Data ? (
                   <div className="flex items-center justify-center p-4">
@@ -712,7 +694,7 @@ export function ArchiveExplorer({
                     <img
                       src={`data:${preview.mimeType};base64,${preview.base64Data}`}
                       alt={selectedFile.name}
-                      className="max-h-[480px] rounded-[6px] border border-[rgba(255,255,255,0.08)] object-contain"
+                      className="max-h-[480px] rounded-md border border-white/[0.08] object-contain"
                     />
                   </div>
                 ) : preview?.kind === "text" ? (
@@ -723,11 +705,10 @@ export function ArchiveExplorer({
                   />
                 ) : preview?.kind === "binary" ? (
                   <div className="space-y-2">
-                    <p className="text-[12px] text-[#8a8f98]">
-                      Binary file ({preview.mimeType}) — showing first 4 KiB hex
-                      inspector:
+                    <p className="text-xs text-[#8b909a]">
+                      Binary payload ({preview.mimeType}) — 4 KiB hex dump:
                     </p>
-                    <pre className="overflow-x-auto rounded-[6px] border border-[rgba(255,255,255,0.05)] bg-[#08090a] p-3 font-mono text-[12px] leading-[19px] text-[#d0d6e0]">
+                    <pre className="overflow-x-auto rounded-md border border-white/[0.06] bg-[#08090b] p-3 font-mono text-xs leading-5 text-[#c8ccd4]">
                       {preview.hexPreview}
                     </pre>
                   </div>

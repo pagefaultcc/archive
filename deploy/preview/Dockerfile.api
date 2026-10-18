@@ -1,0 +1,23 @@
+# Trusted infrastructure: installed outside the untrusted source checkout.
+FROM --platform=linux/amd64 golang:1.25-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api
+
+FROM --platform=linux/amd64 alpine:3.22
+RUN apk add --no-cache ca-certificates wget python3 py3-pip \
+    && pip install --no-cache-dir --break-system-packages telethon pycryptodome \
+    && adduser -D -u 10001 app \
+    && mkdir -p /var/lib/archive/uploads /app/scraper \
+    && chown -R app:app /var/lib/archive /app/scraper
+COPY 7zz /usr/local/bin/7zz
+RUN chmod +x /usr/local/bin/7zz
+COPY --chown=app:app scraper/ /app/scraper/
+RUN chmod +x /app/scraper/tg_engine.py
+COPY --from=build /out/api /app/api
+ENV PYTHONDONTWRITEBYTECODE=1
+USER 10001:10001
+EXPOSE 8080
+ENTRYPOINT ["/app/api"]

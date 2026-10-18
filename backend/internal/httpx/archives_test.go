@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // archiveEnv pairs the shared test env with a root session cookie and a
@@ -354,8 +355,15 @@ func TestArchiveDeleteByOwner(t *testing.T) {
 	if res.status != 404 {
 		t.Fatalf("get after delete status %d", res.status)
 	}
-	if _, err := os.Stat(storagePath); !os.IsNotExist(err) {
-		t.Fatalf("storage file still present after delete")
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(storagePath); os.IsNotExist(err) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("storage file still present after delete")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

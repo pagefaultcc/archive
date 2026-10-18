@@ -4,24 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, Terminal } from "lucide-react";
 import { MotionSurface } from "@/components/motion-surface";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Icon3D, Magnetic } from "@/components/kinetics-ui";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   browserLogin,
   type ApiRequestError,
-  type SessionUser,
 } from "@/lib/api";
 import { loginSchema, type LoginInput } from "@/lib/validation";
-
-function destination(user: SessionUser): string {
-  return user.permissions.includes("users:read") ? "/users" : "/";
-}
 
 export function LoginForm() {
   const router = useRouter();
@@ -36,7 +29,10 @@ export function LoginForm() {
     setGeneralError(null);
     const result = await browserLogin(values);
     if (result.ok) {
-      router.replace(destination(result.data.user));
+      const target = result.data.user.permissions.includes("users:read")
+        ? "/users"
+        : "/";
+      router.replace(target);
       return;
     }
     if (result.networkError || result.status >= 500) {
@@ -60,91 +56,109 @@ export function LoginForm() {
   }
 
   return (
-    <MotionSurface radius={12} className="w-full max-w-sm rounded-xl">
-      <Card className="border-border/70 bg-card p-8 shadow-sm">
-        <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <Icon3D name="key" size="lg" />
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">Archive</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Welcome back! Please sign in to continue.
+    <MotionSurface radius={10} className="w-full">
+      <div className="rounded-xl border border-white/[0.07] bg-[#0b0c0e] p-7 shadow-[0_24px_48px_rgba(0,0,0,0.6)]">
+        <div className="mb-6 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex size-9 items-center justify-center rounded-lg border border-white/[0.08] bg-[#121418] text-[#f3f4f6]">
+              <Terminal className="size-4" />
+            </div>
+            <span className="obsidian-pill font-mono text-[10px] uppercase tracking-wider">
+              Vault Auth
+            </span>
+          </div>
+          <div className="mt-1">
+            <h1 className="text-lg font-semibold tracking-tight text-[#f3f4f6]">
+              Sign in to Archive
+            </h1>
+            <p className="mt-1 text-xs text-[#8b909a]">
+              Enter your operator credentials to access the workspace.
             </p>
           </div>
         </div>
+
         <form
           onSubmit={form.handleSubmit(onSubmit)}
           className="space-y-4"
           noValidate
         >
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="username" className="text-xs font-medium text-[#c8ccd4]">
+              Username
+            </Label>
             <Input
               id="username"
               autoComplete="username"
               autoFocus
+              className="obsidian-input h-9"
               {...form.register("username")}
             />
             {form.formState.errors.username ? (
-              <p className="text-sm text-destructive">
+              <p className="text-xs text-[#f43f5e]">
                 {form.formState.errors.username.message}
               </p>
             ) : null}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-xs font-medium text-[#c8ccd4]">
+              Password
+            </Label>
             <div className="relative">
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
-                className="pr-10"
+                className="obsidian-input h-9 pr-9"
                 {...form.register("password")}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((value) => !value)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="spring-interactive absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                className="absolute inset-y-0 right-0 flex items-center px-2.5 text-[#8b909a] hover:text-[#f3f4f6] focus-visible:outline-none"
               >
                 {showPassword ? (
-                  <EyeOff className="size-4" aria-hidden />
+                  <EyeOff className="size-3.5" aria-hidden />
                 ) : (
-                  <Eye className="size-4" aria-hidden />
+                  <Eye className="size-3.5" aria-hidden />
                 )}
               </button>
             </div>
             {form.formState.errors.password ? (
-              <p className="text-sm text-destructive">
+              <p className="text-xs text-[#f43f5e]">
                 {form.formState.errors.password.message}
               </p>
             ) : null}
           </div>
+
           {generalError ? (
-            <Alert variant="destructive" aria-live="polite">
+            <Alert variant="destructive" aria-live="polite" className="py-2.5 text-xs">
               <AlertDescription>{generalError}</AlertDescription>
             </Alert>
           ) : null}
-          <Magnetic strength={0.22}>
-            <Button
-              type="submit"
-              className="spring-interactive motion-sheen w-full"
-              disabled={form.formState.isSubmitting}
-            >
-              {form.formState.isSubmitting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden /> Signing
-                  in…
-                </>
-              ) : (
-                "Sign in"
-              )}
-            </Button>
-          </Magnetic>
+
+          <Button
+            type="submit"
+            className="h-9 w-full rounded-lg bg-[#f3f4f6] text-xs font-medium text-[#050506] hover:bg-white"
+            disabled={form.formState.isSubmitting}
+          >
+            {form.formState.isSubmitting ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" aria-hidden /> Signing in…
+              </>
+            ) : (
+              "Sign in"
+            )}
+          </Button>
         </form>
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Protected by Argon2id PHC &amp; server-side session RBAC.
-        </p>
-      </Card>
+
+        <div className="mt-6 border-t border-white/[0.05] pt-4 text-center">
+          <p className="font-mono text-[11px] text-[#5c606a]">
+            Argon2id PHC · Session RBAC
+          </p>
+        </div>
+      </div>
     </MotionSurface>
   );
 }

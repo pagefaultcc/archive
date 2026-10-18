@@ -28,6 +28,9 @@ func (h *archiveHandlers) reindexAllCookies(w http.ResponseWriter, r *http.Reque
 			h.Log.Error("reindexAllCookies: failed to load archives", "error", err)
 			return
 		}
+		for _, a := range archives {
+			_ = h.syncNamedLink(a.Filename, a.StoragePath)
+		}
 		for i, a := range archives {
 			activePath := h.syncNamedLink(a.Filename, a.StoragePath)
 			res, err := h.Index(ctx, activePath, a.Format, a.ArchivePassword)
@@ -35,8 +38,13 @@ func (h *archiveHandlers) reindexAllCookies(w http.ResponseWriter, r *http.Reque
 				h.Log.Error("reindexAllCookies: indexing failed", "filename", a.Filename, "error", err)
 				continue
 			}
-			h.indexArchiveCookies(ctx, a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
-			h.indexArchiveCredentials(ctx, a.ID, activePath, a.Format, a.ArchivePassword, res.Entries)
+			effectivePw := a.ArchivePassword
+			if effectivePw == "" && res.MatchedPassword != "" {
+				effectivePw = res.MatchedPassword
+				_ = h.Store.SetArchivePassword(ctx, a.ID, effectivePw)
+			}
+			h.indexArchiveCookies(ctx, a.ID, activePath, a.Format, effectivePw, res.Entries)
+			h.indexArchiveCredentials(ctx, a.ID, activePath, a.Format, effectivePw, res.Entries)
 			h.Log.Info("reindexAllCookies: completed archive", "index", i+1, "total", len(archives), "filename", a.Filename)
 		}
 	}()

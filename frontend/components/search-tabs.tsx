@@ -10,19 +10,23 @@ export function SearchTabs() {
   const [tab, setTab] = useState<"files" | "passwords">("files");
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
-      <SegmentedControl
-        label="Search mode"
-        value={tab}
-        onValueChange={(value) => setTab(value as "files" | "passwords")}
-        options={[
-          { value: "files", label: "Files", icon: <FileText /> },
-          { value: "passwords", label: "Passwords", icon: <KeyRound /> },
-        ]}
-        className="w-full sm:w-fit"
-      />
+    <div className="flex flex-1 flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SegmentedControl
+          label="Search mode"
+          value={tab}
+          onValueChange={(value) => setTab(value as "files" | "passwords")}
+          options={[
+            { value: "files", label: "File Index", icon: <FileText /> },
+            { value: "passwords", label: "Credential Index", icon: <KeyRound /> },
+          ]}
+          className="w-full sm:w-fit"
+        />
+        <span className="hidden font-mono text-[11px] text-[#6b707b] sm:inline">
+          PostgreSQL Trigram GIN · Zero-Extraction Stream
+        </span>
+      </div>
 
-      {/* Keep both tabs mounted so search state, pagination, and open previews persist across switches */}
       <div className={tab === "files" ? "block" : "hidden"}>
         <GlobalSearchVault />
       </div>

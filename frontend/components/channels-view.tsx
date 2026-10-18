@@ -3,23 +3,18 @@
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
-  AlertCircle,
   Bot,
   CheckCircle2,
   Code2,
   Edit2,
-  Key,
   Loader2,
   Plus,
   Radio,
-  RefreshCw,
   Save,
   Send,
   Trash2,
   Tv,
 } from "lucide-react";
-import { Icon3D, SpringCounter } from "@/components/kinetics-ui";
-import { MotionSurface } from "@/components/motion-surface";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,14 +26,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   browserCreateChannel,
   browserDeleteChannel,
   browserGetChannelSettings,
@@ -49,7 +36,6 @@ import {
   browserUpdateChannelSettings,
 } from "@/lib/api";
 import type { TelegramChannelItem, TelegramSettings } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 const SAMPLE_PASSWORD_SCRIPT = `import re
 
@@ -77,7 +63,6 @@ export function ChannelsView() {
   const [channels, setChannels] = useState<TelegramChannelItem[]>([]);
   const [isLoadingChannels, setIsLoadingChannels] = useState(true);
 
-  // UserBot settings state
   const [tgSettings, setTgSettings] = useState<TelegramSettings>({
     apiId: 0,
     apiHash: "",
@@ -92,7 +77,6 @@ export function ChannelsView() {
   const [connectedUser, setConnectedUser] = useState<string | null>(null);
   const [isTestingConnection, startTestConnectionTransition] = useTransition();
 
-  // Channel Add/Edit dialog state
   const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] =
     useState<TelegramChannelItem | null>(null);
@@ -101,7 +85,6 @@ export function ChannelsView() {
   const [channelScript, setChannelScript] = useState(SAMPLE_PASSWORD_SCRIPT);
   const [isSavingChannel, setIsSavingChannel] = useState(false);
 
-  // Script test state
   const [testMessageText, setTestMessageText] = useState(SAMPLE_TEST_MESSAGE);
   const [testScriptResult, setTestScriptResult] = useState<string | null>(null);
   const [isTestingScript, setIsTestingScript] = useState(false);
@@ -161,7 +144,11 @@ export function ChannelsView() {
         toast.success(`Telethon connected as ${info}`);
       } else {
         setConnectionStatus("error");
-        toast.error(!res.ok ? (res.error?.message ?? "Connection failed.") : (res.data?.message ?? "Connection failed."));
+        toast.error(
+          !res.ok
+            ? (res.error?.message ?? "Connection failed.")
+            : (res.data?.message ?? "Connection failed."),
+        );
       }
     });
   }
@@ -190,20 +177,17 @@ export function ChannelsView() {
       return;
     }
     setIsSavingChannel(true);
-    let res;
-    if (editingChannel) {
-      res = await browserUpdateChannel(editingChannel.id, {
-        name: channelName.trim(),
-        channelId: channelTargetId.trim(),
-        passwordScript: channelScript,
-      });
-    } else {
-      res = await browserCreateChannel({
-        name: channelName.trim(),
-        channelId: channelTargetId.trim(),
-        passwordScript: channelScript,
-      });
-    }
+    const res = editingChannel
+      ? await browserUpdateChannel(editingChannel.id, {
+          name: channelName.trim(),
+          channelId: channelTargetId.trim(),
+          passwordScript: channelScript,
+        })
+      : await browserCreateChannel({
+          name: channelName.trim(),
+          channelId: channelTargetId.trim(),
+          passwordScript: channelScript,
+        });
     setIsSavingChannel(false);
     if (res.ok) {
       toast.success(
@@ -239,117 +223,100 @@ export function ChannelsView() {
     if (res.ok && res.data.status === "ok") {
       setTestScriptResult(res.data.resolvedPassword || "(none)");
     } else {
-      toast.error(!res.ok ? (res.error?.message ?? "Script execution error.") : (res.data?.message ?? "Script execution error."));
+      toast.error(
+        !res.ok
+          ? (res.error?.message ?? "Script execution error.")
+          : (res.data?.message ?? "Script execution error."),
+      );
     }
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 spring-enter">
-      {/* SpinupMail 3-Card Telemetry Strip */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MotionSurface busy={isSavingSettings || isTestingConnection}>
-          <div className="spinup-card flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <Radio className="size-4 text-neutral-400" />
-                <span>Monitored Channels</span>
-              </div>
-              <span className="spinup-pill">MTProto 2.0</span>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
-                <SpringCounter value={channels.length} />
-              </span>
-              <span className="text-xs text-neutral-500">targets</span>
-            </div>
+    <div className="flex min-w-0 w-full flex-1 flex-col gap-5">
+      {/* Architectural Telemetry Ribbon */}
+      <section className="obsidian-panel grid grid-cols-1 divide-y divide-white/[0.06] overflow-hidden sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <div className="flex flex-col justify-between gap-2 p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs text-[#8b909a]">
+            <span className="font-medium">Monitored Channels</span>
+            <Radio className="size-3.5 text-[#5c606a]" />
           </div>
-        </MotionSurface>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#f3f4f6]">
+              {channels.length}
+            </span>
+            <span className="text-[11px] text-[#6b707b]">targets</span>
+          </div>
+        </div>
 
-        <MotionSurface>
-          <div className="spinup-card flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <Bot className="size-4 text-neutral-400" />
-                <span>UserBot Status</span>
-              </div>
-              <span className="spinup-pill">Telethon</span>
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              {connectionStatus === "connected" ? (
-                <span className="spinup-badge-active inline-flex items-center gap-1.5 text-sm">
-                  <span className="size-2 rounded-full bg-[#00ba7c]" />
-                  Online
-                </span>
-              ) : tgSettings.isConfigured ? (
-                <span className="spinup-badge-active inline-flex items-center gap-1.5 text-sm">
-                  <Bot className="size-3.5 text-neutral-400" />
-                  Configured
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#f91880]/30 bg-[#f91880]/10 px-3 py-1 text-xs font-medium text-[#f91880]">
-                  Not Configured
-                </span>
-              )}
-            </div>
+        <div className="flex flex-col justify-between gap-2 p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs text-[#8b909a]">
+            <span className="font-medium">UserBot Session</span>
+            <Bot className="size-3.5 text-[#5c606a]" />
           </div>
-        </MotionSurface>
-
-        <MotionSurface>
-          <div className="spinup-card flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <Code2 className="size-4 text-neutral-400" />
-                <span>Password Resolver</span>
-              </div>
-              <span className="spinup-pill">Auto-Unlock</span>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="font-mono text-xl font-semibold tracking-tight text-white">
-                Custom Python
+          <div className="flex items-center gap-2">
+            {connectionStatus === "connected" ? (
+              <span className="obsidian-badge-active gap-1.5 text-xs">
+                <span className="size-1.5 rounded-full bg-[#10b981]" />
+                Online
               </span>
-            </div>
+            ) : tgSettings.isConfigured ? (
+              <span className="obsidian-badge-active gap-1.5 text-xs">
+                <span className="size-1.5 rounded-full bg-[#f3f4f6]" />
+                Configured
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-xs font-medium text-[#f43f5e]">
+                Not Configured
+              </span>
+            )}
           </div>
-        </MotionSurface>
+        </div>
+
+        <div className="flex flex-col justify-between gap-2 p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs text-[#8b909a]">
+            <span className="font-medium">Password Resolver</span>
+            <Code2 className="size-3.5 text-[#5c606a]" />
+          </div>
+          <span className="font-mono text-base font-semibold tracking-tight text-[#f3f4f6]">
+            Python 3 Regex Engine
+          </span>
+        </div>
       </section>
 
-      {/* Global Telethon UserBot Credentials Card */}
-      <section className="spinup-card p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] pb-3.5">
-          <div className="flex min-w-0 items-start gap-2.5">
-            <Bot className="mt-0.5 size-4 shrink-0 text-neutral-400" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white">
-                Telethon UserBot Credentials
-              </p>
-              <p className="mt-0.5 text-xs text-neutral-500">
-                Obtain API ID and API Hash from my.telegram.org. Session string connects without interactive prompts.
-              </p>
-            </div>
+      {/* Telethon UserBot Configuration Panel */}
+      <section className="obsidian-panel p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] pb-3.5">
+          <div>
+            <h2 className="text-sm font-semibold text-[#f3f4f6]">
+              MTProto UserBot Credentials
+            </h2>
+            <p className="mt-0.5 text-xs text-[#6b707b]">
+              Obtain API ID and API Hash from my.telegram.org. StringSession enables non-interactive cross-DC downloads.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
-              size="xs"
+              size="sm"
               onClick={handleTestConnection}
               disabled={isTestingConnection || !tgSettings.isConfigured}
-              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.04]"
+              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-3 text-xs text-[#e5e7eb] hover:bg-white/[0.05]"
             >
               {isTestingConnection ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : (
-                <Radio className="size-3.5 text-[#00ba7c]" />
+                <Radio className="size-3.5 text-[#10b981]" />
               )}
-              {isTestingConnection ? "Checking…" : "Check Connection"}
+              {isTestingConnection ? "Testing…" : "Test Connection"}
             </Button>
             <Button
               type="button"
-              variant="default"
-              size="xs"
-              onClick={handleSaveSettings}
+              size="sm"
+              onClick={() => void handleSaveSettings()}
               disabled={isSavingSettings}
-              className="motion-sheen h-8 gap-1.5 rounded-lg"
+              className="h-8 gap-1.5 rounded-lg bg-[#f3f4f6] px-3.5 text-xs font-medium text-[#050506] hover:bg-white"
             >
               <Save className="size-3.5" />
               {isSavingSettings ? "Saving…" : "Save Credentials"}
@@ -358,42 +325,44 @@ export function ChannelsView() {
         </div>
 
         {connectedUser ? (
-          <div className="mt-3 flex items-center gap-2 rounded-lg border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.06)] px-3 py-2 text-xs text-[#00ba7c]">
-            <CheckCircle2 className="size-4 shrink-0" />
-            <span>Successfully connected as <strong>{connectedUser}</strong></span>
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-[#10b981]">
+            <CheckCircle2 className="size-3.5 shrink-0" />
+            <span>
+              Authenticated as <strong>{connectedUser}</strong>
+            </span>
           </div>
         ) : null}
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-medium text-neutral-400">
-              API ID (Integer)
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-medium text-[#8b909a]">
+              API ID
             </label>
             <Input
               type="text"
               value={apiIdInput}
               onChange={(e) => setApiIdInput(e.target.value)}
               placeholder="e.g. 12345678"
-              className="spinup-input h-9 font-mono text-xs"
+              className="obsidian-input h-8.5 font-mono text-xs"
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-medium text-neutral-400">
-              API Hash (String)
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-medium text-[#8b909a]">
+              API Hash
             </label>
             <Input
               type="text"
               value={apiHashInput}
               onChange={(e) => setApiHashInput(e.target.value)}
-              placeholder="e.g. 0123456789abcdef0123456789abcdef"
-              className="spinup-input h-9 font-mono text-xs"
+              placeholder="0123456789abcdef0123456789abcdef"
+              className="obsidian-input h-8.5 font-mono text-xs"
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-medium text-neutral-400">
-              Telethon StringSession (User account)
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-medium text-[#8b909a]">
+              Telethon StringSession
             </label>
             <Input
               type="password"
@@ -401,24 +370,26 @@ export function ChannelsView() {
               onChange={(e) => setSessionInput(e.target.value)}
               placeholder={
                 tgSettings.isConfigured
-                  ? "Configured (leave blank to keep current)"
-                  : "1BJWb... string session"
+                  ? "Configured (leave blank to retain)"
+                  : "1BJWb... session string"
               }
-              className="spinup-input h-9 font-mono text-xs"
+              className="obsidian-input h-8.5 font-mono text-xs"
             />
           </div>
         </div>
       </section>
 
-      {/* Channels List Section */}
-      <section className="spinup-card overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-5 py-4">
-          <div className="flex items-center gap-2.5">
-            <Tv className="size-4 shrink-0 text-neutral-400" />
-            <h2 className="text-sm font-semibold tracking-tight text-white">
-              Configured Target Channels
+      {/* Configured Channels Ledger */}
+      <section className="obsidian-panel overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] px-4 py-3.5">
+          <div className="flex items-center gap-2">
+            <Tv className="size-4 text-[#8b909a]" />
+            <h2 className="text-sm font-semibold text-[#f3f4f6]">
+              Target Channels
             </h2>
-            <span className="spinup-pill">{channels.length}</span>
+            <span className="obsidian-pill font-mono text-[10px]">
+              {channels.length}
+            </span>
           </div>
 
           <Button
@@ -426,95 +397,109 @@ export function ChannelsView() {
             variant="outline"
             size="xs"
             onClick={openCreateDialog}
-            className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.04]"
+            className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-3 text-xs text-[#e5e7eb] hover:bg-white/[0.05]"
           >
             <Plus className="size-3.5" />
             Add Channel
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-white/[0.06] bg-[#0e0f11]/60 hover:bg-transparent">
-                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Channel Name</TableHead>
-                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Channel ID / Username</TableHead>
-                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Password Script</TableHead>
-                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Added Date</TableHead>
-                <TableHead className="py-3 px-4 text-right text-xs font-medium text-neutral-400">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {!isLoadingChannels && channels.map((c) => (
-                <TableRow key={c.id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                  <TableCell className="py-3.5 px-4 max-w-[240px] font-medium text-xs text-white">
-                    <span className="block truncate" title={c.name}>{c.name}</span>
-                  </TableCell>
-                  <TableCell className="py-3.5 px-4 max-w-[240px] font-mono text-xs text-neutral-400">
-                    <span className="block truncate" title={c.channelId}>{c.channelId}</span>
-                  </TableCell>
-                  <TableCell className="py-3.5 px-4">
-                    <span className="spinup-pill inline-flex items-center gap-1 font-mono text-[10px]">
-                      <Code2 className="size-3" />
-                      Custom Script
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-3.5 px-4 font-mono text-xs text-neutral-500">
-                    {new Date(c.createdAt).toISOString().slice(0, 10)}
-                  </TableCell>
-                  <TableCell className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => openEditDialog(c)}
-                        title="Edit channel & script"
-                        className="text-neutral-400 hover:text-white"
-                      >
-                        <Edit2 className="size-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => void handleDeleteChannel(c.id)}
-                        title="Delete channel"
-                        className="text-neutral-400 hover:text-[#f91880]"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[680px] border-collapse text-left text-xs">
+            <thead>
+              <tr className="border-b border-white/[0.06] bg-[#101216]/70 text-[11px] font-medium text-[#8b909a]">
+                <th className="py-2.5 px-4 font-medium">Channel Name</th>
+                <th className="py-2.5 px-4 font-medium">
+                  Channel ID / Handle
+                </th>
+                <th className="py-2.5 px-4 font-medium">Extractor</th>
+                <th className="py-2.5 px-4 font-medium">Added</th>
+                <th className="py-2.5 px-4 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {!isLoadingChannels &&
+                channels.map((c) => (
+                  <tr
+                    key={c.id}
+                    className="transition-colors hover:bg-white/[0.02]"
+                  >
+                    <td className="max-w-[240px] py-3 px-4 font-medium text-[#f3f4f6]">
+                      <span className="block truncate" title={c.name}>
+                        {c.name}
+                      </span>
+                    </td>
+                    <td className="max-w-[240px] py-3 px-4 font-mono text-xs text-[#8b909a]">
+                      <span className="block truncate" title={c.channelId}>
+                        {c.channelId}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="obsidian-pill gap-1 font-mono text-[10px]">
+                        <Code2 className="size-3" />
+                        Python Script
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-xs text-[#6b707b]">
+                      {new Date(c.createdAt).toISOString().slice(0, 10)}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="inline-flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => openEditDialog(c)}
+                          title="Edit channel & script"
+                          className="h-7 w-7 p-0 text-[#8b909a] hover:text-white"
+                        >
+                          <Edit2 className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => void handleDeleteChannel(c.id)}
+                          title="Delete channel"
+                          className="h-7 w-7 p-0 text-[#8b909a] hover:text-[#f43f5e]"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+
           {isLoadingChannels ? (
-            <div className="flex items-center justify-center gap-2 px-4 py-10 text-center text-xs text-neutral-400">
+            <div className="flex items-center justify-center gap-2 py-10 text-xs text-[#8b909a]">
               <Loader2 className="size-4 animate-spin" />
               Loading channels…
             </div>
           ) : channels.length === 0 ? (
-            <div className="px-4 py-10 text-center text-xs text-neutral-500">
-              No channels added yet. Click &quot;Add Channel&quot; above to configure one.
+            <div className="py-10 text-center text-xs text-[#6b707b]">
+              No channels configured yet. Click &ldquo;Add Channel&rdquo; to register a source.
             </div>
           ) : null}
         </div>
       </section>
+
       <Dialog open={isChannelDialogOpen} onOpenChange={setIsChannelDialogOpen}>
-        <DialogContent className="border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-xl border border-white/[0.08] bg-[#0b0c0e] p-5 text-[#f3f4f6] sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="break-words pr-6 text-base text-[#ffffff]">
-              {editingChannel ? `Edit Channel: ${editingChannel.name}` : "Add Telegram Channel"}
+            <DialogTitle className="text-sm font-semibold text-[#f3f4f6]">
+              {editingChannel
+                ? `Edit Channel: ${editingChannel.name}`
+                : "Add Telegram Channel"}
             </DialogTitle>
-            <DialogDescription className="text-xs text-[#8a8f98]">
-              Configure channel target and custom Python password extraction script.
+            <DialogDescription className="text-xs text-[#8b909a]">
+              Configure channel target and custom Python password extraction rules.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-4 py-2">
+          <div className="flex flex-col gap-4 py-1">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-medium text-[#8a8f98]">
+                <label className="text-[11px] font-medium text-[#8b909a]">
                   Channel Name
                 </label>
                 <Input
@@ -522,12 +507,12 @@ export function ChannelsView() {
                   value={channelName}
                   onChange={(e) => setChannelName(e.target.value)}
                   placeholder="e.g. Hunter Cloud Logs"
-                  className="h-8 text-xs"
+                  className="obsidian-input h-8 text-xs"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-medium text-[#8a8f98]">
+                <label className="text-[11px] font-medium text-[#8b909a]">
                   Channel ID (or @username / link)
                 </label>
                 <Input
@@ -535,48 +520,46 @@ export function ChannelsView() {
                   value={channelTargetId}
                   onChange={(e) => setChannelTargetId(e.target.value)}
                   placeholder="e.g. -1001234567890 or @channel_name"
-                  className="h-8 font-mono text-xs"
+                  className="obsidian-input h-8 font-mono text-xs"
                 />
               </div>
             </div>
 
-            {/* Password script editor */}
             <div className="flex flex-col gap-1.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <label className="text-[11px] font-medium text-[#8a8f98] flex items-center gap-1">
-                  <Code2 className="size-3 shrink-0" /> Password Script (Python Implementation)
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-1 text-[11px] font-medium text-[#8b909a]">
+                  <Code2 className="size-3" /> Password Extraction Script (Python)
                 </label>
                 <Button
                   type="button"
                   variant="ghost"
                   size="xs"
                   onClick={() => setChannelScript(SAMPLE_PASSWORD_SCRIPT)}
-                  className="text-[10px] text-[#62666d] hover:text-[#d0d6e0]"
+                  className="h-6 text-[10px] text-[#6b707b] hover:text-[#e5e7eb]"
                 >
-                  Reset to Template
+                  Reset Template
                 </Button>
               </div>
               <textarea
                 rows={9}
                 value={channelScript}
                 onChange={(e) => setChannelScript(e.target.value)}
-                className="w-full rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] p-3 font-mono text-xs text-[#d0d6e0] outline-none focus:border-[rgba(255,255,255,0.2)]"
+                className="obsidian-input w-full p-3 font-mono text-xs"
               />
             </div>
 
-            {/* Interactive Test Script Panel */}
-            <div className="rounded-[6px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] p-3 flex flex-col gap-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] font-medium text-[#8a8f98]">
-                  Test Script on Sample Message Content
+            <div className="obsidian-subpanel flex flex-col gap-2 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-medium text-[#8b909a]">
+                  Live Script Sandbox
                 </span>
                 <Button
                   type="button"
                   variant="outline"
                   size="xs"
-                  onClick={handleTestScriptLive}
+                  onClick={() => void handleTestScriptLive()}
                   disabled={isTestingScript}
-                  className="gap-1 text-[11px]"
+                  className="h-7 gap-1 rounded-md border-white/[0.08] bg-[#0b0c0e] text-[11px]"
                 >
                   {isTestingScript ? (
                     <Loader2 className="size-3 animate-spin" />
@@ -592,35 +575,38 @@ export function ChannelsView() {
                 value={testMessageText}
                 onChange={(e) => setTestMessageText(e.target.value)}
                 placeholder="Paste Telegram message caption here…"
-                className="w-full rounded-[4px] border border-[rgba(255,255,255,0.06)] bg-[#08090a] p-2 font-mono text-[11px] text-[#d0d6e0] outline-none"
+                className="obsidian-input w-full p-2 font-mono text-[11px]"
               />
 
               {testScriptResult !== null ? (
-                <div className="flex min-w-0 flex-wrap items-center gap-2 pt-1 text-xs">
-                  <span className="text-[#8a8f98]">Resolved Password:</span>
-                  <Badge variant="secondary" className="max-w-full whitespace-normal break-all font-mono text-xs text-[#00ba7c]">
+                <div className="flex items-center gap-2 pt-1 text-xs">
+                  <span className="text-[#8b909a]">Resolved Password:</span>
+                  <Badge
+                    variant="secondary"
+                    className="font-mono text-xs text-[#10b981]"
+                  >
                     {testScriptResult}
                   </Badge>
                 </div>
               ) : null}
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-[rgba(255,255,255,0.05)]">
+            <div className="flex items-center justify-end gap-2 border-t border-white/[0.06] pt-3">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsChannelDialogOpen(false)}
+                className="h-8 text-xs text-[#8b909a]"
               >
                 Cancel
               </Button>
               <Button
                 type="button"
-                variant="default"
                 size="sm"
-                onClick={handleSaveChannel}
+                onClick={() => void handleSaveChannel()}
                 disabled={isSavingChannel}
-                className="gap-1.5"
+                className="h-8 gap-1.5 bg-[#f3f4f6] text-xs font-medium text-[#050506] hover:bg-white"
               >
                 <Save className="size-3.5" />
                 {isSavingChannel ? "Saving…" : "Save Channel"}

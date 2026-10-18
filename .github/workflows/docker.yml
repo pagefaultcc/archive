@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: docker-${{ github.ref }}
@@ -22,6 +21,7 @@ env:
 jobs:
   changes:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     outputs:
       backend: ${{ steps.images.outputs.backend }}
       frontend: ${{ steps.images.outputs.frontend }}
@@ -86,9 +86,12 @@ jobs:
 
   build-api:
     needs: [changes, backend-test]
-    if: needs.changes.outputs.backend == 'true' && needs.backend-test.result == 'success'
+    if: github.ref == 'refs/heads/main' && needs.changes.outputs.backend == 'true' && needs.backend-test.result == 'success'
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -114,9 +117,12 @@ jobs:
 
   build-frontend:
     needs: [changes, frontend-test]
-    if: needs.changes.outputs.frontend == 'true' && needs.frontend-test.result == 'success'
+    if: github.ref == 'refs/heads/main' && needs.changes.outputs.frontend == 'true' && needs.frontend-test.result == 'success'
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 

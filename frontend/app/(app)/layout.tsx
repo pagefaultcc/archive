@@ -1,20 +1,13 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/components/app-sidebar";
 import { HeaderTitle, HeaderQuickSearch } from "@/components/header-title";
-import { PanelLeft } from "lucide-react";
 import { RetryErrorBoundary } from "@/components/retry-error";
 import { serverGetMe, type SessionUser } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Loads the session server-side. Renders the retryable error boundary on
- * infrastructure failure, redirects to /login when unauthenticated.
- */
 export async function loadSession(): Promise<
   | { kind: "ok"; user: SessionUser }
   | { kind: "error" }
@@ -47,34 +40,8 @@ export default async function ProtectedLayout({
 
   return (
     <SidebarProvider>
-      <div className="relative flex min-h-screen w-full flex-col bg-[#030405] text-[#f7f8f8]">
-        {/* SpinupMail Top Header */}
-        <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#030405]/85 px-4 backdrop-blur-xl md:px-6 lg:px-8 transition-all">
-          <div className="mx-auto flex h-14 min-w-0 w-full max-w-[1500px] items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <Link
-                href="/archives"
-                className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors"
-              >
-                <PanelLeft className="size-4 text-neutral-400" />
-                <span className="font-semibold text-sm tracking-tight text-white">Archive</span>
-              </Link>
-              <Separator orientation="vertical" className="h-4 bg-white/[0.08]" />
-              <HeaderTitle />
-            </div>
-
-            <HeaderQuickSearch />
-          </div>
-        </header>
-
-        {/* Main Content Area with bottom clearance for floating dock */}
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden px-4 pt-6 pb-28 md:px-6 lg:px-8">
-          <div className="apple-tab-enter mx-auto flex min-h-0 min-w-0 w-full max-w-[1500px] flex-1 flex-col">
-            {children}
-          </div>
-        </main>
-
-        {/* Bottom Clear Glass Animated Island Dock */}
+      <div className="flex min-h-screen w-full flex-col bg-[#050506] text-[#f3f4f6] md:flex-row">
+        {/* Architectural Obsidian Left Sidebar Rail */}
         <AppSidebar
           canReadUsers={canReadUsers}
           canReadRoles={canReadRoles}
@@ -82,6 +49,22 @@ export default async function ProtectedLayout({
           username={user.username}
           roleLabel={user.isRoot ? "root" : (user.roles[0] ?? "user")}
         />
+
+        {/* Primary Workspace Column */}
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          {/* Top Command Bar */}
+          <header className="sticky top-0 z-30 flex h-13 shrink-0 items-center justify-between gap-4 border-b border-white/[0.06] bg-[#050506]/90 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+            <HeaderTitle />
+            <HeaderQuickSearch />
+          </header>
+
+          {/* Main Workspace Canvas */}
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto flex min-h-0 min-w-0 w-full max-w-[1480px] flex-1 flex-col">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
     </SidebarProvider>
   );

@@ -165,7 +165,7 @@ func (s *Store) CreateArchive(ctx context.Context, in CreateArchiveInput) (Archi
 
 // GetArchive loads one archive item by ID.
 func (s *Store) GetArchive(ctx context.Context, id string) (ArchiveItem, error) {
-	row := s.pool.QueryRow(ctx, archiveSelect+` WHERE a.id = $1`, id)
+	row := s.pool.QueryRow(ctx, archiveSelect+` WHERE a.id = $1 AND a.status != 'deleting'`, id)
 	return scanArchive(row)
 }
 
@@ -294,7 +294,7 @@ func collectArchiveEntries(rows pgx.Rows) ([]ArchiveEntry, error) {
 // verification and reindexing.
 func (s *Store) GetArchiveForUnlock(ctx context.Context, id string) (storagePath, format, status string, err error) {
 	err = s.pool.QueryRow(ctx, `
-		SELECT storage_path, format, status FROM archives WHERE id = $1
+		SELECT storage_path, format, status FROM archives WHERE id = $1 AND status != 'deleting'
 	`, id).Scan(&storagePath, &format, &status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", "", "", ErrNotFound
@@ -365,10 +365,16 @@ func (s *Store) UnlockArchive(ctx context.Context, id, actorID, archivePassword 
 	return s.GetArchive(ctx, id)
 }
 
-// MarkArchiveDeleting marks an archive as deleting so it is immediately omitted from listings.
+// MarkArchiveDeleting marks an archive as deleting so it is immediately omitted from listings and lookups.
 func (s *Store) MarkArchiveDeleting(ctx context.Context, id string) error {
-	_, err := s.pool.Exec(ctx, `UPDATE archives SET status = 'deleting' WHERE id = $1`, id)
-	return err
+	tag, err := s.pool.Exec(ctx, `UPDATE archives SET status = 'deleting' WHERE id = $1 AND status != 'deleting'`, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // DeleteArchive removes the archives row (cascading entries), deletes the
@@ -439,7 +445,7 @@ func (s *Store) GetArchiveEntryForRead(
 		       e.size_bytes, e.packed_bytes, e.crc32, e.encrypted, e.modified_at
 		FROM archives a
 		JOIN archive_entries e ON e.archive_id = a.id
-		WHERE a.id = $1 AND lower(e.path) = lower($2)
+		WHERE a.id = $1 AND a.status != 'deleting' AND lower(e.path) = lower($2)
 	`, archiveID, entryPath).Scan(
 		&archiveFilename, &storagePath, &format, &archivePassword,
 		&entry.ID, &entry.Path, &entry.ParentPath, &entry.Name, &entry.IsDir,
@@ -469,6 +475,7 @@ func (s *Store) GetAllArchivesForReindex(ctx context.Context) ([]ArchiveRecord, 
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, filename, format, storage_path, archive_password, is_encrypted
 		FROM archives
+		WHERE status != 'deleting'
 		ORDER BY created_at ASC
 	`)
 	if err != nil {
@@ -493,7 +500,7 @@ func (s *Store) GetArchiveForReindex(ctx context.Context, id string) (ArchiveRec
 	err := s.pool.QueryRow(ctx, `
 		SELECT id, filename, format, storage_path, archive_password, is_encrypted
 		FROM archives
-		WHERE id = $1
+		WHERE id = $1 AND status != 'deleting'
 	`, id).Scan(&r.ID, &r.Filename, &r.Format, &r.StoragePath, &r.ArchivePassword, &r.IsEncrypted)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return r, ErrNotFound

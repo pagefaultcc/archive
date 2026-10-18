@@ -2,57 +2,99 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Archive,
-  CheckCircle2,
-  Cookie,
-  Moon,
-  PanelLeft,
-  Radio,
-  ScrollText,
-  Search,
-  Settings,
-  Shield,
-  Users,
-} from "lucide-react";
+import { Search } from "lucide-react";
 
 const ROUTE_META: Record<
   string,
-  { title: string; icon: React.ComponentType<{ className?: string }> }
+  { section: string; title: string; subtitle: string }
 > = {
-  "/": { title: "Overview", icon: PanelLeft },
-  "/archives": { title: "Overview", icon: Archive },
-  "/search": { title: "Search Vault", icon: Search },
-  "/cookies": { title: "Cookies", icon: Cookie },
-  "/validator": { title: "Validator", icon: CheckCircle2 },
-  "/channels": { title: "Telegram Channels", icon: Radio },
-  "/users": { title: "Users", icon: Users },
-  "/roles": { title: "Roles & Permissions", icon: Shield },
-  "/audit": { title: "Audit Log", icon: ScrollText },
-  "/settings": { title: "Settings & Storage", icon: Settings },
+  "/": {
+    section: "Workspace",
+    title: "Archives",
+    subtitle: "Indexed container vault & ingestion pipeline",
+  },
+  "/archives": {
+    section: "Workspace",
+    title: "Archives",
+    subtitle: "Indexed container vault & ingestion pipeline",
+  },
+  "/search": {
+    section: "Workspace",
+    title: "Global Search",
+    subtitle: "Cross-archive file & credential index",
+  },
+  "/cookies": {
+    section: "Intelligence",
+    title: "Cookies Explorer",
+    subtitle: "Root-domain normalized Netscape & JSON stores",
+  },
+  "/validator": {
+    section: "Intelligence",
+    title: "Session Validator",
+    subtitle: "Automated session token verification",
+  },
+  "/channels": {
+    section: "Intelligence",
+    title: "Telegram Channels",
+    subtitle: "MTProto UserBot ingestion & extraction rules",
+  },
+  "/users": {
+    section: "Administration",
+    title: "Users",
+    subtitle: "Operator directory & account access",
+  },
+  "/roles": {
+    section: "Administration",
+    title: "Roles & Permissions",
+    subtitle: "RBAC role definitions & capability grants",
+  },
+  "/audit": {
+    section: "Administration",
+    title: "Audit Log",
+    subtitle: "Append-only security event ledger",
+  },
+  "/settings": {
+    section: "System",
+    title: "Settings & Storage",
+    subtitle: "Disk allocation, password dictionary & reindexing",
+  },
 };
 
 function resolveRouteMeta(pathname: string) {
   if (ROUTE_META[pathname]) return ROUTE_META[pathname];
-  if (pathname.startsWith("/archives")) return { title: "Overview", icon: Archive };
-  if (pathname.startsWith("/search")) return { title: "Search Vault", icon: Search };
-  if (pathname.startsWith("/cookies")) return { title: "Cookies", icon: Cookie };
-  if (pathname.startsWith("/validator")) return { title: "Validator", icon: CheckCircle2 };
-  if (pathname.startsWith("/channels")) return { title: "Telegram Channels", icon: Radio };
-  if (pathname.startsWith("/users")) return { title: "Users", icon: Users };
-  if (pathname.startsWith("/roles")) return { title: "Roles & Permissions", icon: Shield };
-  if (pathname.startsWith("/audit")) return { title: "Audit Log", icon: ScrollText };
-  if (pathname.startsWith("/settings")) return { title: "Settings & Storage", icon: Settings };
-  return { title: "Overview", icon: PanelLeft };
+  if (pathname.startsWith("/archives/")) {
+    return {
+      section: "Workspace",
+      title: "Archive Inspector",
+      subtitle: "Zero-extraction directory tree & file preview",
+    };
+  }
+  for (const key of Object.keys(ROUTE_META)) {
+    if (key !== "/" && pathname.startsWith(key)) {
+      return ROUTE_META[key];
+    }
+  }
+  return ROUTE_META["/archives"];
 }
 
 export function HeaderTitle() {
   const pathname = usePathname();
-  const { title, icon: RouteIcon } = resolveRouteMeta(pathname);
+  const { section, title, subtitle } = resolveRouteMeta(pathname);
   return (
-    <div className="flex min-w-0 items-center gap-2">
-      <RouteIcon className="size-4 shrink-0 text-neutral-400" />
-      <p className="truncate text-sm font-medium text-white">{title}</p>
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2 text-xs">
+        <span className="hidden font-medium text-[#5c606a] sm:inline">
+          {section}
+        </span>
+        <span className="hidden text-[#3a3d45] sm:inline">/</span>
+        <span className="truncate text-sm font-semibold tracking-tight text-[#f3f4f6]">
+          {title}
+        </span>
+      </div>
+      <span className="hidden h-3.5 w-[1px] bg-white/[0.07] lg:inline-block" />
+      <span className="hidden truncate text-xs text-[#6b707b] lg:inline">
+        {subtitle}
+      </span>
     </div>
   );
 }
@@ -67,7 +109,9 @@ export function HeaderQuickSearch() {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        const pageInput = document.querySelector<HTMLInputElement>("[data-vault-search-input]");
+        const pageInput = document.querySelector<HTMLInputElement>(
+          "[data-vault-search-input]",
+        );
         if (pageInput) {
           pageInput.focus();
           pageInput.select();
@@ -93,26 +137,20 @@ export function HeaderQuickSearch() {
   return (
     <div className="flex items-center gap-2.5">
       <form onSubmit={handleSubmit} className="relative flex items-center">
-        <Search className="pointer-events-none absolute left-3 size-3.5 text-neutral-400" />
+        <Search className="pointer-events-none absolute left-2.5 size-3.5 text-[#6b707b]" />
         <input
           ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search vault..."
+          placeholder="Jump to search..."
           aria-label="Quick search vault"
-          className="h-8 w-44 sm:w-60 rounded-full border border-white/[0.08] bg-[#0e0f11] pl-8 pr-14 text-xs text-white placeholder:text-neutral-500 transition-colors focus:border-white/20 focus:outline-none"
+          className="obsidian-input h-8 w-44 pl-8 pr-14 text-xs sm:w-64"
         />
-        <kbd className="pointer-events-none absolute right-2.5 font-mono text-[10px] text-neutral-500 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06]">
+        <kbd className="pointer-events-none absolute right-2 rounded border border-white/[0.07] bg-white/[0.03] px-1.5 py-0.5 font-mono text-[10px] text-[#6b707b]">
           Ctrl K
         </kbd>
       </form>
-      <div
-        title="Obsidian Dark Theme Active"
-        className="flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-[#0e0f11] text-neutral-400"
-      >
-        <Moon className="size-3.5" />
-      </div>
     </div>
   );
 }

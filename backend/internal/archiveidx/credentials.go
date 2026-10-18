@@ -13,6 +13,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"unicode/utf8"
+
+	"github.com/nwaples/rardecode/v2"
 )
 
 // CredentialChunk is one parsed user:pass credential line attributed to a URL.
@@ -63,6 +65,11 @@ func ExtractCredentials(
 
 	bin, ok := sevenZBin()
 	effectivePath := ResolvePrimaryArchiveVolume(filePath)
+	pathsToTry := []string{filePath}
+	if effectivePath != filePath {
+		pathsToTry = append(pathsToTry, effectivePath)
+	}
+	passwordsToTry := candidatePasswords(password)
 
 	if ok {
 		var relPaths []string
@@ -75,37 +82,85 @@ func ExtractCredentials(
 			return nil
 		}
 		listFilePath := filepath.Join(tmpDir, "listfile.txt")
-		if err := os.WriteFile(listFilePath, []byte(strings.Join(relPaths, "\n")+"\n"), 0o600); err != nil {
-			return nil
+		if err := os.WriteFile(listFilePath, []byte(strings.Join(relPaths, "\n")+"\n"), 0o600); err == nil {
+			for _, p := range pathsToTry {
+				for _, pw := range passwordsToTry {
+					args := []string{
+						"x", "-y", "-spd", "-bso0", "-bse0", "-mmt=on",
+						"-p" + pw,
+						"-o" + tmpDir,
+						"@" + listFilePath,
+						"--", p,
+					}
+					_, _ = run7z(ctx, bin, args)
+					if dirHasExtractedFiles(tmpDir, "listfile.txt") {
+						break
+					}
+				}
+				if dirHasExtractedFiles(tmpDir, "listfile.txt") {
+					break
+				}
+			}
+			_ = os.Remove(listFilePath)
 		}
-		args := []string{
-			"x", "-y", "-spd", "-bso0", "-bse0", "-mmt=on",
-			"-p" + cleanPw,
-			"-o" + tmpDir,
-			"@" + listFilePath,
-			"--", effectivePath,
+
+		if !dirHasExtractedFiles(tmpDir, "") {
+			for _, p := range pathsToTry {
+				for _, pw := range passwordsToTry {
+					wildcardArgs := []string{
+						"x", "-y", "-spd", "-bso0", "-bse0", "-mmt=on",
+						"-p" + pw,
+						"-o" + tmpDir,
+						"-ir!*password*", "-ir!*passwd*", "-ir!*credential*", "-ir!*creds*",
+						"-xr!*.exe", "-xr!*.dll", "-xr!*.png", "-xr!*.jpg", "-xr!*.jpeg", "-xr!*.gif",
+						"-xr!*.zip", "-xr!*.rar", "-xr!*.7z", "-xr!*.sqlite*", "-xr!*.db", "-xr!*.pdf",
+						"--", p,
+					}
+					_, _ = run7z(ctx, bin, wildcardArgs)
+					if dirHasExtractedFiles(tmpDir, "") {
+						break
+					}
+				}
+				if dirHasExtractedFiles(tmpDir, "") {
+					break
+				}
+			}
 		}
-		out, err := run7z(ctx, bin, args)
-		if err != nil && effectivePath != filePath {
-			args[len(args)-1] = filePath
-			_, _ = run7z(ctx, bin, args)
-		}
-		_ = out
-		_ = os.Remove(listFilePath)
-	} else if format == "zip" {
-		extractZipCredentialsToDir(filePath, tmpDir)
-		if effectivePath != filePath {
-			extractZipCredentialsToDir(effectivePath, tmpDir)
-		}
-	} else {
-		return nil
 	}
-	var result []CredentialChunk
-	_ = filepath.Walk(tmpDir, func(fullPath string, info os.FileInfo, err error) error {
-		if err != nil || info == nil || info.IsDir() {
+
+	if !dirHasExtractedFiles(tmpDir, "") {
+		if format == "zip" {
+			extractZipCredentialsToDir(filePath, tmpDir)
+			if !dirHasExtractedFiles(tmpDir, "") && effectivePath != filePath {
+				extractZipCredentialsToDir(effectivePath, tmpDir)
+			}
+		} else if format == "rar" {
+			for _, p := range pathsToTry {
+				for _, pw := range passwordsToTry {
+					extractRarCredentialsToDir(p, pw, tmpDir)
+					if dirHasExtractedFiles(tmpDir, "") {
+						break
+					}
+				}
+				if dirHasExtractedFiles(tmpDir, "") {
+					break
+				}
+			}
+		}
+	}
+
+	type diskCredJob struct {
+		fullPath  string
+		entryPath string
+		entryName string
+	}
+	var diskJobs []diskCredJob
+	_ = filepath.WalkDir(tmpDir, func(fullPath string, d os.DirEntry, err error) error {
+		if err != nil || d == nil || d.IsDir() {
 			return nil
 		}
-		if info.Size() <= 0 || info.Size() > 15*1024*1024 {
+		info, ierr := d.Info()
+		if ierr != nil || info.Size() <= 0 || info.Size() > 15*1024*1024 {
 			return nil
 		}
 		rel, rerr := filepath.Rel(tmpDir, fullPath)
@@ -117,19 +172,60 @@ func ExtractCredentials(
 		if !isCandidatePasswordFile(entryPath, entryName, info.Size()) {
 			return nil
 		}
-		raw, rerr := os.ReadFile(fullPath)
-		if rerr != nil || len(raw) == 0 {
-			return nil
-		}
-		if !hasCredentialSignatures(raw) {
-			return nil
-		}
-		chunks := parseCredentialFileBytes(entryPath, entryName, raw)
-		if len(chunks) > 0 {
-			result = append(result, chunks...)
-		}
+		diskJobs = append(diskJobs, diskCredJob{
+			fullPath:  fullPath,
+			entryPath: entryPath,
+			entryName: entryName,
+		})
 		return nil
 	})
+	if len(diskJobs) == 0 {
+		return nil
+	}
+
+	numWorkers := runtime.NumCPU() * 2
+	if numWorkers < 4 {
+		numWorkers = 4
+	}
+	if numWorkers > len(diskJobs) {
+		numWorkers = len(diskJobs)
+	}
+
+	jobsCh := make(chan diskCredJob, len(diskJobs))
+	for _, j := range diskJobs {
+		jobsCh <- j
+	}
+	close(jobsCh)
+
+	var wg sync.WaitGroup
+	resultsCh := make(chan []CredentialChunk, numWorkers)
+	for range numWorkers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var local []CredentialChunk
+			for job := range jobsCh {
+				raw, rerr := os.ReadFile(job.fullPath)
+				if rerr != nil || len(raw) == 0 || !hasCredentialSignatures(raw) {
+					continue
+				}
+				chunks := parseCredentialFileBytes(job.entryPath, job.entryName, raw)
+				if len(chunks) > 0 {
+					local = append(local, chunks...)
+				}
+			}
+			if len(local) > 0 {
+				resultsCh <- local
+			}
+		}()
+	}
+	wg.Wait()
+	close(resultsCh)
+
+	var result []CredentialChunk
+	for chunkList := range resultsCh {
+		result = append(result, chunkList...)
+	}
 	return result
 }
 
@@ -237,6 +333,43 @@ func extractZipCredentialsToDir(filePath, tmpDir string) {
 			_ = out.Close()
 		}
 		_ = rc.Close()
+	}
+}
+
+func extractRarCredentialsToDir(filePath, password, tmpDir string) {
+	var opts []rardecode.Option
+	if password != "" {
+		opts = append(opts, rardecode.Password(password))
+	}
+	rc, err := rardecode.OpenReader(filePath, opts...)
+	if err != nil {
+		return
+	}
+	defer rc.Close()
+	cleanTmp := filepath.Clean(tmpDir) + string(filepath.Separator)
+	for {
+		hdr, err := rc.Next()
+		if err != nil {
+			break
+		}
+		if hdr.IsDir {
+			continue
+		}
+		np := normalizePath(hdr.Name)
+		if np == "" || !isCandidatePasswordFile(np, filepath.Base(np), hdr.UnPackedSize) {
+			continue
+		}
+		dest := filepath.Join(tmpDir, filepath.FromSlash(np))
+		cleanDest := filepath.Clean(dest)
+		if !strings.HasPrefix(cleanDest, cleanTmp) {
+			continue
+		}
+		_ = os.MkdirAll(filepath.Dir(cleanDest), 0o755)
+		out, err := os.Create(cleanDest)
+		if err == nil {
+			_, _ = io.Copy(out, io.LimitReader(rc, 15*1024*1024))
+			_ = out.Close()
+		}
 	}
 }
 

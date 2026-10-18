@@ -25,8 +25,8 @@ export function SegmentedControl({
       role="group"
       aria-label={label}
       className={cn(
-        "inline-grid max-w-full grid-flow-col auto-cols-fr gap-0.5 rounded-full border border-white/[0.08] bg-[#0f1011] p-0.5",
-        size === "sm" ? "h-7" : "h-9",
+        "inline-grid max-w-full grid-flow-col auto-cols-fr gap-1 rounded-lg border border-white/[0.06] bg-[#0b0c0e] p-1",
+        size === "sm" ? "h-8" : "h-9",
         className,
       )}
     >
@@ -37,11 +37,11 @@ export function SegmentedControl({
           aria-pressed={value === option.value}
           onClick={() => onValueChange(option.value)}
           className={cn(
-            "inline-flex h-full min-w-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-transparent font-medium outline-none transition-none focus-visible:ring-2 focus-visible:ring-[rgba(255,255,255,0.15)]",
-            size === "sm" ? "px-2 text-[11px] leading-4" : "px-2 text-xs leading-4 sm:px-3",
+            "inline-flex h-full min-w-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/20",
+            size === "sm" ? "px-2.5 text-[11px] leading-4" : "px-3 text-xs leading-4",
             value === option.value
-              ? "border-white/[0.1] bg-white/[0.08] text-[#f7f8f8]"
-              : "text-[#8a8f98] hover:bg-white/[0.03] hover:text-[#d0d6e0]",
+              ? "border-white/[0.08] bg-[#16181d] text-[#f3f4f6] shadow-xs"
+              : "text-[#8b909a] hover:text-[#e5e7eb]",
           )}
         >
           {option.icon ? (

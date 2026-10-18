@@ -163,10 +163,31 @@ cd backend && go test ./...
 cd frontend && npm run build && npm test
 ```
 
+### Branches, pull requests, and review
+- Work on a short-lived branch per task (`feat/<topic>`, `fix/<topic>`, or `chore/<topic>`), based on current `origin/main`. Never push directly to `main`, force-push `main`, or overwrite a collaborator's changes. Preserve unrelated working-tree edits; use separate Git worktrees for simultaneous local agents.
+- Push the feature branch and create/update a PR targeting `main`. PRs run both backend/PostgreSQL and frontend build/tests in `.github/workflows/review.yml`; `Review gate` requires both to succeed. Keep the branch current with `main` and resolve conflicts before requesting review. Do not disable checks, suppress failures, or silently repair unrelated features to get a green result.
+- A different person reviews the PR. Agents must not approve their own work, bypass review, merge, enable auto-merge, or deploy production without explicit user authorization. After approval and passing checks, prefer squash merge and delete the feature branch. Only `main` publishes production images.
+- Desired protection is `.github/main-protection.json`: one approval, stale-approval dismissal, approval after the last push, up-to-date `Review gate` from GitHub Actions, linear history, and no force-push/deletion. A repository admin must apply this policy; committing the file does not activate GitHub protection. See README for the operator command and private-repository plan requirements.
+- Example from a clean working tree:
+  ```bash
+  git fetch origin
+  git switch -c feat/example origin/main
+  # Implement and verify the task; commit only its files.
+  git push -u origin feat/example
+  gh pr create --base main --head feat/example
+  ```
+
+### Private PR previews
+- `.github/workflows/preview.yml` manages previews for enabled, same-repository, non-draft PRs. Fork PRs never receive preview credentials. Closed PRs are removed; stale queued events must not overwrite a newer preview or remove a reopened one.
+- Previews require a separate dedicated Linux amd64 VPS with rootless Docker and the trusted `deploy/preview/` controller installed by an operator. Never run preview code on the production VPS or give it production databases, uploads, Telegram settings, SSH keys, registry credentials, or a Docker socket.
+- Each PR gets isolated runtime resources and synthetic data. Preview builds use local images directly from source, not GHCR publication. A push recreates disposable preview data. Do not upload real logs or configure real service credentials.
+- Review URLs use distinct `pr-<number>.localhost` hostnames and loopback-only ports, accessed through an authenticated SSH tunnel. Different ports alone do not isolate session cookies. Retrieve disposable app credentials through the restricted review SSH command, never PR comments or Actions logs.
+- Host setup, repository variables/secrets, reviewer access, and teardown commands are documented in README. Until the host and settings are configured, previews are not live; never report a skipped preview job as a successful deployment. Production deployment remains separate and merge-only.
+
 ### Deploying (CI → GHCR → VPS auto-pull)
 Push to `main` triggers a lightweight change-detection job in `.github/workflows/docker.yml`. `backend/**` selects API tests (including PostgreSQL integration) and its image; `frontend/**` selects frontend build/tests and its image. Changes under `.github/**`, `deploy/**`, or to `compose.yaml`, `Caddyfile`, and `.env.example` conservatively select both. Root guidance/Markdown and other files outside those inputs select neither; content inside an image context remains a build input even when it is Markdown. Manual dispatch or an unavailable baseline rebuilds both. Detection compares the full push range with NUL-delimited filenames, not just the last commit.
 
-Each selected image is published only after its own tests pass, using `:latest` and `:sha-<sha>` tags in `ghcr.io/pagefaultcc/archive-{api,frontend}`. An unchanged image keeps its existing tags; do not assume every commit has a SHA tag for both images. Branch runs queue (`queue: max`), rather than canceling a different component's pending publication. See README's CI section for the change matrix.
+Each selected image is published only on `refs/heads/main` and after its own tests pass, using `:latest` and `:sha-<sha>` tags in `ghcr.io/pagefaultcc/archive-{api,frontend}`. Manually dispatching the workflow on another branch never publishes production tags. An unchanged image keeps its existing tags; do not assume every commit has a SHA tag for both images. Branch runs queue (`queue: max`), rather than canceling a different component's pending publication. See README's CI section for the change matrix.
 
 The VPS (`deploy@85.9.208.82`, deploy dir NOT a git repo) runs `archive-autodeploy.timer` (every 5 min): `docker compose pull` → `up -d` only when the image/config changed → prune images older than 7 days. Migrations run automatically on api startup under the bootstrap advisory lock. Registry auth is a classic PAT with `read:packages` only (ghcr.io does not accept fine-grained PATs) stored in `/home/deploy/.docker/config.json` (0600). Deployment-file changes must still be synchronized separately: pulling images does not fetch Compose/Caddy/systemd files. Fallback without registry: rsync `backend/` + `frontend/` into `/home/deploy/archive`, then `docker compose build api frontend && docker compose up -d` — layer order already caches Python deps and go modules; the Dockerfile `BUILD_ID` ARG is unused.
 

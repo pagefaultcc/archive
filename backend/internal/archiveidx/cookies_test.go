@@ -380,4 +380,14 @@ func TestHasCookieSignatures(t *testing.T) {
 	if hasCookieSignatures(logData) {
 		t.Error("hasCookieSignatures(logData) = true, want false")
 	}
+
+	// 6. Numeric boolean flags (1/0) and >40 header comment lines
+	var headerComments strings.Builder
+	for range 60 {
+		headerComments.WriteString("# Stealer comment header line\n")
+	}
+	headerComments.WriteString(".chatgpt.com\t1\t/\t0\t1795254940\t__Secure-next-auth.session-token\txyz\n")
+	if !hasCookieSignatures([]byte(headerComments.String())) {
+		t.Error("hasCookieSignatures(numeric flags after 60 comment lines) = false, want true")
+	}
 }
