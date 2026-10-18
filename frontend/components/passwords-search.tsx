@@ -147,53 +147,72 @@ export function PasswordsSearch() {
 
   return (
     <div className="flex flex-1 flex-col gap-5 spring-enter">
-      {/* Top Telemetry Header Card */}
-      <MotionSurface busy={isSearching}>
-      <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
-        <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-[8px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#d0d6e0]">
-              <KeyRound className="size-5" />
+      {/* SpinupMail 3-Card Telemetry Header */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MotionSurface busy={isSearching}>
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <KeyRound className="size-4 text-neutral-400" />
+                <span>Credential Matches</span>
+              </div>
+              <span className="spinup-pill">URL + Domain</span>
             </div>
-            <div className="flex flex-col gap-0.5">
-              <h2 className="text-sm font-semibold tracking-tight text-[#d0d6e0]">
-                Credential Search
-              </h2>
-              <span className="text-xs text-[#8a8f98]">
-                user:pass pairs indexed from stealer-log password files
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Matches
-              </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0]">
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
                 <SpringCounter value={totalCount} />
               </span>
-            </div>
-
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Query time
-              </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0] flex items-center gap-1.5">
-                <Zap className="size-4 text-[#8a8f98]" />
-                {searchDurationMs !== null ? `${searchDurationMs} ms` : "—"}
-              </span>
+              <span className="text-xs text-neutral-500">pairs</span>
             </div>
           </div>
-        </div>
+        </MotionSurface>
+
+        <MotionSurface>
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <Zap className="size-4 text-neutral-400" />
+                <span>Query Latency</span>
+              </div>
+              <span className="spinup-pill">Trigram GIN</span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
+                {searchDurationMs !== null ? `${searchDurationMs}` : "—"}
+              </span>
+              <span className="text-xs text-neutral-500">ms</span>
+            </div>
+          </div>
+        </MotionSurface>
+
+        <MotionSurface>
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                {showPasswords ? (
+                  <Eye className="size-4 text-neutral-400" />
+                ) : (
+                  <EyeOff className="size-4 text-neutral-400" />
+                )}
+                <span>Password Visibility</span>
+              </div>
+              <span className="spinup-pill">{showPasswords ? "Revealed" : "Masked"}</span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-xl font-semibold tracking-tight text-white">
+                {results.length.toLocaleString()} loaded
+              </span>
+              <span className="text-xs text-neutral-500">({PAGE_SIZE}/page)</span>
+            </div>
+          </div>
+        </MotionSurface>
       </section>
-      </MotionSurface>
 
       {/* Search Input Bar */}
-      <section className="flex flex-col gap-3 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
+      <section className="spinup-card flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-10 min-w-0 basis-full items-center gap-2.5 rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-3.5 transition-none focus-within:border-[rgba(255,255,255,0.2)] focus-within:bg-[rgba(255,255,255,0.04)] sm:flex-1 sm:basis-0">
-            <Search className="size-4 shrink-0 text-[#8a8f98]" />
+          <div className="flex h-10 min-w-0 basis-full items-center gap-2.5 rounded-lg border border-white/[0.08] bg-[#0e0f11] px-3.5 transition-none focus-within:border-white/20 sm:flex-1 sm:basis-0">
+            <Search className="size-4 shrink-0 text-neutral-400" />
             <input
               type="search"
               value={q}
@@ -202,7 +221,7 @@ export function PasswordsSearch() {
                 if (e.key === "Enter") handleImmediateSearch();
               }}
               placeholder="Search by URL or domain (e.g. auth.openai.com)"
-              className="min-w-0 w-full bg-transparent font-mono text-xs text-[#f7f8f8] outline-none placeholder:text-[#62666d]"
+              className="min-w-0 w-full bg-transparent font-mono text-xs text-white outline-none placeholder:text-neutral-500"
             />
           </div>
 
@@ -212,7 +231,7 @@ export function PasswordsSearch() {
             size="sm"
             onClick={() => setShowPasswords((s) => !s)}
             aria-pressed={showPasswords}
-            className="h-10 gap-1.5 text-xs text-[#d0d6e0] transition-none hover:scale-100 active:scale-100 hover:text-white"
+            className="h-10 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-xs text-neutral-200 transition-none hover:scale-100 active:scale-100 hover:bg-white/[0.04] hover:text-white"
           >
             {showPasswords ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
             {showPasswords ? "Mask passwords" : "Show passwords"}
@@ -224,7 +243,7 @@ export function PasswordsSearch() {
             size="sm"
             onClick={handleImmediateSearch}
             disabled={isSearching}
-            className="motion-sheen h-10 gap-1.5 text-xs transition-none hover:scale-100 active:scale-100"
+            className="motion-sheen h-10 gap-1.5 rounded-lg text-xs transition-none hover:scale-100 active:scale-100"
           >
             {isSearching ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -236,113 +255,113 @@ export function PasswordsSearch() {
         </div>
       </section>
 
-      {/* Results Table Card */}
-      <section className="flex min-w-0 flex-col gap-3 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
+      {/* SpinupMail Results Table Card */}
+      <section className="spinup-card flex min-w-0 flex-col overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-[rgba(255,255,255,0.05)] hover:bg-transparent">
-                <TableHead className="text-xs font-medium text-[#8a8f98] min-w-[200px]">
+              <TableRow className="border-b border-white/[0.07] bg-[#0e0f11]/60 hover:bg-transparent">
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400 min-w-[200px]">
                   URL
                 </TableHead>
-                <TableHead className="text-xs font-medium text-[#8a8f98] min-w-[160px]">
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400 min-w-[160px]">
                   Login
                 </TableHead>
-                <TableHead className="text-xs font-medium text-[#8a8f98] min-w-[180px]">
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400 min-w-[180px]">
                   Password
                 </TableHead>
-                <TableHead className="text-xs font-medium text-[#8a8f98] min-w-[220px]">
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400 min-w-[220px]">
                   Archive
                 </TableHead>
-                <TableHead className="text-xs font-medium text-[#8a8f98] min-w-[150px]">
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400 min-w-[150px]">
                   Source file
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {results.map((item, idx) => (
-                  <TableRow
-                    key={`${item.id}-${idx}`}
-                    className="border-b border-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.03)] transition-none"
-                  >
-                    <TableCell className="max-w-[260px] py-2.5 font-mono text-xs text-[#d0d6e0]">
-                      <span className="block truncate" title={item.url || item.domain || "—"}>
-                        {item.url || item.domain || "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] py-2.5 font-mono text-xs text-[#d0d6e0]">
-                      <span className="block truncate" title={item.login || "—"}>
-                        {item.login || "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "font-mono text-xs max-w-[160px] truncate select-all",
-                            showPasswords ? "text-[#f7f8f8]" : "text-[#8a8f98] tracking-widest",
-                          )}
-                          title={showPasswords ? item.password : undefined}
-                        >
-                          {showPasswords ? item.password : "••••••••"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await copyToClipboard(item.password);
-                            toast.success("Copied");
-                          }}
-                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-[4px] text-[#8a8f98] hover:bg-[rgba(255,255,255,0.06)] hover:text-[#f7f8f8] transition-none outline-none focus-visible:ring-1 focus-visible:ring-white/20"
-                          title="Copy password"
-                        >
-                          <Copy className="size-3.5" />
-                        </button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-[240px] py-2.5">
-                      <div className="flex flex-col gap-0.5">
-                        <Link
-                          href={`/archives/${item.archiveId}`}
-                          className="font-mono text-xs text-[#d0d6e0] hover:text-white hover:underline truncate"
-                          title={item.archiveFilename}
-                        >
-                          {item.archiveFilename}
-                        </Link>
-                        <span
-                          className="font-mono text-[11px] text-[#62666d] truncate"
-                          title={item.entryPath}
-                        >
-                          {item.entryPath}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-[180px] py-2.5">
+                <TableRow
+                  key={`${item.id}-${idx}`}
+                  className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-none"
+                >
+                  <TableCell className="max-w-[260px] py-3 px-4 font-mono text-xs text-white">
+                    <span className="block truncate" title={item.url || item.domain || "—"}>
+                      {item.url || item.domain || "—"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="max-w-[200px] py-3 px-4 font-mono text-xs text-neutral-200">
+                    <span className="block truncate" title={item.login || "—"}>
+                      {item.login || "—"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-3 px-4">
+                    <div className="flex items-center gap-2">
                       <span
-                        className="font-mono text-xs text-[#8a8f98] truncate block"
-                        title={item.entryPath || item.entryName}
+                        className={cn(
+                          "font-mono text-xs max-w-[160px] truncate select-all",
+                          showPasswords ? "text-white" : "text-neutral-500 tracking-widest",
+                        )}
+                        title={showPasswords ? item.password : undefined}
                       >
-                        {item.entryName || item.entryPath || "—"}
+                        {showPasswords ? item.password : "••••••••"}
                       </span>
-                    </TableCell>
-                  </TableRow>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await copyToClipboard(item.password);
+                          toast.success("Copied");
+                        }}
+                        className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-neutral-400 hover:bg-white/[0.06] hover:text-white transition-none outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+                        title="Copy password"
+                      >
+                        <Copy className="size-3.5" />
+                      </button>
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-[240px] py-3 px-4">
+                    <div className="flex flex-col gap-0.5">
+                      <Link
+                        href={`/archives/${item.archiveId}`}
+                        className="font-mono text-xs text-white hover:underline truncate"
+                        title={item.archiveFilename}
+                      >
+                        {item.archiveFilename}
+                      </Link>
+                      <span
+                        className="font-mono text-[11px] text-neutral-500 truncate"
+                        title={item.entryPath}
+                      >
+                        {item.entryPath}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-[180px] py-3 px-4">
+                    <span
+                      className="spinup-pill font-mono text-[11px] truncate inline-block max-w-full"
+                      title={item.entryPath || item.entryName}
+                    >
+                      {item.entryName || item.entryPath || "—"}
+                    </span>
+                  </TableCell>
+                </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
         {results.length === 0 ? (
           isSearching ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8a8f98]">
+            <div className="flex items-center justify-center gap-2 py-12 text-xs text-neutral-400">
               <Loader2 className="size-4 animate-spin" />
               Searching credentials...
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center text-xs text-[#62666d]">
+            <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center text-xs text-neutral-500">
               <p>
                 No credentials matched. Password files are parsed when archives are indexed/reindexed.
               </p>
-              <p className="text-[11px] text-[#8a8f98]">
+              <p className="text-[11px] text-neutral-400">
                 Hint: Existing archives need reindex (
-                <Link href="/settings" className="underline hover:text-[#d0d6e0]">
+                <Link href="/settings" className="underline hover:text-white">
                   Settings → Reindex
                 </Link>
                 ) to backfill.
@@ -352,14 +371,14 @@ export function PasswordsSearch() {
         ) : null}
 
         {hasMore && (
-          <div className="flex justify-center pt-2">
+          <div className="flex justify-center border-t border-white/[0.06] py-3">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={loadMore}
               disabled={isLoadingMore}
-              className="h-9 gap-2 px-6 text-xs text-[#d0d6e0] transition-none"
+              className="h-9 gap-2 rounded-lg border-white/[0.08] bg-[#0e0f11] px-6 text-xs text-neutral-200 transition-none hover:bg-white/[0.04]"
             >
               {isLoadingMore ? (
                 <>

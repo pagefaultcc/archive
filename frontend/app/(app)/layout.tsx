@@ -4,8 +4,8 @@ import Link from "next/link";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/components/app-sidebar";
-import { HeaderTitle } from "@/components/header-title";
-import { Icon3D } from "@/components/kinetics-ui";
+import { HeaderTitle, HeaderQuickSearch } from "@/components/header-title";
+import { PanelLeft } from "lucide-react";
 import { RetryErrorBoundary } from "@/components/retry-error";
 import { serverGetMe, type SessionUser } from "@/lib/api";
 
@@ -47,19 +47,23 @@ export default async function ProtectedLayout({
 
   return (
     <SidebarProvider>
-      <div className="relative flex min-h-screen w-full flex-col bg-[#08090a] text-[#f7f8f8]">
-        {/* Top Header */}
-        <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#08090a]/80 px-4 backdrop-blur-xl md:px-6 lg:px-8 transition-all">
+      <div className="relative flex min-h-screen w-full flex-col bg-[#030405] text-[#f7f8f8]">
+        {/* SpinupMail Top Header */}
+        <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#030405]/85 px-4 backdrop-blur-xl md:px-6 lg:px-8 transition-all">
           <div className="mx-auto flex h-14 min-w-0 w-full max-w-[1500px] items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <Link href="/archives" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-                <Icon3D name="shield" size="xs" />
-                <span className="font-semibold text-sm tracking-tight text-[#f7f8f8]">Archive</span>
+              <Link
+                href="/archives"
+                className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors"
+              >
+                <PanelLeft className="size-4 text-neutral-400" />
+                <span className="font-semibold text-sm tracking-tight text-white">Archive</span>
               </Link>
               <Separator orientation="vertical" className="h-4 bg-white/[0.08]" />
               <HeaderTitle />
             </div>
 
+            <HeaderQuickSearch />
           </div>
         </header>
 

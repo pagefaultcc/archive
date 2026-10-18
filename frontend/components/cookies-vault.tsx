@@ -277,85 +277,88 @@ export function CookiesVault() {
 
   return (
     <div className="flex flex-1 flex-col gap-5 spring-enter">
-      {/* Top Modular Summary Strip — Websites & Domain-Separated Logs */}
-      <MotionSurface busy={isReindexing}>
-      <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
-        <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-          <div className="flex items-start gap-3">
-            <Icon3D name="key" size="md" />
-            <div className="flex flex-col gap-0.5">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Indexed Vault
-              </p>
-              <h2 className="text-sm font-semibold tracking-tight text-[#d0d6e0]">
-                Cookies Explorer
-              </h2>
-              <span className="text-xs text-[#8a8f98]">
-                Domain-separated Netscape &amp; JSON logs
-              </span>
+      {/* SpinupMail 3-Card Telemetry Strip */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MotionSurface busy={isReindexing}>
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <Globe className="size-4 text-neutral-400" />
+                <span>Unique Domains</span>
+              </div>
+              <span className="spinup-pill">Root Normalized</span>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Unique websites
-              </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0]">
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
                 <SpringCounter value={totalDomains} />
               </span>
+              <span className="text-xs text-neutral-500">websites</span>
             </div>
+          </div>
+        </MotionSurface>
 
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Separated log files
-              </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0]">
+        <MotionSurface>
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <FileText className="size-4 text-neutral-400" />
+                <span>Separated Logs</span>
+              </div>
+              <span className="spinup-pill">Per-Archive</span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
                 <SpringCounter value={totalLogs} />
               </span>
+              <span className="text-xs text-neutral-500">files</span>
             </div>
+          </div>
+        </MotionSurface>
 
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Total cookies
-              </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0]">
-                <SpringCounter value={totalCookies} />
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Active website
-              </span>
-              <span className="truncate font-mono text-base font-semibold tracking-tight text-[#d0d6e0]">
+        <MotionSurface>
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <FileCode className="size-4 text-neutral-400" />
+                <span>Total Cookies</span>
+              </div>
+              <span className="spinup-pill truncate max-w-[140px] font-mono">
                 {topWebsite}
               </span>
             </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
+                <SpringCounter value={totalCookies} />
+              </span>
+              <span className="text-xs text-neutral-500">tokens</span>
+            </div>
           </div>
-        </div>
+        </MotionSurface>
       </section>
-      </MotionSurface>
 
       {/* Bulk Download & Domain Action Bar */}
       {selectedDomain ? (
-        <section className="flex flex-wrap items-center justify-between gap-3 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] px-4 py-3">
+        <section className="spinup-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2.5">
-            <Globe className="size-4 text-[#8a8f98]" />
-            <span className="font-mono text-sm font-semibold text-[#d0d6e0]">
+            <Globe className="size-4 text-neutral-400" />
+            <span className="font-mono text-sm font-semibold text-white">
               {selectedDomain.domain}
             </span>
-            <Badge variant="secondary" className="font-mono text-[11px]">
+            <span className="spinup-badge-active font-mono text-[11px]">
               {selectedDomain.logCount.toLocaleString()} separate logs
-            </Badge>
-            <Badge variant="outline" className="font-mono text-[11px]">
+            </span>
+            <span className="spinup-pill font-mono text-[11px]">
               {selectedDomain.totalCookies.toLocaleString()} cookies
-            </Badge>
+            </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Download All for this domain */}
-            <Button asChild variant="outline" size="xs" className="motion-sheen gap-1.5">
+            <Button
+              asChild
+              variant="outline"
+              size="xs"
+              className="motion-sheen gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.04]"
+            >
               <a
                 href={cookieBulkDownloadUrl(
                   selectedDomain.domain,
@@ -370,19 +373,18 @@ export function CookiesVault() {
               </a>
             </Button>
 
-            {/* Download Random N for this domain */}
-            <div className="flex items-center gap-1 rounded-[6px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] px-1.5 py-0.5">
-              <span className="text-[11px] text-[#8a8f98] pl-1">Random:</span>
+            <div className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-[#0e0f11] px-2 py-0.5">
+              <span className="text-[11px] text-neutral-400 pl-0.5">Random:</span>
               <input
                 type="number"
                 min={1}
                 max={10000}
                 value={randomCountInput}
                 onChange={(e) => setRandomCountInput(e.target.value)}
-                className="w-14 bg-transparent text-center font-mono text-xs text-[#d0d6e0] focus:outline-none"
+                className="w-14 bg-transparent text-center font-mono text-xs text-white focus:outline-none"
                 aria-label="Random cookie log count"
               />
-              <Button asChild variant="secondary" size="xs" className="h-6 gap-1">
+              <Button asChild variant="secondary" size="xs" className="h-6 gap-1 rounded-md">
                 <a
                   href={cookieBulkDownloadUrl(
                     selectedDomain.domain,
@@ -398,7 +400,6 @@ export function CookiesVault() {
               </Button>
             </div>
 
-            {/* Send All to Validator — only shown for supported services (OpenAI) */}
             {isSupportedDomain ? (
               <Button
                 type="button"
@@ -414,9 +415,9 @@ export function CookiesVault() {
                     toast.error(res.error?.message ?? "Failed to send to validator", { id: "val-domain" });
                   }
                 }}
-                className="gap-1.5 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#d0d6e0] hover:bg-[rgba(255,255,255,0.06)] hover:text-[#ffffff]"
+                className="gap-1.5 rounded-lg border border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.06] hover:text-white"
               >
-                <CheckCircle2 className="size-3" />
+                <CheckCircle2 className="size-3 text-[#00ba7c]" />
                 Send All to Validator
               </Button>
             ) : null}
@@ -427,26 +428,26 @@ export function CookiesVault() {
       {/* 3-Pane Explorer: Websites (Domains) | Per-Log Files | Stripped Cookie Viewer */}
       <div className="grid min-h-[620px] grid-cols-1 gap-4 lg:grid-cols-[17rem_minmax(0,0.95fr)_minmax(0,1.15fr)]">
         {/* Pane 1: Websites (Domains) */}
-        <section className="flex min-w-0 flex-col rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
-          <div className="flex flex-col gap-2 border-b border-[rgba(255,255,255,0.05)] p-3">
+        <section className="spinup-card flex min-w-0 flex-col overflow-hidden">
+          <div className="flex flex-col gap-2.5 border-b border-white/[0.07] p-3.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[#d0d6e0]">
+              <span className="text-xs font-semibold text-white">
                 Websites ({filteredCount > 0 ? filteredCount.toLocaleString() : totalDomains.toLocaleString()})
               </span>
-              <span className="text-[11px] text-[#8a8f98] font-mono">
+              <span className="spinup-pill font-mono text-[10px]">
                 {loadedDomains.length < (filteredCount || totalDomains)
                   ? `Loaded ${loadedDomains.length.toLocaleString()}`
                   : "All loaded"}
               </span>
             </div>
             <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-[#62666d]" />
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-neutral-500" />
               <Input
                 type="search"
                 value={domainQuery}
                 onChange={(e) => handleDomainSearch(e.target.value)}
                 placeholder="Search all 1.2M websites…"
-                className="h-7 pl-7 text-xs"
+                className="spinup-input h-8 pl-8 text-xs"
               />
             </div>
           </div>
@@ -454,16 +455,16 @@ export function CookiesVault() {
           <div
             ref={domainsContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto max-h-[600px] divide-y divide-[rgba(255,255,255,0.04)]"
+            className="flex-1 overflow-y-auto max-h-[600px] divide-y divide-white/[0.04]"
           >
             {isLoadingDomains && loadedDomains.length === 0 ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8a8f98]">
-                <Loader2 className="size-4 animate-spin text-[#8a8f98]" />
+              <div className="flex items-center justify-center gap-2 py-12 text-xs text-neutral-400">
+                <Loader2 className="size-4 animate-spin text-neutral-400" />
                 Loading websites…
               </div>
             ) : loadedDomains.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
-                <p className="text-xs text-[#8a8f98]">
+                <p className="text-xs text-neutral-400">
                   {domainQuery ? `No websites match "${domainQuery}".` : "No domain cookies indexed yet."}
                 </p>
                 <Button
@@ -472,7 +473,7 @@ export function CookiesVault() {
                   size="xs"
                   onClick={handleReindex}
                   disabled={isReindexing}
-                  className="motion-sheen gap-1.5"
+                  className="motion-sheen gap-1.5 rounded-lg"
                 >
                   <RotateCcw
                     className={cn("size-3", isReindexing && "animate-spin")}
@@ -496,24 +497,21 @@ export function CookiesVault() {
                         void loadDomainLogs(dom, false);
                       }}
                       className={cn(
-                        "flex w-full items-center justify-between gap-2 px-3 text-left transition-none cursor-pointer",
+                        "flex w-full items-center justify-between gap-2 px-3.5 text-left transition-none cursor-pointer",
                         isActive
-                          ? "bg-[rgba(255,255,255,0.05)] text-[#f7f8f8]"
-                          : "text-[#8a8f98] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#d0d6e0]"
+                          ? "bg-white/[0.06] text-white"
+                          : "text-neutral-400 hover:bg-white/[0.025] hover:text-white"
                       )}
                     >
                       <div className="flex min-w-0 items-center gap-2">
-                        <Globe className="size-3.5 shrink-0 text-[#62666d]" />
+                        <Globe className="size-3.5 shrink-0 text-neutral-500" />
                         <span className="truncate font-mono text-xs font-medium">
                           {dom.domain}
                         </span>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className="shrink-0 font-mono text-[10px] text-[#8a8f98]"
-                      >
+                      <span className="spinup-pill shrink-0 font-mono text-[10px]">
                         {dom.logCount.toLocaleString()}
-                      </Badge>
+                      </span>
                     </button>
                   );
                 })}
@@ -521,8 +519,8 @@ export function CookiesVault() {
                 {paddingBottom > 0 ? <div style={{ height: `${paddingBottom}px` }} aria-hidden /> : null}
 
                 {isLoadingMore ? (
-                  <div className="flex items-center justify-center py-2.5 text-xs text-[#8a8f98] font-mono">
-                    <Loader2 className="size-3 animate-spin mr-1.5 text-[#8a8f98]" />
+                  <div className="flex items-center justify-center py-2.5 text-xs text-neutral-400 font-mono">
+                    <Loader2 className="size-3 animate-spin mr-1.5 text-neutral-400" />
                     Streaming more websites…
                   </div>
                 ) : null}
@@ -532,37 +530,37 @@ export function CookiesVault() {
         </section>
 
         {/* Pane 2: Separated Cookie Files per Log for Selected Website */}
-        <section className="flex min-w-0 flex-col rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
-          <div className="flex flex-col gap-2 border-b border-[rgba(255,255,255,0.05)] p-3">
+        <section className="spinup-card flex min-w-0 flex-col overflow-hidden">
+          <div className="flex flex-col gap-2.5 border-b border-white/[0.07] p-3.5">
             <div className="flex items-center justify-between">
-              <span className="truncate text-xs font-medium text-[#d0d6e0]">
+              <span className="truncate text-xs font-semibold text-white">
                 {selectedDomain
                   ? `${selectedDomain.domain} — Logs (${filteredLogs.length})`
                   : "Select a website"}
               </span>
-              <span className="text-[11px] text-[#62666d]">Per-log files</span>
+              <span className="spinup-pill text-[10px]">Per-log files</span>
             </div>
             <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-[#62666d]" />
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-neutral-500" />
               <Input
                 type="search"
                 value={logQuery}
                 onChange={(e) => setLogQuery(e.target.value)}
                 disabled={!selectedDomain}
                 placeholder="Filter logs by path or IP…"
-                className="h-7 pl-7 text-xs"
+                className="spinup-input h-8 pl-8 text-xs"
               />
             </div>
           </div>
 
-          <div className="flex-1 divide-y divide-[rgba(255,255,255,0.04)] overflow-y-auto max-h-[600px]">
+          <div className="flex-1 divide-y divide-white/[0.04] overflow-y-auto max-h-[600px]">
             {isLoadingLogs ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8a8f98]">
+              <div className="flex items-center justify-center gap-2 py-12 text-xs text-neutral-400">
                 <Loader2 className="size-4 animate-spin" />
                 Loading separated logs…
               </div>
             ) : filteredLogs.length === 0 ? (
-              <div className="py-12 text-center text-xs text-[#62666d]">
+              <div className="py-12 text-center text-xs text-neutral-500">
                 No logs found for this website.
               </div>
             ) : (
@@ -572,10 +570,10 @@ export function CookiesVault() {
                   <div
                     key={item.id}
                     className={cn(
-                      "flex flex-col gap-1.5 px-3.5 py-2.5 transition-none",
+                      "flex flex-col gap-1.5 px-3.5 py-3 transition-none",
                       isSelected
-                        ? "bg-[rgba(255,255,255,0.05)]"
-                        : "hover:bg-[rgba(255,255,255,0.03)]",
+                        ? "bg-white/[0.06]"
+                        : "hover:bg-white/[0.02]",
                     )}
                   >
                     <button
@@ -584,24 +582,20 @@ export function CookiesVault() {
                       className="flex min-w-0 w-full items-center justify-between gap-2 text-left"
                     >
                       <div className="flex min-w-0 items-center gap-2">
-                        <FileText className="size-3.5 shrink-0 text-[#8a8f98]" />
-                        <span className="truncate font-mono text-xs font-medium text-[#d0d6e0]">
+                        <FileText className="size-3.5 shrink-0 text-neutral-400" />
+                        <span className="truncate font-mono text-xs font-medium text-white">
                           {item.domain} — {item.entryName}
                         </span>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className="shrink-0 font-mono text-[10px]"
-                      >
+                      <span className="spinup-pill shrink-0 font-mono text-[10px]">
                         {item.cookieCount} cookies
-                      </Badge>
+                      </span>
                     </button>
 
                     <div className="flex items-center justify-between pt-0.5">
-                      {/* Clickable path forwarding to Archive > File Viewer at that exact path */}
                       <Link
                         href={`/archives/${item.archiveId}?path=${encodeURIComponent(item.entryPath)}`}
-                        className="group inline-flex items-center gap-1 truncate font-mono text-[11px] text-[#62666d] hover:text-[#d0d6e0] hover:underline"
+                        className="group inline-flex items-center gap-1 truncate font-mono text-[11px] text-neutral-500 hover:text-neutral-200 hover:underline"
                         title={`Open in Archive File Viewer: ${item.archiveFilename} → ${item.entryPath}`}
                       >
                         <span className="truncate">
@@ -610,7 +604,6 @@ export function CookiesVault() {
                         <ArrowUpRight className="size-3 shrink-0 opacity-70 group-hover:opacity-100" />
                       </Link>
 
-                      {/* Check button only shown for supported services (OpenAI) */}
                       {item.domain === "openai.com" ||
                       item.domain.endsWith(".openai.com") ||
                       item.entryPath.toLowerCase().includes("openai") ? (
@@ -627,9 +620,9 @@ export function CookiesVault() {
                             }
                           }}
                           title="Send this log to Cookie Validator"
-                          className="inline-flex items-center gap-1 text-[10px] text-[#d0d6e0] hover:text-[#ffffff] font-medium px-2 py-0.5 rounded-full bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.06)] transition-none cursor-pointer shrink-0 ml-2"
+                          className="spinup-pill inline-flex items-center gap-1 text-[10px] text-neutral-200 hover:text-white hover:bg-white/[0.06] transition-none cursor-pointer shrink-0 ml-2"
                         >
-                          <CheckCircle2 className="size-2.5" />
+                          <CheckCircle2 className="size-2.5 text-[#00ba7c]" />
                           Check
                         </button>
                       ) : null}
@@ -642,34 +635,34 @@ export function CookiesVault() {
         </section>
 
         {/* Pane 3: Stripped Domain Cookie Inspector (Netscape / JSON) */}
-        <section className="flex min-w-0 flex-col rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
+        <section className="spinup-card flex min-w-0 flex-col overflow-hidden">
           {selectedLog === null ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
-              <FileCode className="size-6 text-[#62666d]" />
-              <p className="text-[13.5px] font-medium text-[#d0d6e0]">
+              <FileCode className="size-6 text-neutral-500" />
+              <p className="text-sm font-medium text-white">
                 Select a log to view stripped {selectedDomain?.domain ?? "domain"}{" "}
                 cookies
               </p>
-              <p className="max-w-xs text-xs text-[#8a8f98]">
+              <p className="max-w-xs text-xs text-neutral-500">
                 Only cookies belonging to the selected website are shown,
                 cleanly separated from all other domains in that log file.
               </p>
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] px-3.5 py-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-4 py-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="truncate font-mono text-xs font-semibold text-[#d0d6e0]">
+                    <span className="truncate font-mono text-xs font-semibold text-white">
                       {selectedLog.domain}
                     </span>
-                    <Badge variant="secondary" className="font-mono text-[10px]">
+                    <span className="spinup-pill font-mono text-[10px]">
                       {selectedLog.cookieCount} cookies
-                    </Badge>
+                    </span>
                   </div>
                   <Link
                     href={`/archives/${selectedLog.archiveId}?path=${encodeURIComponent(selectedLog.entryPath)}`}
-                    className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate font-mono text-[11px] text-[#62666d] hover:text-[#d0d6e0] hover:underline"
+                    className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate font-mono text-[11px] text-neutral-500 hover:text-neutral-200 hover:underline"
                   >
                     <span className="truncate">{selectedLog.entryPath}</span>
                     <ArrowUpRight className="size-3 shrink-0" />
@@ -688,7 +681,6 @@ export function CookiesVault() {
                     size="sm"
                   />
 
-                  {/* Send to Validator in Inspector — only for supported domain */}
                   {selectedLog &&
                   (selectedLog.domain === "openai.com" ||
                     selectedLog.domain.endsWith(".openai.com")) ? (
@@ -706,9 +698,9 @@ export function CookiesVault() {
                           toast.error(res.error?.message ?? "Failed to queue log", { id: `val-inspect-${selectedLog.id}` });
                         }
                       }}
-                      className="gap-1.5 border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#d0d6e0] hover:bg-[rgba(255,255,255,0.06)] hover:text-[#ffffff]"
+                      className="gap-1.5 rounded-lg border border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.06] hover:text-white"
                     >
-                      <CheckCircle2 className="size-3" />
+                      <CheckCircle2 className="size-3 text-[#00ba7c]" />
                       Send to Validator
                     </Button>
                   ) : null}
@@ -727,7 +719,7 @@ export function CookiesVault() {
                         toast.error("Failed to copy cookies to clipboard.");
                       }
                     }}
-                    className="gap-1.5"
+                    className="gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11]"
                   >
                     <Copy className="size-3" />
                     Copy (Netscape)
@@ -737,6 +729,7 @@ export function CookiesVault() {
                     type="button"
                     variant="outline"
                     size="xs"
+                    className="gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11]"
                     onClick={async () => {
                       const ok = await copyToClipboard(selectedLog.jsonText);
                       if (ok) {
@@ -747,7 +740,7 @@ export function CookiesVault() {
                         toast.error("Failed to copy cookies to clipboard.");
                       }
                     }}
-                    >
+                  >
                     <Copy className="size-3" />
                     Copy (JSON)
                   </Button>
@@ -757,6 +750,7 @@ export function CookiesVault() {
                     variant="ghost"
                     size="xs"
                     onClick={() => setWrapLines((w) => !w)}
+                    className="text-neutral-400 hover:text-white"
                   >
                     <WrapText className="size-3" />
                   </Button>

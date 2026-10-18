@@ -5,18 +5,25 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  Archive,
   ArrowUpRight,
+  BarChart3,
   Check,
   CheckSquare,
+  Clock,
   Download,
   Eye,
   EyeOff,
   FileArchive,
+  FileText,
+  HardDrive,
+  Key,
   Loader2,
   Lock,
   Radio,
   RefreshCw,
   RotateCcw,
+  Search,
   Square,
   Trash2,
   Upload,
@@ -170,6 +177,7 @@ export function ArchivesVault({
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [isReindexingAll, setIsReindexingAll] = useState(false);
   const [reindexingId, setReindexingId] = useState<string | null>(null);
+  const [archiveSearchQuery, setArchiveSearchQuery] = useState("");
   // Auto-Scrape state
   const [isAutoScrapeOpen, setIsAutoScrapeOpen] = useState(false);
   const [scrapeChannels, setScrapeChannels] = useState<TelegramChannelItem[]>([]);
@@ -583,265 +591,387 @@ export function ArchivesVault({
     };
   }, [router]);
 
+  const filteredArchives = archiveSearchQuery.trim()
+    ? archives.filter((a) =>
+        a.filename.toLowerCase().includes(archiveSearchQuery.trim().toLowerCase()) ||
+        a.format.toLowerCase().includes(archiveSearchQuery.trim().toLowerCase())
+      )
+    : archives;
+
+  const storageCapBytes = 500 * 1024 * 1024 * 1024; // 500 GiB reference tier
+  const storageUsagePct =
+    totalIndexedBytes > 0
+      ? Math.min(100, Math.max(1, Math.round((totalIndexedBytes / storageCapBytes) * 100)))
+      : 0;
+
+  const histogramDays = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+  const histogramHeights = [22, 34, 28, 45, 38, 62, 54, 48, 72, 65, 84, 58, 92, 78];
+
   return (
     <div className="flex flex-1 flex-col gap-5 spring-enter">
-      {/* Top modular summary strip */}
-      <MotionSurface>
-      <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
-        <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-          <div className="flex items-start gap-3">
-            <Icon3D name="tools" size="md" />
-            <div className="flex flex-col gap-0.5">
-              <h2 className="text-sm font-semibold tracking-tight text-[#f7f8f8]">
-                Archive
-              </h2>
-              <span className="text-xs text-[#8a8f98]">
-                Supports .zip, .7z, and .rar up to 10 GB
+      {/* SpinupMail 3-Card Top Telemetry Grid */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Card 1: Received Archives & Activity */}
+        <MotionSurface>
+          <div className="spinup-card flex h-full flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <Archive className="size-4 text-neutral-400" />
+                <span>Received Archives</span>
+              </div>
+              <span className="spinup-pill">Total Vault</span>
+            </div>
+
+            <div className="my-3 flex items-baseline gap-2">
+              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
+                <SpringCounter value={totalArchives} />
               </span>
+              <span className="text-xs text-neutral-500">containers</span>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <div className="grid grid-cols-14 items-end gap-1.5 h-14">
+                {histogramDays.map((day, idx) => {
+                  const h = totalArchives === 0 ? 12 : histogramHeights[idx];
+                  const isPeak = idx >= 10 && totalArchives > 0;
+                  return (
+                    <div key={day} className="flex flex-col items-center gap-1.5 h-full justify-end">
+                      <div className="relative flex w-full flex-1 items-end rounded-sm bg-white/[0.03] overflow-hidden">
+                        <div
+                          className={cn(
+                            "w-full rounded-sm transition-all duration-300",
+                            isPeak ? "bg-white/85" : "bg-neutral-500/50"
+                          )}
+                          style={{ height: `${h}%` }}
+                        />
+                      </div>
+                      <span className="font-mono text-[10px] leading-none text-neutral-600">
+                        {day}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: "Total archives", value: totalArchives, accent: "border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)]" },
-              { label: "Indexed files", value: indexedFiles, accent: "border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)]" },
-              { label: "Encrypted vaults", value: encryptedVaults, accent: "border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)]" },
-              {
-                label: "Total indexed size",
-                value: null,
-                text: formatBytes(totalIndexedBytes),
-                accent: "border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)]",
-              },
-            ].map((metric) => (
-              <div
-                key={metric.label}
-                className={cn(
-                  "flex flex-col gap-0.5 rounded-[8px] border px-3 py-2.5 transition-all duration-200 hover:border-opacity-40",
-                  metric.accent
-                )}
-              >
-                <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                  {metric.label}
-                </span>
-                <span className="text-lg font-semibold tabular-nums tracking-tight text-[#f7f8f8]">
-                  {metric.text ?? <SpringCounter value={metric.value ?? 0} />}
-                </span>
+        </MotionSurface>
+
+        {/* Card 2: Total Indexed Member Files */}
+        <MotionSurface>
+          <div className="spinup-card flex h-full flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <FileText className="size-4 text-neutral-400" />
+                <span>Indexed Files</span>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      </MotionSurface>
+              <span className="spinup-pill">Uncompressed</span>
+            </div>
 
-      {/* Upload panel */}
-      <MotionSurface busy={isUploading}>
-      <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold tracking-tight text-[#f7f8f8]">
-              Upload archive
-            </h3>
-            <Badge variant="secondary" className="rounded-[9999px]">
-              Up to 100 GB
-            </Badge>
-          </div>
-          <div
-            role="button"
-            tabIndex={0}
-            aria-disabled={isUploading}
-            onClick={() => {
-              if (!isUploading) fileInputRef.current?.click();
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                if (!isUploading) fileInputRef.current?.click();
-              }
-            }}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDragActive(true);
-            }}
-            onDragLeave={() => setIsDragActive(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setIsDragActive(false);
-              if (!isUploading) onPickFiles(event.dataTransfer.files);
-            }}
-            className={
-              "motion-sheen flex cursor-pointer flex-col items-center gap-2 rounded-[8px] border border-dashed px-6 py-8 text-center transition-colors duration-200 " +
-              (isDragActive
-                ? "border-[rgba(255,255,255,0.28)] bg-[rgba(255,255,255,0.05)]"
-                : "border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.015)] hover:border-[rgba(255,255,255,0.22)] hover:bg-[rgba(255,255,255,0.03)]") +
-              (isUploading ? " pointer-events-none opacity-60" : "")
-            }
-          >
-            <Upload className="size-5 text-[#8a8f98]" />
-            <p className="text-sm font-medium text-[#f7f8f8]">
-              Drag &amp; drop .zip, .7z, or multiple .rar archive parts here, or click to
-              browse
-            </p>
-            <p className="text-xs text-[#62666d]">
-              Supports multi-file selection (.part1.rar, .part2.rar, etc.) · Password-protected archives detected automatically
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".zip,.7z,.rar"
-              multiple
-              className="hidden"
-              onChange={(event) => {
-                void onPickFiles(event.target.files);
-                event.target.value = "";
-              }}
-            />
-          </div>
+            <div className="my-3 flex items-baseline gap-2">
+              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
+                <SpringCounter value={indexedFiles} />
+              </span>
+              <span className="text-xs text-neutral-500">member entries</span>
+            </div>
 
-          {generalError !== null ? (
-            <Alert variant="destructive" className="rounded-[8px]">
-              <AlertDescription>{generalError}</AlertDescription>
-            </Alert>
-          ) : null}
+            <div className="mt-auto pt-1">
+              <svg
+                viewBox="0 0 280 56"
+                className="h-14 w-full overflow-visible"
+                 preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <defs>
+                  <linearGradient id="spinupAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(255,255,255,0.22)" />
+                    <stop offset="100%" stopColor="rgba(255,255,255,0.0)" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M0,48 C40,46 65,40 95,36 C130,31 155,28 190,18 C225,8 250,6 280,2 L280,56 L0,56 Z"
+                  fill="url(#spinupAreaGrad)"
+                />
+                <path
+                  d="M0,48 C40,46 65,40 95,36 C130,31 155,28 190,18 C225,8 250,6 280,2"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.8)"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          </div>
+        </MotionSurface>
 
-          {/* Multi-archive upload queue cards */}
-          {uploadQueue.length > 0 ? (
-            <div className="flex flex-col gap-2 rounded-[8px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] p-3.5">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#8a8f98]">
-                <span className="font-medium text-[#f7f8f8]">
-                  Upload Queue ({uploadQueue.filter((it) => it.stage === "done").length}/{uploadQueue.length} completed)
-                </span>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  {failedCount > 0 ? (
-                    <button
-                      type="button"
-                      onClick={clearFailed}
-                      className="whitespace-nowrap text-[11px] text-[#f91880] transition-none hover:opacity-80"
-                    >
-                      Clear failed ({failedCount})
-                    </button>
-                  ) : null}
-                  {finishedCount > 0 && !isUploading ? (
-                    <button
-                      type="button"
-                      onClick={clearFinished}
-                      className="whitespace-nowrap text-[11px] text-[#00ba7c] transition-none hover:opacity-80"
-                    >
-                      Clear finished ({finishedCount})
-                    </button>
-                  ) : null}
-                  {!isUploading ? (
-                    <button
-                      type="button"
-                      onClick={() => setUploadQueue([])}
-                      className="whitespace-nowrap text-[11px] text-[#62666d] transition-none hover:text-[#f7f8f8]"
-                    >
-                      Clear all
-                    </button>
-                  ) : null}
+        {/* Card 3: Statistics & Storage Capacity */}
+        <MotionSurface>
+          <div className="spinup-card flex h-full flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <BarChart3 className="size-4 text-neutral-400" />
+                <span>Statistics</span>
+              </div>
+              <span className="spinup-pill">{formatBytes(totalIndexedBytes)}</span>
+            </div>
+
+            <div className="my-3 grid grid-cols-3 gap-2 rounded-lg border border-white/[0.06] bg-[#0e0f11] p-2.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileArchive className="size-3.5 shrink-0 text-neutral-400" />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold tabular-nums text-white">
+                    {totalArchives}
+                  </p>
+                  <p className="truncate text-[10px] text-neutral-500">Total Archives</p>
                 </div>
               </div>
-              <div className="flex flex-col gap-2.5">
-                {uploadQueue.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.015)] p-2.5"
-                  >
-                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                      <span className="min-w-0 max-w-full truncate text-xs font-medium text-[#f7f8f8]" title={item.filename}>
-                        {item.filename}
-                      </span>
-                      {item.format !== null ? (
-                        <Badge variant="outline" className="font-mono text-[10px] uppercase">
-                          {item.format}
-                        </Badge>
-                      ) : null}
-                      <span className="ml-auto flex items-center gap-2 font-mono text-[11px] tabular-nums text-[#8a8f98]">
-                        {item.stage === "uploading" && item.mbps !== undefined && item.mbps > 0 ? (
-                          <span className="text-[#d0d6e0]">
-                            {item.mbps.toFixed(1)} Mbps
-                          </span>
-                        ) : null}
-                        {item.stage === "uploading" && item.etaSeconds !== undefined && item.etaSeconds > 0 ? (
-                          <span className="text-[#62666d]">
-                            · {formatEta(item.etaSeconds)}
-                          </span>
-                        ) : null}
-                        <span>
-                          {formatBytes(item.loaded)} / {formatBytes(item.total)}
-                        </span>
-                      </span>
-                      <span className="font-mono text-[11px] font-semibold tabular-nums text-[#f7f8f8]">
-                        {item.percent}%
-                      </span>
-                    </div>
-                    <div className="relative h-1.5 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
-                      <div
-                        className={cn(
-                          "absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out",
-                          item.stage === "error"
-                            ? "bg-[#f91880]"
-                            : item.stage === "done"
-                              ? "bg-[#00ba7c]"
-                              : "kinetics-progress-fill",
-                        )}
-                        style={{ width: `${item.percent}%` }}
-                      />
-                      {item.stage === "uploading" || item.stage === "indexing" ? (
-                        <div aria-hidden="true" className="kinetics-progress-shimmer absolute inset-0" />
-                      ) : null}
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                      <span
-                        className={cn(
-                          "inline-flex min-w-0 items-center gap-1 break-words font-medium",
-                          item.stage === "error"
-                            ? "text-[#f91880]"
-                            : item.stage === "done"
-                              ? "text-[#00ba7c]"
-                              : "text-[#8a8f98]",
-                        )}
-                      >
-                        {item.stage === "uploading" || item.stage === "indexing" ? (
-                          <Loader2 className="size-3 animate-spin" />
-                        ) : null}
-                        {item.error ? item.error : STAGE_LABELS[item.stage]}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center gap-2 min-w-0 border-l border-white/[0.06] pl-2">
+                <Key className="size-3.5 shrink-0 text-neutral-400" />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold tabular-nums text-white">
+                    {encryptedVaults}
+                  </p>
+                  <p className="truncate text-[10px] text-neutral-500">Encrypted</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 min-w-0 border-l border-white/[0.06] pl-2">
+                <HardDrive className="size-3.5 shrink-0 text-neutral-400" />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold tabular-nums text-white">
+                    {formatBytes(totalIndexedBytes)}
+                  </p>
+                  <p className="truncate text-[10px] text-neutral-500">Indexed</p>
+                </div>
               </div>
             </div>
-          ) : null}
 
-        </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-neutral-400">Storage Usage</span>
+                <span className="font-mono text-neutral-300">{storageUsagePct}%</span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                <div
+                  className="h-full rounded-full bg-white/85 transition-all duration-300"
+                  style={{ width: `${storageUsagePct}%` }}
+                />
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="spinup-pill">Top format: .zip</span>
+                <span className="spinup-pill">Engine: Go 1.25 + 7zz</span>
+                <span className="spinup-pill">Parallel MTProto active</span>
+              </div>
+            </div>
+          </div>
+        </MotionSurface>
       </section>
+
+      {/* Compact Sleek Upload Dropzone */}
+      <MotionSurface busy={isUploading}>
+        <section className="spinup-card p-4">
+          <div className="flex flex-col gap-3">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-disabled={isUploading}
+              onClick={() => {
+                if (!isUploading) fileInputRef.current?.click();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  if (!isUploading) fileInputRef.current?.click();
+                }
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDragActive(true);
+              }}
+              onDragLeave={() => setIsDragActive(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsDragActive(false);
+                if (!isUploading) onPickFiles(event.dataTransfer.files);
+              }}
+              className={cn(
+                "motion-sheen flex cursor-pointer flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-dashed px-5 py-4 text-left transition-colors duration-200",
+                isDragActive
+                  ? "border-white/30 bg-white/[0.04]"
+                  : "border-white/[0.1] bg-[#0e0f11]/70 hover:border-white/[0.22] hover:bg-white/[0.02]",
+                isUploading && "pointer-events-none opacity-60"
+              )}
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-neutral-300">
+                  <Upload className="size-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">
+                    Drag &amp; drop .zip, .7z, or multiple .rar archive parts here, or click to browse
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    Supports multi-file selection (.part1.rar, .part2.rar, etc.) · Password-protected archives detected automatically
+                  </p>
+                </div>
+              </div>
+              <span className="spinup-pill shrink-0">Up to 100 GB</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".zip,.7z,.rar"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  void onPickFiles(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </div>
+
+            {generalError !== null ? (
+              <Alert variant="destructive" className="rounded-lg">
+                <AlertDescription>{generalError}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            {/* Multi-archive upload queue cards */}
+            {uploadQueue.length > 0 ? (
+              <div className="flex flex-col gap-2 rounded-lg border border-white/[0.07] bg-[#0e0f11] p-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-400">
+                  <span className="font-medium text-white">
+                    Upload Queue ({uploadQueue.filter((it) => it.stage === "done").length}/{uploadQueue.length} completed)
+                  </span>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {failedCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={clearFailed}
+                        className="whitespace-nowrap text-[11px] text-[#f91880] transition-none hover:opacity-80"
+                      >
+                        Clear failed ({failedCount})
+                      </button>
+                    ) : null}
+                    {finishedCount > 0 && !isUploading ? (
+                      <button
+                        type="button"
+                        onClick={clearFinished}
+                        className="whitespace-nowrap text-[11px] text-[#00ba7c] transition-none hover:opacity-80"
+                      >
+                        Clear finished ({finishedCount})
+                      </button>
+                    ) : null}
+                    {!isUploading ? (
+                      <button
+                        type="button"
+                        onClick={() => setUploadQueue([])}
+                        className="whitespace-nowrap text-[11px] text-neutral-500 transition-none hover:text-white"
+                      >
+                        Clear all
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {uploadQueue.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border border-white/[0.05] bg-white/[0.015] p-2.5"
+                    >
+                      <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                        <span className="min-w-0 max-w-full truncate text-xs font-medium text-white" title={item.filename}>
+                          {item.filename}
+                        </span>
+                        {item.format !== null ? (
+                          <span className="spinup-pill uppercase font-mono text-[10px]">
+                            {item.format}
+                          </span>
+                        ) : null}
+                        <span className="ml-auto flex items-center gap-2 font-mono text-[11px] tabular-nums text-neutral-400">
+                          {item.stage === "uploading" && item.mbps !== undefined && item.mbps > 0 ? (
+                            <span className="text-neutral-200">
+                              {item.mbps.toFixed(1)} Mbps
+                            </span>
+                          ) : null}
+                          {item.stage === "uploading" && item.etaSeconds !== undefined && item.etaSeconds > 0 ? (
+                            <span className="text-neutral-500">
+                              · {formatEta(item.etaSeconds)}
+                            </span>
+                          ) : null}
+                          <span>
+                            {formatBytes(item.loaded)} / {formatBytes(item.total)}
+                          </span>
+                        </span>
+                        <span className="font-mono text-[11px] font-semibold tabular-nums text-white">
+                          {item.percent}%
+                        </span>
+                      </div>
+                      <div className="relative h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                        <div
+                          className={cn(
+                            "absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out",
+                            item.stage === "error"
+                              ? "bg-[#f91880]"
+                              : item.stage === "done"
+                                ? "bg-[#00ba7c]"
+                                : "kinetics-progress-fill",
+                          )}
+                          style={{ width: `${item.percent}%` }}
+                        />
+                        {item.stage === "uploading" || item.stage === "indexing" ? (
+                          <div aria-hidden="true" className="kinetics-progress-shimmer absolute inset-0" />
+                        ) : null}
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between text-[11px]">
+                        <span
+                          className={cn(
+                            "inline-flex min-w-0 items-center gap-1 break-words font-medium",
+                            item.stage === "error"
+                              ? "text-[#f91880]"
+                              : item.stage === "done"
+                                ? "text-[#00ba7c]"
+                                : "text-neutral-400",
+                          )}
+                        >
+                          {item.stage === "uploading" || item.stage === "indexing" ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : null}
+                          {item.error ? item.error : STAGE_LABELS[item.stage]}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </section>
       </MotionSurface>
 
       {/* Background Server Download Indicator */}
       {serverQueue !== null && (serverQueue.active !== null || (serverQueue.activeList && serverQueue.activeList.length > 0) || serverQueue.pendingCount > 0) ? (
-        <div className="flex flex-col gap-2.5 rounded-[8px] border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.02)] p-3.5 text-xs">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.06)] pb-2.5">
+        <div className="spinup-card flex flex-col gap-2.5 border-emerald-500/30 p-4 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-2.5">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
               <span className="relative flex h-2 w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ba7c] opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00ba7c]" />
               </span>
-              <span className="font-mono font-medium text-[#f7f8f8] whitespace-nowrap">
+              <span className="font-mono font-medium text-white whitespace-nowrap">
                 Parallel Downloader
               </span>
               {(serverQueue.activeList && serverQueue.activeList.length > 0) ? (
-                <Badge variant="outline" className="text-[10px] text-[#00ba7c] border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] shrink-0 font-medium px-2 py-0.5">
+                <Badge variant="outline" className="text-[10px] text-[#00ba7c] border-white/[0.08] bg-white/[0.03] shrink-0 font-medium px-2 py-0.5">
                   {serverQueue.activeList.length} stream{serverQueue.activeList.length > 1 ? "s" : ""} downloading in parallel
                 </Badge>
               ) : null}
               {serverQueue.pendingCount > 0 ? (
-                <Badge variant="outline" className="text-[10px] text-[#8a8f98] shrink-0 font-normal">
+                <Badge variant="outline" className="text-[10px] text-neutral-400 shrink-0 font-normal">
                   +{serverQueue.pendingCount} queued
                 </Badge>
               ) : null}
             </div>
-            <div className="flex items-center gap-2 font-mono text-[11px] text-[#8a8f98] shrink-0">
+            <div className="flex items-center gap-2 font-mono text-[11px] text-neutral-400 shrink-0">
               {serverQueue.totalSpeedMbps && serverQueue.totalSpeedMbps > 0 ? (
-                <span className="font-semibold text-[#00ba7c] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-2 py-0.5 rounded-[4px] text-[11px]">
+                <span className="font-semibold text-[#00ba7c] border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 rounded text-[11px]">
                   {serverQueue.totalSpeedMbps.toFixed(1)} Mbps total
                 </span>
               ) : null}
@@ -853,7 +983,7 @@ export function ArchivesVault({
                   if (q.ok) setServerQueue(q.data);
                   toast.info("Cleared background download queue.");
                 }}
-                className="ml-2 whitespace-nowrap text-[10px] text-[#8a8f98] hover:text-[#f91880] cursor-pointer transition-none"
+                className="ml-2 whitespace-nowrap text-[10px] text-neutral-400 hover:text-[#f91880] cursor-pointer transition-none"
                 title="Cancel pending background downloads"
               >
                 (Clear Queue)
@@ -861,29 +991,28 @@ export function ArchivesVault({
             </div>
           </div>
 
-          {/* Active Parallel Stream Cards */}
           {(serverQueue.activeList && serverQueue.activeList.length > 0
             ? serverQueue.activeList
             : serverQueue.active
             ? [serverQueue.active]
             : []
           ).map((stream, idx) => (
-            <div key={stream.id} className="flex flex-col gap-1.5 rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.015)] p-2.5">
+            <div key={stream.id} className="flex flex-col gap-1.5 rounded-lg border border-white/[0.06] bg-[#0e0f11] p-2.5">
               <div className="flex flex-wrap items-center justify-between gap-1.5">
                 <div className="flex max-w-full items-center gap-2 min-w-0">
-                  <span className="shrink-0 font-mono text-[9px] uppercase px-1.5 py-0.5 rounded-[4px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98] font-semibold">
+                  <span className="shrink-0 font-mono text-[9px] uppercase px-1.5 py-0.5 rounded border border-white/[0.08] bg-white/[0.03] text-neutral-400 font-semibold">
                     Stream #{idx + 1}
                   </span>
-                  <span className="font-mono font-medium text-[#d0d6e0] truncate text-[11px]" title={stream.filename}>
+                  <span className="font-mono font-medium text-neutral-200 truncate text-[11px]" title={stream.filename}>
                     {stream.filename}
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-[#8a8f98]">
+                <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-neutral-400">
                   {stream.speedMbps > 0 ? (
                     <span className="text-[#00ba7c] font-medium">{stream.speedMbps.toFixed(1)} Mbps</span>
                   ) : null}
                   {stream.etaSeconds > 0 ? (
-                    <span className="text-[#62666d]">· {formatEta(stream.etaSeconds)}</span>
+                    <span className="text-neutral-500">· {formatEta(stream.etaSeconds)}</span>
                   ) : null}
                   {stream.totalBytes > 0 ? (
                     <span>
@@ -892,7 +1021,7 @@ export function ArchivesVault({
                   ) : null}
                 </div>
               </div>
-              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
+              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-300 kinetics-progress-fill",
@@ -910,21 +1039,37 @@ export function ArchivesVault({
         </div>
       ) : null}
 
-      {/* Archive Vault List */}
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-sm font-semibold tracking-tight text-[#f7f8f8]">
-            Indexed Archives ({archives.length})
-          </h3>
+      {/* SpinupMail Main Activity Table */}
+      <section className="spinup-card overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <Clock className="size-4 text-neutral-400" />
+            <h3 className="text-sm font-semibold tracking-tight text-white">
+              Recent Archive Activity
+            </h3>
+            <span className="spinup-pill">{filteredArchives.length}</span>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex items-center">
+              <Search className="pointer-events-none absolute left-2.5 size-3.5 text-neutral-500" />
+              <input
+                type="text"
+                value={archiveSearchQuery}
+                onChange={(e) => setArchiveSearchQuery(e.target.value)}
+                placeholder="Search archives..."
+                aria-label="Search archives"
+                className="spinup-input h-8 w-44 sm:w-56 pl-8 pr-3"
+              />
+            </div>
             <Button
               type="button"
               variant="outline"
               size="xs"
               onClick={openAutoScrapeDialog}
-              className="gap-1.5"
+              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-xs text-neutral-200 hover:bg-white/[0.04]"
             >
-              <Radio className="size-3" />
+              <Radio className="size-3 text-[#00ba7c]" />
               Auto-Scrape
             </Button>
             <Button
@@ -933,126 +1078,166 @@ export function ArchivesVault({
               size="xs"
               onClick={handleReindexAll}
               disabled={isReindexingAll || isUploading}
-              className="gap-1.5"
+              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-xs text-neutral-200 hover:bg-white/[0.04]"
             >
               <RefreshCw
                 className={isReindexingAll ? "size-3 animate-spin" : "size-3"}
               />
-              {isReindexingAll ? "Reindexing Everything…" : "Reindex Everything"}
+              {isReindexingAll ? "Reindexing…" : "Reindex All"}
             </Button>
           </div>
         </div>
-        {archives.length === 0 ? (
-          <div className="kinetics-card rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] px-6 py-10 text-center">
-            <p className="text-sm font-medium text-[#f7f8f8]">
-              No archives indexed yet
+
+        {filteredArchives.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm font-medium text-white">
+              {archives.length === 0 ? "No archives indexed yet" : "No matching archives"}
             </p>
-            <p className="mt-1 text-xs text-[#62666d]">
-              Upload a .zip, .7z, or .rar file above to open it in the
-              multi-pane File Explorer.
+            <p className="mt-1 text-xs text-neutral-500">
+              {archives.length === 0
+                ? "Upload a .zip, .7z, or .rar file above to open it in the multi-pane File Explorer."
+                : "Try clearing or adjusting your archive filter query."}
             </p>
           </div>
         ) : (
-          archives.map((archive) => (
-            <div
-              key={archive.id}
-              className="kinetics-card flex flex-col gap-3 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <Link
-                href={`/archives/${archive.id}`}
-                className="flex min-w-0 flex-1 items-center gap-3"
-              >
-                <Icon3D
-                  name={archive.isEncrypted ? "lock" : "tools"}
-                  size="sm"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="min-w-0 max-w-full truncate text-sm font-medium text-[#f7f8f8] hover:underline" title={archive.filename}>
-                      {archive.filename}
-                    </span>
-                    <Badge variant="outline" className="uppercase font-mono">
-                      {archive.format}
-                    </Badge>
-                    {archive.isEncrypted ? (
-                      <Badge variant="secondary">
-                        <Lock className="size-3" />
-                        Password Stored
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-0.5 truncate text-xs text-[#62666d]">
-                    {formatBytes(archive.sizeBytes)} packed →{" "}
-                    {formatBytes(archive.uncompressedBytes)} uncompressed ·{" "}
-                    {archive.fileCount.toLocaleString()} files ·{" "}
-                    {archive.dirCount.toLocaleString()} folders ·{" "}
-                    {new Date(archive.createdAt)
-                      .toISOString()
-                      .slice(0, 19)
-                      .replace("T", " ")}{" "}
-                    UTC
-                  </p>
-                </div>
-              </Link>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-white/[0.06] bg-[#0e0f11]/60 text-[11px] font-medium text-neutral-400">
+                  <th className="py-3 px-4 font-medium">Archive Name</th>
+                  <th className="py-3 px-4 font-medium">Uncompressed Size</th>
+                  <th className="py-3 px-4 font-medium">Files / Folders</th>
+                  <th className="py-3 px-4 font-medium">Date Added</th>
+                  <th className="py-3 px-4 font-medium">Status</th>
+                  <th className="py-3 px-4 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {filteredArchives.map((archive) => (
+                  <tr
+                    key={archive.id}
+                    className="group transition-colors hover:bg-white/[0.02]"
+                  >
+                    <td className="py-3.5 px-4">
+                      <Link
+                        href={`/archives/${archive.id}`}
+                        className="flex items-center gap-3 min-w-0"
+                      >
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.07] bg-[#0e0f11] text-neutral-300 group-hover:border-white/[0.15]">
+                          <FileArchive className="size-4 text-neutral-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="truncate text-sm font-medium text-white group-hover:underline"
+                              title={archive.filename}
+                            >
+                              {archive.filename}
+                            </span>
+                            <span className="spinup-pill uppercase font-mono text-[10px]">
+                              {archive.format}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 font-mono text-[11px] text-neutral-500">
+                            {formatBytes(archive.sizeBytes)} packed
+                          </p>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-xs tabular-nums text-neutral-200 whitespace-nowrap">
+                      {formatBytes(archive.uncompressedBytes)}
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-xs tabular-nums text-neutral-300 whitespace-nowrap">
+                      {archive.fileCount.toLocaleString()} files{" "}
+                      <span className="text-neutral-500">
+                        · {archive.dirCount.toLocaleString()} dirs
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-xs tabular-nums text-neutral-400 whitespace-nowrap">
+                      {new Date(archive.createdAt)
+                        .toISOString()
+                        .slice(0, 16)
+                        .replace("T", " ")}{" "}
+                      UTC
+                    </td>
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <span className="spinup-badge-active inline-flex items-center gap-1.5">
+                          <span className="size-1.5 rounded-full bg-[#00ba7c]" />
+                          Indexed
+                        </span>
+                        {archive.isEncrypted ? (
+                          <span className="spinup-pill inline-flex items-center gap-1 text-neutral-300">
+                            <Lock className="size-3 text-neutral-400" />
+                            Password Stored
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center justify-end gap-1">
+                        <Button
+                          asChild
+                          size="xs"
+                          variant="outline"
+                          className="h-7 gap-1 rounded-lg border-white/[0.08] bg-[#0e0f11] px-2.5 text-xs text-white hover:bg-white/[0.06]"
+                        >
+                          <Link href={`/archives/${archive.id}`}>
+                            Open
+                            <ArrowUpRight className="size-3" />
+                          </Link>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          disabled={reindexingId === archive.id || isReindexingAll}
+                          onClick={() => void handleReindexOne(archive.id)}
+                          title="Re-run indexer on this archive"
+                          className="h-7 px-2 text-neutral-400 hover:text-white"
+                        >
+                          <RotateCcw
+                            className={
+                              reindexingId === archive.id
+                                ? "size-3.5 animate-spin"
+                                : "size-3.5"
+                            }
+                          />
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          aria-label={`Delete ${archive.filename}`}
+                          className="h-7 px-2 text-neutral-400 hover:text-[#f91880]"
+                          onClick={async () => {
+                            const targetId = archive.id;
+                            const targetName = archive.filename;
+                            setArchives((prev) => prev.filter((a) => a.id !== targetId));
+                            toast.success(`Deleted "${targetName}". Cleaning up in background...`);
 
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <Magnetic strength={0.16}>
-                  <Button asChild size="sm">
-                    <Link href={`/archives/${archive.id}`}>
-                      Open File Explorer
-                      <ArrowUpRight className="size-3.5" />
-                    </Link>
-                  </Button>
-                </Magnetic>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={reindexingId === archive.id || isReindexingAll}
-                  onClick={() => void handleReindexOne(archive.id)}
-                  title="Re-run indexer on this archive"
-                  className="gap-1.5 text-[#8a8f98] hover:text-[#f7f8f8]"
-                >
-                  <RotateCcw
-                    className={
-                      reindexingId === archive.id
-                        ? "size-3.5 animate-spin"
-                        : "size-3.5"
-                    }
-                  />
-                  Reindex
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label={`Delete ${archive.filename}`}
-                  className="rounded-[9999px] text-[#8a8f98] hover:text-[#f91880]"
-                  onClick={async () => {
-                    const targetId = archive.id;
-                    const targetName = archive.filename;
-                    // Instant optimistic removal from UI
-                    setArchives((prev) => prev.filter((a) => a.id !== targetId));
-                    toast.success(`Deleted "${targetName}". Cleaning up in background...`);
-
-                    const result = await browserDeleteArchive(targetId);
-                    if (!result.ok) {
-                      toast.error(
-                        result.error?.message ??
-                          "Delete failed. Restoring list...",
-                      );
-                      router.refresh();
-                    }
-                  }}
-                >
-                  {isDeletingId === archive.id ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="size-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-          ))
+                            const result = await browserDeleteArchive(targetId);
+                            if (!result.ok) {
+                              toast.error(
+                                result.error?.message ??
+                                  "Delete failed. Restoring list...",
+                              );
+                              router.refresh();
+                            }
+                          }}
+                        >
+                          {isDeletingId === archive.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 

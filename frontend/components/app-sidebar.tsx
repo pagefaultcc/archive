@@ -78,7 +78,7 @@ export function AppSidebar({
       <div
         className={cn(
           "pointer-events-auto relative flex max-w-full items-center gap-1 sm:gap-1.5 px-3 py-2 rounded-full",
-          "border border-white/[0.14] bg-[#0c0d0e]/80",
+          "border border-white/[0.08] bg-[#0a0b0c]/85",
           "backdrop-blur-2xl backdrop-saturate-150",
           "shadow-[0_16px_50px_rgba(0,0,0,0.65)]",
           "transition-all duration-300 ease-out"

@@ -170,8 +170,8 @@ export function ValidatorView() {
 
       {mainTab === "passwords" ? (
         /* Password Validator Work In Progress View */
-        <section className="flex flex-col items-center justify-center gap-4 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] px-4 py-8 text-center shadow-lg sm:p-12">
-          <div className="flex size-14 items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98]">
+        <section className="spinup-card flex flex-col items-center justify-center gap-4 px-4 py-10 text-center sm:p-12">
+          <div className="flex size-14 items-center justify-center rounded-full border border-white/[0.08] bg-[#0e0f11] text-neutral-400">
             <KeyRound className="size-7" />
           </div>
           <div className="flex max-w-md min-w-0 flex-col gap-1.5">
@@ -179,18 +179,15 @@ export function ValidatorView() {
               <h2 className="text-base font-semibold text-white">
                 Password &amp; Credential Validator
               </h2>
-              <Badge
-                variant="outline"
-                className="border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#8a8f98] text-[10px]"
-              >
+              <span className="spinup-pill text-[10px]">
                 Work in progress
-              </Badge>
+              </span>
             </div>
-            <p className="text-xs text-[#8a8f98] leading-relaxed">
+            <p className="text-xs text-neutral-400 leading-relaxed">
               Automated stealer password lists, credentials.txt auditing, and hash verification pipelines are under active development.
             </p>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[11px] text-[#62666d]">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[11px] text-neutral-500">
             <span>Target: stealer password vaults</span>
             <span aria-hidden="true" className="hidden sm:inline">·</span>
             <span>Status: Engine in development</span>
@@ -199,169 +196,172 @@ export function ValidatorView() {
       ) : (
         /* Cookie Validator Active View */
         <>
-          {/* Top Header & Service Indicator */}
+          {/* SpinupMail 4-Card Metric Grid */}
           <MotionSurface busy={isChecking}>
-          <section className="rounded-[8px] border border-white/[0.08] bg-[#0f1011] p-4 sm:p-5">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <h1 className="text-base font-semibold tracking-tight text-[#f7f8f8]">
-                  OpenAI Validator
-                </h1>
-              </div>
-
-              {/* Metrics summary cards */}
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
+            <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="spinup-card flex flex-col justify-between p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-neutral-400">
                     Total
                   </span>
-                  <span className="text-lg font-semibold tabular-nums text-[#d0d6e0]">
-                    {summary.total}
-                  </span>
+                  <span className="spinup-pill">Queue</span>
                 </div>
+                <span className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-white">
+                  {summary.total}
+                </span>
+              </div>
 
-                <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
+              <div className="spinup-card flex flex-col justify-between p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-neutral-400">
                     Not Checked
                   </span>
-                  <span className="text-lg font-semibold tabular-nums text-[#d0d6e0]">
-                    {summary.notChecked}
-                  </span>
+                  <span className="spinup-pill">Pending</span>
                 </div>
+                <span className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-white">
+                  {summary.notChecked}
+                </span>
+              </div>
 
-                <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
+              <div className="spinup-card flex flex-col justify-between p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-neutral-400">
                     Valid
                   </span>
-                  <span className="text-lg font-semibold tabular-nums text-[#00ba7c]">
-                    {summary.valid}
-                  </span>
+                  <span className="spinup-pill text-[#00ba7c]">OpenAI</span>
                 </div>
+                <span className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-[#00ba7c]">
+                  {summary.valid}
+                </span>
+              </div>
 
-                <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
+              <div className="spinup-card flex flex-col justify-between p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-neutral-400">
                     Not Valid
                   </span>
-                  <span className="text-lg font-semibold tabular-nums text-[#f91880]">
-                    {summary.notValid}
-                  </span>
+                  <span className="spinup-pill text-[#f91880]">Expired</span>
                 </div>
+                <span className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-[#f91880]">
+                  {summary.notValid}
+                </span>
               </div>
-
-              {/* Action Toolbar */}
-              <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-white/[0.06] pt-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleRunValidation}
-                    disabled={isChecking || isLoading}
-                    className="motion-sheen h-8 gap-1.5 rounded-full text-xs cursor-pointer transition-none hover:scale-100 active:scale-100 [&_svg]:size-3.5"
-                  >
-                    {isChecking ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Play className="size-3.5" />
-                    )}
-                    Check All
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsCustomModalOpen(true)}
-                    className="h-8 gap-1.5 rounded-full text-xs border-white/[0.12] bg-white/[0.03] hover:bg-white/[0.08] transition-none hover:scale-100 active:scale-100 [&_svg]:size-3.5"
-                  >
-                    <Plus className="size-3.5" />
-                    Add Custom
-                  </Button>
-
-                  {summary.valid > 0 ? (
-                    <a
-                      href={validatorExportUrl(selectedService)}
-                      download
-                      className="inline-flex h-8 items-center justify-center gap-1.5 px-3 rounded-full text-xs font-medium border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.1)] text-[#00ba7c] hover:bg-[rgba(0,186,124,0.15)] transition-none [&_svg]:shrink-0"
-                    >
-                      <Download className="size-3.5" />
-                      Export Valid ({summary.valid})
-                    </a>
-                  ) : null}
-                </div>
-
-                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                  <SegmentedControl
-                    label="Validation status"
-                    value={statusFilter}
-                    onValueChange={setStatusFilter}
-                    options={[
-                      { value: "", label: "All" },
-                      { value: "valid", label: "Valid" },
-                      { value: "not_valid", label: "Not Valid" },
-                      { value: "not_checked", label: "Not Checked" },
-                    ]}
-                    size="sm"
-                    className="auto-cols-auto"
-                  />
-
-                  {summary.total > 0 ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={handleClear}
-                      className="gap-1 text-xs text-[#8a8f98] hover:text-[#f91880] transition-none hover:scale-100 active:scale-100"
-                    >
-                      <Trash2 className="size-3" />
-                      Clear
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </section>
+            </section>
           </MotionSurface>
 
           {/* Main Validation Items Table */}
-          <section className="rounded-[8px] border border-white/[0.08] bg-[#0f1011] overflow-hidden">
+          <section className="spinup-card overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-white/[0.07] px-5 py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-sm font-semibold tracking-tight text-white mr-2">
+                  OpenAI Validator
+                </h1>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleRunValidation}
+                  disabled={isChecking || isLoading}
+                  className="motion-sheen h-8 gap-1.5 rounded-lg text-xs cursor-pointer transition-none hover:scale-100 active:scale-100 [&_svg]:size-3.5"
+                >
+                  {isChecking ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Play className="size-3.5" />
+                  )}
+                  Check All
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCustomModalOpen(true)}
+                  className="h-8 gap-1.5 rounded-lg text-xs border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.06] transition-none hover:scale-100 active:scale-100 [&_svg]:size-3.5"
+                >
+                  <Plus className="size-3.5" />
+                  Add Custom
+                </Button>
+
+                {summary.valid > 0 ? (
+                  <a
+                    href={validatorExportUrl(selectedService)}
+                    download
+                    className="inline-flex h-8 items-center justify-center gap-1.5 px-3 rounded-lg text-xs font-medium border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.1)] text-[#00ba7c] hover:bg-[rgba(0,186,124,0.15)] transition-none [&_svg]:shrink-0"
+                  >
+                    <Download className="size-3.5" />
+                    Export Valid ({summary.valid})
+                  </a>
+                ) : null}
+              </div>
+
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <SegmentedControl
+                  label="Validation status"
+                  value={statusFilter}
+                  onValueChange={setStatusFilter}
+                  options={[
+                    { value: "", label: "All" },
+                    { value: "valid", label: "Valid" },
+                    { value: "not_valid", label: "Not Valid" },
+                    { value: "not_checked", label: "Not Checked" },
+                  ]}
+                  size="sm"
+                  className="auto-cols-auto"
+                />
+
+                {summary.total > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={handleClear}
+                    className="gap-1 text-xs text-neutral-400 hover:text-[#f91880] transition-none hover:scale-100 active:scale-100"
+                  >
+                    <Trash2 className="size-3" />
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
             {isLoading ? (
-              <div className="flex h-64 items-center justify-center gap-2 text-xs text-[#8a8f98]">
-                <Loader2 className="size-4 animate-spin text-[#8a8f98]" />
+              <div className="flex h-64 items-center justify-center gap-2 text-xs text-neutral-400">
+                <Loader2 className="size-4 animate-spin text-neutral-400" />
                 <span>Loading validator queue…</span>
               </div>
             ) : items.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center gap-2.5 text-center px-4">
-                <span className="flex size-10 items-center justify-center rounded-full bg-white/[0.03] border border-white/[0.08] text-[#8a8f98]">
+                <span className="flex size-10 items-center justify-center rounded-full bg-[#0e0f11] border border-white/[0.08] text-neutral-400">
                   <FileCode className="size-5" />
                 </span>
-                <p className="text-sm font-medium text-[#f7f8f8]">
+                <p className="text-sm font-medium text-white">
                   No cookies in queue
                 </p>
-                <p className="text-xs text-[#8a8f98] max-w-sm">
+                <p className="text-xs text-neutral-500 max-w-sm">
                   Send from Cookies tab or click Add Custom.
                 </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader className="bg-white/[0.02] border-b border-white/[0.06]">
+                  <TableHeader className="bg-[#0e0f11]/60 border-b border-white/[0.06]">
                     <TableRow className="border-none hover:bg-transparent">
-                      <TableHead className="w-28 text-xs text-[#8a8f98]">
+                      <TableHead className="py-3 px-4 w-28 text-xs font-medium text-neutral-400">
                         Status
                       </TableHead>
-                      <TableHead className="text-xs text-[#8a8f98]">
+                      <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">
                         Domain
                       </TableHead>
-                      <TableHead className="text-xs text-[#8a8f98]">
+                      <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">
                         Source
                       </TableHead>
-                      <TableHead className="text-xs text-[#8a8f98]">
+                      <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">
                         Cookies
                       </TableHead>
-                      <TableHead className="text-xs text-[#8a8f98]">
+                      <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">
                         Result
                       </TableHead>
-                      <TableHead className="text-right text-xs text-[#8a8f98]">
+                      <TableHead className="py-3 px-4 text-right text-xs font-medium text-neutral-400">
                         Inspect
                       </TableHead>
                     </TableRow>
@@ -372,7 +372,7 @@ export function ValidatorView() {
                         key={it.id}
                         className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-none"
                       >
-                        <TableCell className="font-mono text-xs">
+                        <TableCell className="py-3.5 px-4 font-mono text-xs">
                           {it.status === "valid" ? (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.1)] text-[#00ba7c]">
                               <CheckCircle2 className="size-3" />
@@ -384,49 +384,49 @@ export function ValidatorView() {
                               Not Valid
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border border-white/[0.12] bg-white/[0.04] text-[#8a8f98]">
-                              <Clock className="size-3 text-[#8a8f98]" />
+                            <span className="spinup-pill inline-flex items-center gap-1.5">
+                              <Clock className="size-3 text-neutral-400" />
                               Not Checked
                             </span>
                           )}
                         </TableCell>
 
-                        <TableCell className="font-mono text-xs font-semibold text-[#f7f8f8]">
+                        <TableCell className="py-3.5 px-4 font-mono text-xs font-semibold text-white">
                           {it.domain}
                         </TableCell>
 
-                        <TableCell className="text-xs text-[#d0d6e0] max-w-xs truncate">
+                        <TableCell className="py-3.5 px-4 text-xs text-neutral-300 max-w-xs truncate">
                           <div className="flex flex-col gap-0.5">
-                            <span className="font-medium text-[#f7f8f8] truncate">
+                            <span className="font-medium text-white truncate">
                               {it.archiveFilename || "Custom Paste"}
                             </span>
-                            <span className="font-mono text-[10px] text-[#62666d] truncate">
+                            <span className="font-mono text-[10px] text-neutral-500 truncate">
                               {it.entryPath || "Manual Input"}
                             </span>
                           </div>
                         </TableCell>
 
-                        <TableCell className="font-mono text-xs text-[#8a8f98]">
+                        <TableCell className="py-3.5 px-4 font-mono text-xs text-neutral-400">
                           {it.cookieCount}
                         </TableCell>
 
-                        <TableCell className="text-xs text-[#8a8f98] max-w-xs truncate font-mono text-[11px]">
+                        <TableCell className="py-3.5 px-4 text-xs text-neutral-400 max-w-xs truncate font-mono text-[11px]">
                           {it.errorMessage ? (
                             <span className="text-[#f91880]">{it.errorMessage}</span>
                           ) : it.status === "valid" ? (
                             <span className="text-[#00ba7c]">auth.openai.com session active</span>
                           ) : (
-                            <span className="text-[#62666d]">Pending check</span>
+                            <span className="text-neutral-500">Pending check</span>
                           )}
                         </TableCell>
 
-                        <TableCell className="text-right">
+                        <TableCell className="py-3.5 px-4 text-right">
                           <Button
                             type="button"
                             variant="ghost"
                             size="xs"
                             onClick={() => setSelectedItemForInspect(it)}
-                            className="rounded-full text-xs text-[#8a8f98] hover:text-[#f7f8f8] hover:bg-white/[0.06]"
+                            className="rounded-lg text-xs text-neutral-400 hover:text-white hover:bg-white/[0.06]"
                           >
                             Inspect
                           </Button>
@@ -438,7 +438,6 @@ export function ValidatorView() {
               </div>
             )}
           </section>
-
           {/* Inspect Cookie Modal */}
           <Dialog
             open={selectedItemForInspect !== null}

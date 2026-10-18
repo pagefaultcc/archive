@@ -191,241 +191,223 @@ export function SettingsView({
 
   return (
     <div className="flex flex-col gap-6 spring-enter">
-      {/* Top Telemetry Strip */}
+      {/* SpinupMail 4-Card Top Telemetry Grid */}
       <MotionSurface busy={isSavingPasswords}>
-      <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
-        <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-          <div className="flex items-start gap-3">
-            <Icon3D name="tools" size="md" />
-            <div className="flex flex-col gap-0.5">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Server Telemetry
-              </p>
-              <h2 className="text-sm font-semibold tracking-tight text-[#d0d6e0]">
-                Storage &amp; Index
-              </h2>
-              <span className="text-xs text-[#8a8f98]">
-                {stats ? `${formatBytes(diskFree)} available on host` : "Loading…"}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
+        <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-neutral-400">
                 Uploaded On Disk
               </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0]">
-                {stats ? formatBytes(packedBytes) : "—"}
-              </span>
+              <span className="spinup-pill">Packed</span>
             </div>
+            <span className="mt-3 text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight text-white">
+              {stats ? formatBytes(packedBytes) : "—"}
+            </span>
+          </div>
 
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-neutral-400">
                 Uncompressed Size
               </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0]">
-                {stats ? formatBytes(uncompressedBytes) : "—"}
-              </span>
+              <span className="spinup-pill">Virtual</span>
             </div>
+            <span className="mt-3 text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight text-white">
+              {stats ? formatBytes(uncompressedBytes) : "—"}
+            </span>
+          </div>
 
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-neutral-400">
                 Compression Ratio
               </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0]">
-                {stats ? `${compressionRatio}x` : "—"}
-              </span>
+              <span className="spinup-pill">Efficiency</span>
             </div>
+            <span className="mt-3 text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight text-white">
+              {stats ? `${compressionRatio}x` : "—"}
+            </span>
+          </div>
 
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-neutral-400">
                 Indexed Entries
               </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0]">
-                {stats ? (
-                  <SpringCounter value={Number(stats.totalFiles)} />
-                ) : (
-                  "—"
-                )}
-              </span>
+              <span className="spinup-pill">PostgreSQL</span>
             </div>
+            <span className="mt-3 text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight text-white">
+              {stats ? (
+                <SpringCounter value={Number(stats.totalFiles)} />
+              ) : (
+                "—"
+              )}
+            </span>
           </div>
-        </div>
-      </section>
+        </section>
       </MotionSurface>
 
-      {/* Action Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-base font-semibold tracking-tight text-[#d0d6e0]">
-            Storage Allocation
-          </h1>
-          {stats ? (
-            <Badge variant="secondary">
-              {stats.totalArchives}{" "}
-              {stats.totalArchives === 1 ? "archive" : "archives"}
-            </Badge>
-          ) : null}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {lastCleanup !== null ? (
-            <Badge variant="outline" className="font-mono text-xs text-[#8a8f98]">
-              Freed {formatBytes(lastCleanup.freedBytes)} ({lastCleanup.removedCount} removed)
-            </Badge>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void loadStats()}
-            disabled={isLoading}
-            className="gap-1.5"
-          >
-            <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} />
-            Refresh
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleCleanupTemp}
-            disabled={isCleaning}
-            className="gap-1.5"
-          >
-            <Trash2 className="size-3.5" />
-            {isCleaning ? "Cleaning…" : "Delete Temp Files"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleReindexEverything}
-            disabled={isReindexing}
-            className="gap-1.5"
-          >
-            <RotateCcw
-              className={cn("size-3.5", isReindexing && "animate-spin")}
-            />
-            {isReindexing ? "Reindexing…" : "Reindex Everything"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Storage Breakdown Details Card: Explaining Upload vs Uncompressed */}
-      <section className="kinetics-card rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] pb-3">
+      {/* Storage Breakdown Details Card */}
+      <section className="spinup-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] pb-4">
           <div>
-            <p className="text-sm font-medium text-[#d0d6e0]">
-              Storage Architecture Breakdown
-            </p>
-            <p className="mt-0.5 text-xs text-[#62666d]">
-              Detailed accounting of physical files on disk vs virtual uncompressed index size.
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold tracking-tight text-white">
+                Storage Architecture Breakdown
+              </h2>
+              {stats ? (
+                <span className="spinup-pill">
+                  {stats.totalArchives} {stats.totalArchives === 1 ? "archive" : "archives"}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-0.5 text-xs text-neutral-500">
+              Detailed accounting of physical files on disk vs virtual uncompressed index size ({stats ? `${formatBytes(diskFree)} available` : "—"}).
             </p>
           </div>
-          <span className="font-mono text-xs tabular-nums text-[#8a8f98]">
-            {stats ? `${formatBytes(diskFree)} available host capacity` : "—"}
-          </span>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {lastCleanup !== null ? (
+              <span className="spinup-pill font-mono text-xs">
+                Freed {formatBytes(lastCleanup.freedBytes)} ({lastCleanup.removedCount} removed)
+              </span>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => void loadStats()}
+              disabled={isLoading}
+              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.04]"
+            >
+              <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} />
+              Refresh
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={handleCleanupTemp}
+              disabled={isCleaning}
+              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.04]"
+            >
+              <Trash2 className="size-3.5" />
+              {isCleaning ? "Cleaning…" : "Delete Temp Files"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={handleReindexEverything}
+              disabled={isReindexing}
+              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.04]"
+            >
+              <RotateCcw
+                className={cn("size-3.5", isReindexing && "animate-spin")}
+              />
+              {isReindexing ? "Reindexing…" : "Reindex Everything"}
+            </Button>
+          </div>
         </div>
 
         {/* 4 Detail Columns */}
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex min-w-0 flex-col gap-1 rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)] p-3">
-            <div className="flex items-center gap-2 text-xs text-[#8a8f98]">
-              <HardDrive className="size-3.5 text-[#8a8f98]" />
+          <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-white/[0.06] bg-[#0e0f11] p-3.5">
+            <div className="flex items-center gap-2 text-xs text-neutral-400">
+              <HardDrive className="size-3.5 text-neutral-400" />
               <span>Physical Uploads</span>
             </div>
-            <p className="font-mono text-base font-semibold text-[#d0d6e0]">
+            <p className="font-mono text-base font-semibold text-white">
               {stats ? formatBytes(packedBytes) : "—"}
             </p>
-            <p className="break-words text-[11px] text-[#62666d]">
+            <p className="break-words text-[11px] text-neutral-500">
               Raw packed .rar, .7z, and .zip files stored in /var/lib/archive/uploads.
             </p>
           </div>
 
-          <div className="flex flex-col gap-1 rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)] p-3">
-            <div className="flex items-center gap-2 text-xs text-[#8a8f98]">
-              <Layers className="size-3.5 text-[#8a8f98]" />
+          <div className="flex flex-col gap-1 rounded-lg border border-white/[0.06] bg-[#0e0f11] p-3.5">
+            <div className="flex items-center gap-2 text-xs text-neutral-400">
+              <Layers className="size-3.5 text-neutral-400" />
               <span>Uncompressed Size</span>
             </div>
-            <p className="font-mono text-base font-semibold text-[#d0d6e0]">
+            <p className="font-mono text-base font-semibold text-white">
               {stats ? formatBytes(uncompressedBytes) : "—"}
             </p>
-            <p className="text-[11px] text-[#62666d]">
+            <p className="text-[11px] text-neutral-500">
               Total content size if every file inside the archives were extracted to disk ({compressionRatio}x compression).
             </p>
           </div>
 
-          <div className="flex flex-col gap-1 rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)] p-3">
-            <div className="flex items-center gap-2 text-xs text-[#8a8f98]">
-              <Database className="size-3.5 text-[#8a8f98]" />
+          <div className="flex flex-col gap-1 rounded-lg border border-white/[0.06] bg-[#0e0f11] p-3.5">
+            <div className="flex items-center gap-2 text-xs text-neutral-400">
+              <Database className="size-3.5 text-neutral-400" />
               <span>Database &amp; Trigram</span>
             </div>
-            <p className="font-mono text-base font-semibold text-[#d0d6e0]">
+            <p className="font-mono text-base font-semibold text-white">
               13 GB
             </p>
-            <p className="text-[11px] text-[#62666d]">
+            <p className="text-[11px] text-neutral-500">
               PostgreSQL index catalog (4.6M file entries + GIN trigram indexes for sub-second search).
             </p>
           </div>
 
-          <div className="flex flex-col gap-1 rounded-[6px] border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)] p-3">
-            <div className="flex items-center gap-2 text-xs text-[#8a8f98]">
-              <HardDrive className="size-3.5 text-[#8a8f98]" />
+          <div className="flex flex-col gap-1 rounded-lg border border-white/[0.06] bg-[#0e0f11] p-3.5">
+            <div className="flex items-center gap-2 text-xs text-neutral-400">
+              <HardDrive className="size-3.5 text-neutral-400" />
               <span>Host Filesystem</span>
             </div>
-            <p className="font-mono text-base font-semibold text-[#d0d6e0]">
+            <p className="font-mono text-base font-semibold text-white">
               {stats ? `${formatBytes(diskUsed)} / ${formatBytes(diskTotal)}` : "—"}
             </p>
-            <p className="text-[11px] text-[#62666d]">
-              Total OS, Docker, and volume allocation on the 1 TB server partition ({usedPct}% used).
+            <p className="text-[11px] text-neutral-500">
+              Total OS, Docker, and volume allocation on the server partition ({usedPct}% used).
             </p>
           </div>
         </div>
 
-        {/* Subdued Dark-Zinc Segmented Bar */}
-        <div className="mt-5 flex h-2 w-full overflow-hidden rounded-full bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.04)]">
+        {/* SpinupMail Linear Capacity Bar */}
+        <div className="mt-5 flex h-2 w-full overflow-hidden rounded-full bg-white/[0.05]">
           <div
-            className="h-full bg-[rgba(255,255,255,0.15)]"
+            className="h-full bg-white/85"
             style={{ width: `${archivePct}%` }}
             title={`Archive Blobs: ${formatBytes(packedBytes)}`}
           />
           <div
-            className="h-full bg-[rgba(255,255,255,0.06)]"
+            className="h-full bg-white/25"
             style={{ width: `${systemPct}%` }}
             title={`System & Runtime: ${formatBytes(systemUsed)}`}
           />
         </div>
 
         {/* Minimalist Legend */}
-        <div className="mt-4 grid grid-cols-1 gap-4 border-t border-[rgba(255,255,255,0.05)] pt-4 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 border-t border-white/[0.06] pt-4 sm:grid-cols-3">
           <div className="flex items-center justify-between sm:block">
             <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full bg-[rgba(255,255,255,0.15)]" />
-              <span className="text-xs text-[#8a8f98]">Archive Uploads On Disk</span>
+              <span className="size-2 rounded-full bg-white/85" />
+              <span className="text-xs text-neutral-400">Archive Uploads On Disk</span>
             </div>
-            <p className="mt-1 font-mono text-sm font-medium tabular-nums text-[#d0d6e0]">
+            <p className="mt-1 font-mono text-sm font-medium tabular-nums text-white">
               {stats ? formatBytes(packedBytes) : "—"}
             </p>
           </div>
 
           <div className="flex items-center justify-between sm:block">
             <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full bg-[rgba(255,255,255,0.06)]" />
-              <span className="text-xs text-[#8a8f98]">System &amp; Database</span>
+              <span className="size-2 rounded-full bg-white/25" />
+              <span className="text-xs text-neutral-400">System &amp; Database</span>
             </div>
-            <p className="mt-1 font-mono text-sm font-medium tabular-nums text-[#d0d6e0]">
+            <p className="mt-1 font-mono text-sm font-medium tabular-nums text-white">
               {stats ? formatBytes(systemUsed) : "—"}
             </p>
           </div>
 
           <div className="flex items-center justify-between sm:block">
             <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full border border-[rgba(255,255,255,0.12)] bg-transparent" />
-              <span className="text-xs text-[#8a8f98]">Unallocated Free</span>
+              <span className="size-2 rounded-full border border-white/[0.2] bg-transparent" />
+              <span className="text-xs text-neutral-400">Unallocated Free</span>
             </div>
-            <p className="mt-1 font-mono text-sm font-medium tabular-nums text-[#d0d6e0]">
+            <p className="mt-1 font-mono text-sm font-medium tabular-nums text-white">
               {stats ? formatBytes(diskFree) : "—"}
             </p>
           </div>
@@ -433,23 +415,23 @@ export function SettingsView({
       </section>
 
       {/* Archive Password Dictionary (ZIP / 7z / RAR Auto-Unlock) */}
-      <section className="kinetics-card rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] pb-3">
+      <section className="spinup-card p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/[0.07] pb-3.5">
           <div className="flex min-w-0 items-start gap-2.5">
-            <Key className="mt-0.5 size-4 shrink-0 text-[#d0d6e0]" />
+            <Key className="mt-0.5 size-4 shrink-0 text-neutral-400" />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-[#d0d6e0]">
+              <p className="text-sm font-semibold text-white">
                 Archive Password Dictionary
               </p>
-              <p className="mt-0.5 text-xs text-[#62666d]">
+              <p className="mt-0.5 text-xs text-neutral-500">
                 Probe passwords tried automatically on upload and indexing before prompting the user.
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="font-mono text-xs">
+            <span className="spinup-pill font-mono text-xs">
               {passwords.length} active passwords
-            </Badge>
+            </span>
             <Button
               type="button"
               variant="outline"
@@ -458,7 +440,7 @@ export function SettingsView({
                 setIsEditingPasswords((e) => !e);
                 setPasswordsText(passwords.join("\n"));
               }}
-              className="gap-1.5"
+              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.04]"
             >
               {isEditingPasswords ? "Close editor" : "Bulk edit (multiline)"}
             </Button>
@@ -467,7 +449,7 @@ export function SettingsView({
 
         {isEditingPasswords ? (
           <div className="mt-4 flex flex-col gap-3">
-            <p className="text-xs text-[#8a8f98]">
+            <p className="text-xs text-neutral-400">
               Paste or edit passwords below (one password per line). Duplicates and whitespace will be automatically cleaned:
             </p>
             <textarea
@@ -475,7 +457,7 @@ export function SettingsView({
               value={passwordsText}
               onChange={(e) => setPasswordsText(e.target.value)}
               placeholder="@HUNTER_CLOUD&#10;infected&#10;password&#10;1234"
-              className="w-full rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] p-3 font-mono text-xs text-[#d0d6e0] outline-none focus:border-[rgba(255,255,255,0.2)]"
+              className="spinup-input w-full p-3 font-mono text-xs"
             />
             <div className="flex items-center justify-end gap-2">
               <Button
@@ -498,7 +480,7 @@ export function SettingsView({
                   void savePasswordsList(lines);
                 }}
                 disabled={isSavingPasswords}
-                className="motion-sheen gap-1.5"
+                className="motion-sheen gap-1.5 rounded-lg"
               >
                 <Save className="size-3.5" />
                 {isSavingPasswords ? "Saving…" : "Save password list"}
@@ -507,7 +489,6 @@ export function SettingsView({
           </div>
         ) : (
           <div className="mt-4 flex flex-col gap-4">
-            {/* Quick add single password input */}
             <div className="flex max-w-md items-center gap-2">
               <input
                 type="text"
@@ -517,7 +498,7 @@ export function SettingsView({
                   if (e.key === "Enter") void handleAddSinglePassword();
                 }}
                 placeholder="Add new password to dictionary…"
-                className="h-8 min-w-0 flex-1 rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-2.5 font-mono text-xs text-[#d0d6e0] outline-none focus:border-[rgba(255,255,255,0.2)]"
+                className="spinup-input h-8 min-w-0 flex-1 px-3 font-mono text-xs"
               />
               <Button
                 type="button"
@@ -525,27 +506,26 @@ export function SettingsView({
                 size="xs"
                 onClick={() => void handleAddSinglePassword()}
                 disabled={!newPasswordInput.trim() || isSavingPasswords}
-                className="motion-sheen gap-1 h-8"
+                className="motion-sheen gap-1 h-8 rounded-lg"
               >
                 <Plus className="size-3" />
                 Add
               </Button>
             </div>
 
-            {/* Password tags list */}
             <div className="flex flex-wrap items-center gap-2">
               {passwords.map((pw) => (
                 <span
                   key={pw}
-                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-2.5 py-1 font-mono text-xs text-[#d0d6e0]"
+                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg border border-white/[0.07] bg-[#0e0f11] px-2.5 py-1 font-mono text-xs text-neutral-200"
                 >
-                  <Lock className="size-3 shrink-0 text-[#8a8f98]" />
+                  <Lock className="size-3 shrink-0 text-neutral-500" />
                   <span className="truncate" title={pw}>{pw}</span>
                   <button
                     type="button"
                     onClick={() => void handleRemovePassword(pw)}
                     title={`Remove "${pw}" from dictionary`}
-                    className="ml-1 shrink-0 text-[#8a8f98] transition-none hover:text-[#f91880]"
+                    className="ml-1 shrink-0 text-neutral-500 transition-none hover:text-[#f91880]"
                   >
                     <X className="size-3" />
                   </button>
@@ -556,61 +536,61 @@ export function SettingsView({
         )}
       </section>
 
-      {/* Per-Archive Storage Breakdown Table (Replaces File Extensions Table) */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <FileArchive className="size-4 shrink-0 text-[#8a8f98]" />
-            <h2 className="text-sm font-semibold tracking-tight text-[#d0d6e0]">
+      {/* Per-Archive Storage Breakdown Table */}
+      <section className="spinup-card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <FileArchive className="size-4 shrink-0 text-neutral-400" />
+            <h2 className="text-sm font-semibold tracking-tight text-white">
               Per-Archive Storage Breakdown
             </h2>
           </div>
-          <span className="text-xs text-[#62666d]">
+          <span className="spinup-pill">
             {stats
               ? `${stats.totalArchives} archives · ${stats.totalFiles.toLocaleString()} files · ${stats.totalDirs.toLocaleString()} folders`
-              : ""}
+              : "Loading…"}
           </span>
         </div>
 
-        <div className="min-w-0 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Archive Filename</TableHead>
-                <TableHead>Format</TableHead>
-                <TableHead>Packed On Disk</TableHead>
-                <TableHead>Uncompressed Size</TableHead>
-                <TableHead>Ratio</TableHead>
-                <TableHead>Files</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+              <TableRow className="border-b border-white/[0.06] bg-[#0e0f11]/60 hover:bg-transparent">
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Archive Filename</TableHead>
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Format</TableHead>
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Packed On Disk</TableHead>
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Uncompressed Size</TableHead>
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Ratio</TableHead>
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Files</TableHead>
+                <TableHead className="py-3 px-4 text-right text-xs font-medium text-neutral-400">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {stats?.archiveBreakdown && stats.archiveBreakdown.length > 0 ? (
                 stats.archiveBreakdown.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-mono text-xs font-medium text-[#d0d6e0] max-w-[320px] truncate" title={item.filename}>
+                  <TableRow key={item.id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                    <TableCell className="py-3.5 px-4 font-mono text-xs font-medium text-white max-w-[320px] truncate" title={item.filename}>
                       {item.filename}
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-mono text-[10px] uppercase">
+                    <TableCell className="py-3.5 px-4">
+                      <span className="spinup-pill font-mono text-[10px] uppercase">
                         {item.format}
-                      </Badge>
+                      </span>
                     </TableCell>
-                    <TableCell className="font-mono text-xs tabular-nums text-[#8a8f98]">
+                    <TableCell className="py-3.5 px-4 font-mono text-xs tabular-nums text-neutral-400">
                       {formatBytes(item.packedBytes)}
                     </TableCell>
-                    <TableCell className="font-mono text-xs tabular-nums text-[#d0d6e0]">
+                    <TableCell className="py-3.5 px-4 font-mono text-xs tabular-nums text-white">
                       {formatBytes(item.uncompressedBytes)}
                     </TableCell>
-                    <TableCell className="font-mono text-xs font-semibold tabular-nums text-[#00ba7c]">
+                    <TableCell className="py-3.5 px-4 font-mono text-xs font-semibold tabular-nums text-[#00ba7c]">
                       {item.ratio}
                     </TableCell>
-                    <TableCell className="font-mono text-xs tabular-nums text-[#8a8f98]">
+                    <TableCell className="py-3.5 px-4 font-mono text-xs tabular-nums text-neutral-400">
                       {item.fileCount.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="xs">
+                    <TableCell className="py-3.5 px-4 text-right">
+                      <Button asChild variant="ghost" size="xs" className="text-neutral-400 hover:text-white">
                         <Link href={`/archives/${item.id}`} title="Open in File Explorer">
                           <ArrowUpRight className="size-3.5" />
                         </Link>
@@ -622,12 +602,12 @@ export function SettingsView({
             </TableBody>
           </Table>
           {!stats?.archiveBreakdown?.length ? (
-            <div className="px-4 py-8 text-center text-xs text-[#62666d]">
+            <div className="px-4 py-10 text-center text-xs text-neutral-500">
               No archives uploaded yet.
             </div>
           ) : null}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

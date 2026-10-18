@@ -245,81 +245,83 @@ export function ChannelsView() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 spring-enter">
-      {/* Top Telemetry Strip */}
-      <MotionSurface busy={isSavingSettings || isTestingConnection}>
-      <section className="kinetics-card w-full rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4">
-        <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-[8px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[#d0d6e0]">
-              <Radio className="size-5" />
+      {/* SpinupMail 3-Card Telemetry Strip */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MotionSurface busy={isSavingSettings || isTestingConnection}>
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <Radio className="size-4 text-neutral-400" />
+                <span>Monitored Channels</span>
+              </div>
+              <span className="spinup-pill">MTProto 2.0</span>
             </div>
-            <div className="flex flex-col gap-0.5">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Telethon MTProto
-              </p>
-              <h2 className="text-sm font-semibold tracking-tight text-[#d0d6e0]">
-                Telegram Channels
-              </h2>
-              <span className="text-xs text-[#8a8f98]">
-                Automated archive attachment harvesting
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Monitored channels
-              </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0]">
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
                 <SpringCounter value={channels.length} />
               </span>
+              <span className="text-xs text-neutral-500">targets</span>
             </div>
+          </div>
+        </MotionSurface>
 
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                UserBot status
-              </span>
-              <span className="text-lg font-semibold tabular-nums tracking-tight text-[#d0d6e0] flex items-center gap-1.5">
-                {connectionStatus === "connected" ? (
-                  <>
-                    <CheckCircle2 className="size-4 text-[#00ba7c]" />
-                    <span className="text-[#00ba7c] text-sm">Online</span>
-                  </>
-                ) : tgSettings.isConfigured ? (
-                  <>
-                    <Bot className="size-4 text-[#8a8f98]" />
-                    <span className="text-sm">Configured</span>
-                  </>
-                ) : (
-                  <span className="text-xs text-[#f91880]">Not configured</span>
-                )}
-              </span>
+        <MotionSurface>
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <Bot className="size-4 text-neutral-400" />
+                <span>UserBot Status</span>
+              </div>
+              <span className="spinup-pill">Telethon</span>
             </div>
+            <div className="mt-3 flex items-center gap-2">
+              {connectionStatus === "connected" ? (
+                <span className="spinup-badge-active inline-flex items-center gap-1.5 text-sm">
+                  <span className="size-2 rounded-full bg-[#00ba7c]" />
+                  Online
+                </span>
+              ) : tgSettings.isConfigured ? (
+                <span className="spinup-badge-active inline-flex items-center gap-1.5 text-sm">
+                  <Bot className="size-3.5 text-neutral-400" />
+                  Configured
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#f91880]/30 bg-[#f91880]/10 px-3 py-1 text-xs font-medium text-[#f91880]">
+                  Not Configured
+                </span>
+              )}
+            </div>
+          </div>
+        </MotionSurface>
 
-            <div className="flex flex-col gap-0.5 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.015)] px-3.5 py-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-[#62666d]">
-                Password resolver
-              </span>
-              <span className="truncate font-mono text-base font-semibold tracking-tight text-[#d0d6e0]">
+        <MotionSurface>
+          <div className="spinup-card flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+                <Code2 className="size-4 text-neutral-400" />
+                <span>Password Resolver</span>
+              </div>
+              <span className="spinup-pill">Auto-Unlock</span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="font-mono text-xl font-semibold tracking-tight text-white">
                 Custom Python
               </span>
             </div>
           </div>
-        </div>
+        </MotionSurface>
       </section>
-      </MotionSurface>
 
       {/* Global Telethon UserBot Credentials Card */}
-      <section className="kinetics-card rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[rgba(255,255,255,0.05)] pb-3">
+      <section className="spinup-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] pb-3.5">
           <div className="flex min-w-0 items-start gap-2.5">
-            <Bot className="mt-0.5 size-4 shrink-0 text-[#8a8f98]" />
+            <Bot className="mt-0.5 size-4 shrink-0 text-neutral-400" />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-[#d0d6e0]">
+              <p className="text-sm font-semibold text-white">
                 Telethon UserBot Credentials
               </p>
-              <p className="mt-0.5 text-xs text-[#62666d]">
+              <p className="mt-0.5 text-xs text-neutral-500">
                 Obtain API ID and API Hash from my.telegram.org. Session string connects without interactive prompts.
               </p>
             </div>
@@ -332,12 +334,12 @@ export function ChannelsView() {
               size="xs"
               onClick={handleTestConnection}
               disabled={isTestingConnection || !tgSettings.isConfigured}
-              className="gap-1.5"
+              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.04]"
             >
               {isTestingConnection ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : (
-                <Radio className="size-3.5" />
+                <Radio className="size-3.5 text-[#00ba7c]" />
               )}
               {isTestingConnection ? "Checking…" : "Check Connection"}
             </Button>
@@ -347,7 +349,7 @@ export function ChannelsView() {
               size="xs"
               onClick={handleSaveSettings}
               disabled={isSavingSettings}
-              className="motion-sheen gap-1.5 bg-[rgba(255,255,255,0.05)] text-[#ffffff] hover:bg-[rgba(255,255,255,0.08)]"
+              className="motion-sheen h-8 gap-1.5 rounded-lg"
             >
               <Save className="size-3.5" />
               {isSavingSettings ? "Saving…" : "Save Credentials"}
@@ -356,15 +358,15 @@ export function ChannelsView() {
         </div>
 
         {connectedUser ? (
-          <div className="mt-3 flex items-center gap-2 rounded-[6px] border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.06)] px-3 py-2 text-xs text-[#00ba7c]">
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-[rgba(0,186,124,0.3)] bg-[rgba(0,186,124,0.06)] px-3 py-2 text-xs text-[#00ba7c]">
             <CheckCircle2 className="size-4 shrink-0" />
             <span>Successfully connected as <strong>{connectedUser}</strong></span>
           </div>
         ) : null}
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[#8a8f98]">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-medium text-neutral-400">
               API ID (Integer)
             </label>
             <Input
@@ -372,12 +374,12 @@ export function ChannelsView() {
               value={apiIdInput}
               onChange={(e) => setApiIdInput(e.target.value)}
               placeholder="e.g. 12345678"
-              className="h-8 font-mono text-xs"
+              className="spinup-input h-9 font-mono text-xs"
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[#8a8f98]">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-medium text-neutral-400">
               API Hash (String)
             </label>
             <Input
@@ -385,12 +387,12 @@ export function ChannelsView() {
               value={apiHashInput}
               onChange={(e) => setApiHashInput(e.target.value)}
               placeholder="e.g. 0123456789abcdef0123456789abcdef"
-              className="h-8 font-mono text-xs"
+              className="spinup-input h-9 font-mono text-xs"
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[#8a8f98]">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-medium text-neutral-400">
               Telethon StringSession (User account)
             </label>
             <Input
@@ -402,102 +404,102 @@ export function ChannelsView() {
                   ? "Configured (leave blank to keep current)"
                   : "1BJWb... string session"
               }
-              className="h-8 font-mono text-xs"
+              className="spinup-input h-9 font-mono text-xs"
             />
           </div>
         </div>
       </section>
 
       {/* Channels List Section */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Tv className="size-4 shrink-0 text-[#8a8f98]" />
-            <h2 className="text-sm font-semibold tracking-tight text-[#d0d6e0]">
-              Configured Target Channels ({channels.length})
+      <section className="spinup-card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <Tv className="size-4 shrink-0 text-neutral-400" />
+            <h2 className="text-sm font-semibold tracking-tight text-white">
+              Configured Target Channels
             </h2>
+            <span className="spinup-pill">{channels.length}</span>
           </div>
 
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="xs"
             onClick={openCreateDialog}
-            className="gap-1.5"
+            className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.04]"
           >
             <Plus className="size-3.5" />
             Add Channel
           </Button>
         </div>
 
-        <div className="min-w-0 rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011]">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Channel Name</TableHead>
-                <TableHead>Channel ID / Username</TableHead>
-                <TableHead>Password Script</TableHead>
-                <TableHead>Added Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+              <TableRow className="border-b border-white/[0.06] bg-[#0e0f11]/60 hover:bg-transparent">
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Channel Name</TableHead>
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Channel ID / Username</TableHead>
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Password Script</TableHead>
+                <TableHead className="py-3 px-4 text-xs font-medium text-neutral-400">Added Date</TableHead>
+                <TableHead className="py-3 px-4 text-right text-xs font-medium text-neutral-400">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {!isLoadingChannels && channels.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="max-w-[240px] font-medium text-xs text-[#d0d6e0]">
-                      <span className="block truncate" title={c.name}>{c.name}</span>
-                    </TableCell>
-                    <TableCell className="max-w-[240px] font-mono text-xs text-[#8a8f98]">
-                      <span className="block truncate" title={c.channelId}>{c.channelId}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-mono text-[10px]">
-                        <Code2 className="size-3" />
-                        Custom Script
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-[#62666d]">
-                      {new Date(c.createdAt).toISOString().slice(0, 10)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => openEditDialog(c)}
-                          title="Edit channel & script"
-                        >
-                          <Edit2 className="size-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => void handleDeleteChannel(c.id)}
-                          title="Delete channel"
-                          className="hover:text-[#f91880]"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                <TableRow key={c.id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                  <TableCell className="py-3.5 px-4 max-w-[240px] font-medium text-xs text-white">
+                    <span className="block truncate" title={c.name}>{c.name}</span>
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4 max-w-[240px] font-mono text-xs text-neutral-400">
+                    <span className="block truncate" title={c.channelId}>{c.channelId}</span>
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4">
+                    <span className="spinup-pill inline-flex items-center gap-1 font-mono text-[10px]">
+                      <Code2 className="size-3" />
+                      Custom Script
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4 font-mono text-xs text-neutral-500">
+                    {new Date(c.createdAt).toISOString().slice(0, 10)}
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => openEditDialog(c)}
+                        title="Edit channel & script"
+                        className="text-neutral-400 hover:text-white"
+                      >
+                        <Edit2 className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => void handleDeleteChannel(c.id)}
+                        title="Delete channel"
+                        className="text-neutral-400 hover:text-[#f91880]"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ))}
             </TableBody>
           </Table>
           {isLoadingChannels ? (
-            <div className="flex items-center justify-center gap-2 px-4 py-8 text-center text-xs text-[#8a8f98]">
+            <div className="flex items-center justify-center gap-2 px-4 py-10 text-center text-xs text-neutral-400">
               <Loader2 className="size-4 animate-spin" />
               Loading channels…
             </div>
           ) : channels.length === 0 ? (
-            <div className="px-4 py-8 text-center text-xs text-[#62666d]">
+            <div className="px-4 py-10 text-center text-xs text-neutral-500">
               No channels added yet. Click &quot;Add Channel&quot; above to configure one.
             </div>
           ) : null}
         </div>
-      </div>
-
-      {/* Add / Edit Channel Dialog */}
+      </section>
       <Dialog open={isChannelDialogOpen} onOpenChange={setIsChannelDialogOpen}>
         <DialogContent className="border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
