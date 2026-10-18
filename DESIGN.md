@@ -66,7 +66,7 @@ When extending an existing view, match the literals already in that view. These 
 
 - **Radius ladder:** `rounded-[8px]` cards/panels · `rounded-[6px]` inner controls/inputs/buttons · `rounded-[4px]` tiny chips · `rounded-[9999px]` pills/dock.
 - **Card shadow (hover lift):** `0 10px 24px -8px rgba(0,0,0,0.7)`.
-- **Dock shadow:** `0 16px 50px rgba(0,0,0,0.65)` + inset specular `inset 0 1px 1.5px rgba(255,255,255,0.22)`.
+- **Dock edge & shadow:** one uniform `1px solid rgba(255,255,255,0.14)` border and outer shadow `0 16px 50px rgba(0,0,0,0.65)`. No additional outer ring or top/bottom inset highlights on the dock.
 - **Inset speculars** (`inset 0 1px 1px rgba(255,255,255,0.2–0.25)`) simulate top-lit glass on raised elements.
 
 ## 6. Typography

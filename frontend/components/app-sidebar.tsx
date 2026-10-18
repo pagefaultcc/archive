@@ -80,8 +80,7 @@ export function AppSidebar({
           "pointer-events-auto relative flex max-w-full items-center gap-1 sm:gap-1.5 px-3 py-2 rounded-full",
           "border border-white/[0.14] bg-[#0c0d0e]/80",
           "backdrop-blur-2xl backdrop-saturate-150",
-          "shadow-[0_16px_50px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.22),inset_0_-1px_1px_rgba(0,0,0,0.45)]",
-          "ring-1 ring-white/[0.04]",
+          "shadow-[0_16px_50px_rgba(0,0,0,0.65)]",
           "transition-all duration-300 ease-out"
         )}
       >

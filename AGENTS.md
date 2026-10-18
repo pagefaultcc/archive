@@ -212,7 +212,7 @@ The VPS (`deploy@85.9.208.82`, deploy dir NOT a git repo) runs `archive-autodepl
 
 ### E. Bottom Clear-Glass Island Dock UI Navigation
 - **Replaced Left Sidebar:** Traditional rigid left-side navigation removed in favor of full-width content viewing and a floating bottom dynamic dock (`BottomIslandDock`).
-- **Liquid Glassmorphism:** Styled with `backdrop-blur-2xl`, `bg-[#0c0d0e]/80`, fine translucent border `border-white/[0.14]`, and multi-layer specular inner/outer shadows (`shadow-[0_16px_50px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.22)]`).
+- **Liquid Glassmorphism:** Styled with `backdrop-blur-2xl`, `bg-[#0c0d0e]/80`, a uniform 1px translucent border `border-white/[0.14]`, and a soft outer shadow (`shadow-[0_16px_50px_rgba(0,0,0,0.65)]`). No extra outer ring or directional inset edge highlights.
 - **Apple Island Animated Hover & Tooltips:**
   - Tactile spring scaling on icon hover (`hover:scale-115 active:scale-95 ease-[cubic-bezier(0.34,1.56,0.64,1)]`).
   - Animated floating glass pill tooltip above the hovered icon with smooth fade-in and slide-up.
