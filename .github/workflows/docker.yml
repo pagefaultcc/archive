@@ -118,7 +118,7 @@ jobs:
       # Report-only signal: HIGH/CRITICAL findings are published to the job
       # summary but do not block publication.
       - name: Scan API image for vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.API_IMAGE }}:sha-${{ github.sha }}
           format: table
@@ -157,7 +157,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=frontend
 
       - name: Scan frontend image for vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.FRONTEND_IMAGE }}:sha-${{ github.sha }}
           format: table
