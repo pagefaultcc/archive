@@ -1,0 +1,116 @@
+# Only the trusted controller supplies this environment; no branch Compose is read.
+x-isolation: &isolation
+  platform: linux/amd64
+  restart: "no"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 256
+  logging:
+    driver: json-file
+    options:
+      max-size: 5m
+      max-file: "2"
+  networks: [preview]
+
+services:
+  postgres:
+    <<: *isolation
+    image: postgres:17-alpine
+    # The upstream entrypoint normally starts as root; a pre-owned tmpfs lets
+    # postgres initialize directly without SETUID/CHOWN capabilities.
+    user: "70:70"
+    environment:
+      POSTGRES_USER: preview
+      POSTGRES_DB: preview
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?required}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command: [postgres, -c, shared_buffers=64MB, -c, work_mem=4MB, -c, maintenance_work_mem=32MB, -c, max_connections=30]
+    cpus: 1.0
+    mem_limit: 384m
+    shm_size: 64m
+    tmpfs:
+      - /var/lib/postgresql/data:rw,noexec,nosuid,size=512m,uid=70,gid=70,mode=0700
+      - /var/run/postgresql:rw,noexec,nosuid,size=16m,uid=70,gid=70,mode=0770
+      - /tmp:rw,noexec,nosuid,size=32m,mode=1777
+    healthcheck:
+      test: [CMD, pg_isready, -U, preview, -d, preview]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  api:
+    <<: *isolation
+    image: ${API_IMAGE:?required}
+    user: "10001:10001"
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgresql://preview:${DB_PASSWORD:?required}@postgres:5432/preview?sslmode=disable
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?required}
+      ROOT_USERNAME: preview
+      ROOT_PASSWORD: ${ROOT_PASSWORD:?required}
+      ARCHIVE_STORAGE_DIR: /var/lib/archive/uploads
+      GOMAXPROCS: "2"
+      PYTHONDONTWRITEBYTECODE: "1"
+    cpus: 2.0
+    mem_limit: 1536m
+    pids_limit: 512
+    tmpfs:
+      - /var/lib/archive/uploads:rw,noexec,nosuid,size=512m,uid=10001,gid=10001,mode=0700
+      - /tmp:rw,noexec,nosuid,size=256m,uid=10001,gid=10001,mode=1777
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -qO-, http://127.0.0.1:8080/health/ready]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  frontend:
+    <<: *isolation
+    image: ${FRONTEND_IMAGE:?required}
+    user: "10001:10001"
+    environment:
+      INTERNAL_API_URL: http://api:8080
+    cpus: 1.0
+    mem_limit: 768m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=1777
+      - /app/.next/cache:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=0700
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -qO-, http://127.0.0.1:3000/login]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  gateway:
+    <<: *isolation
+    image: caddy:2-alpine
+    user: "10001:10001"
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    environment:
+      XDG_CONFIG_HOME: /tmp/config
+      XDG_DATA_HOME: /tmp/data
+    cpus: 0.5
+    mem_limit: 128m
+    pids_limit: 128
+    ports:
+      - "127.0.0.1:${PREVIEW_PORT:?required}:3000"
+    volumes:
+      - ${TRUSTED_DIR:?required}/Caddyfile:/etc/caddy/Caddyfile:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=1777
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+
+networks:
+  preview:
+    internal: true
