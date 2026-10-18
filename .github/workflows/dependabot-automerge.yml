@@ -3,7 +3,8 @@ name: dependabot-automerge
 # Machine-authored dependency bumps are approved and queued for merge only
 # after the review workflow (backend PostgreSQL suite + frontend build/tests)
 # has fully succeeded. Human-authored PRs are never touched by this workflow;
-# their approval stays a human decision.
+# their approval stays a human decision. Major version bumps are left for
+# manual review: a broken major can pass tests and still hurt production.
 
 on:
   workflow_run:
@@ -38,8 +39,9 @@ jobs:
         run: |
           set -euo pipefail
           pr_json="$(gh pr list --head "$HEAD_BRANCH" --state open \
-            --json number,author,baseRefName,headRefOid --limit 5)"
-          python3 - "$pr_json" <<'PY'
+            --json number,author,baseRefName,headRefOid,labels --limit 5)"
+          out="$(mktemp)"
+          python3 - "$pr_json" <<'PY' > "$out"
           import json, os, sys
           prs = json.loads(sys.argv[1])
           candidates = [p for p in prs
@@ -48,15 +50,26 @@ jobs:
           if len(candidates) != 1:
               raise SystemExit(0)
           pr = candidates[0]
-          if pr["headRefOid"] != os.environ["HEAD_SHA"]:
-              # A newer push exists; its own review run will handle approval.
-              print(f"Skipping stale run for {os.environ['HEAD_SHA'][:7]}")
-              raise SystemExit(0)
-          print(os.environ["GITHUB_OUTPUT"] and "" or "")
-          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-              out.write(f"pr={pr['number']}\n")
+          labels = {label["name"] for label in pr.get("labels", [])}
+          if "semver:major" in labels:
+              print(f"major={pr['number']}")
+          elif pr["headRefOid"] != os.environ["HEAD_SHA"]:
+              # A newer push exists; its own review run handles approval.
+              print(f"stale={pr['number']}")
+          else:
+              print(f"pr={pr['number']}")
           PY
-          pr="$(sed -n 's/^pr=//p' "$GITHUB_OUTPUT" | tail -1)"
+          decision="$(sed -n 's/^\(major\|pr\|stale\)=//p' "$out" | tail -1)"
+          kind="${decision%%=*}"; pr="${decision#*=}"
+          if [[ "$kind" == "stale" ]]; then
+            echo "Skipping run for $HEAD_SHA; a newer push re-triggers this workflow."
+            exit 0
+          fi
+          if [[ "$kind" == "major" ]]; then
+            gh pr comment "$pr" --body "Major version bump: left for manual review per repository policy — minor and patch bumps merge automatically once checks pass."
+            echo "PR #$pr is a major bump; skipped auto-merge."
+            exit 0
+          fi
           if [[ -z "$pr" ]]; then
             echo "No eligible Dependabot PR for this run."
             exit 0
