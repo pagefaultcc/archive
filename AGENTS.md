@@ -191,7 +191,7 @@ cd frontend && npm run build && npm test
   ```
 
 ### Private PR previews
-- `.github/workflows/preview.yml` manages previews for enabled, same-repository, non-draft PRs. Fork PRs never receive preview credentials. Closed PRs are removed; stale queued events must not overwrite a newer preview or remove a reopened one.
+- `.github/workflows/preview.yml` manages previews for enabled, same-repository, non-draft PRs. Fork PRs never receive preview credentials. Dependabot PRs also skip previews: GitHub does not pass Actions secrets to Dependabot-triggered runs, so the lifecycle job excludes `dependabot[bot]` and those PRs rely on review checks only. Closed PRs are removed; stale queued events must not overwrite a newer preview or remove a reopened one.
 - Previews require a separate dedicated Linux amd64 VPS with rootless Docker and the trusted `deploy/preview/` controller installed by an operator. Never run preview code on the production VPS or give it production databases, uploads, Telegram settings, SSH keys, registry credentials, or a Docker socket.
 - Each PR gets isolated runtime resources and synthetic data. Preview builds use local images directly from source, not GHCR publication. A push recreates disposable preview data. Do not upload real logs or configure real service credentials.
 - Review URLs use distinct `pr-<number>.localhost` hostnames and loopback-only ports, accessed through an authenticated SSH tunnel. Different ports alone do not isolate session cookies. Retrieve disposable app credentials through the restricted review SSH command, never PR comments or Actions logs.
