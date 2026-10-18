@@ -7,17 +7,14 @@ import { toast } from "sonner";
 import {
   Archive,
   ArrowUpRight,
-  BarChart3,
-  Check,
   CheckSquare,
-  Clock,
   Download,
   Eye,
   EyeOff,
   FileArchive,
   FileText,
+  FolderTree,
   HardDrive,
-  Key,
   Loader2,
   Lock,
   Radio,
@@ -28,8 +25,6 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { Icon3D, Magnetic, SpringCounter } from "@/components/kinetics-ui";
-import { MotionSurface } from "@/components/motion-surface";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,7 +43,6 @@ import {
   browserDeleteArchive,
   browserEnqueueTelegramBatch,
   browserGetTelegramQueue,
-  browserImportScrapedFiles,
   browserListChannels,
   browserReindexAllArchives,
   browserReindexArchive,
@@ -67,8 +61,6 @@ import type {
 import { cn } from "@/lib/utils";
 
 const MAX_ARCHIVE_BYTES = 100 * 1024 * 1024 * 1024;
-
-// UPLOAD_CONCURRENCY is the maximum number of simultaneous upload streams.
 const UPLOAD_CONCURRENCY = 3;
 
 type UploadItem = {
@@ -130,7 +122,7 @@ function formatEta(seconds?: number): string {
   }
   const s = Math.ceil(seconds);
   if (s < 60) {
-    return `${s} second${s === 1 ? "" : "s"} left`;
+    return `${s}s left`;
   }
   const m = Math.floor(s / 60);
   const rem = s % 60;
@@ -161,11 +153,15 @@ export function ArchivesVault({
   useEffect(() => {
     setArchives(initialArchives);
   }, [initialArchives]);
+
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
   const isUploading = uploadQueue.some(
-    (item) => item.stage === "uploading" || item.stage === "indexing" || item.stage === "queued",
+    (item) =>
+      item.stage === "uploading" ||
+      item.stage === "indexing" ||
+      item.stage === "queued",
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -174,10 +170,12 @@ export function ArchivesVault({
   const [showUnlockPassword, setShowUnlockPassword] = useState(false);
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
-  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  const [isDeletingId] = useState<string | null>(null);
   const [isReindexingAll, setIsReindexingAll] = useState(false);
   const [reindexingId, setReindexingId] = useState<string | null>(null);
   const [archiveSearchQuery, setArchiveSearchQuery] = useState("");
+  const [formatFilter, setFormatFilter] = useState<string>("all");
+
   // Auto-Scrape state
   const [isAutoScrapeOpen, setIsAutoScrapeOpen] = useState(false);
   const [scrapeChannels, setScrapeChannels] = useState<TelegramChannelItem[]>([]);
@@ -188,19 +186,14 @@ export function ArchivesVault({
   const [selectedMsgMap, setSelectedMsgMap] = useState<Record<number, boolean>>({});
   const [passwordOverrideMap, setPasswordOverrideMap] = useState<Record<number, string>>({});
   const [isImportingScraped, setIsImportingScraped] = useState(false);
-  const [importProgressText, setImportProgressText] = useState("");
   const [serverQueue, setServerQueue] = useState<TelegramQueueStatus | null>(null);
 
   const totalArchives = archives.length;
-  const indexedFiles = archives.reduce(
-    (sum, archive) => sum + archive.fileCount,
-    0,
-  );
+  const indexedFiles = archives.reduce((sum, a) => sum + a.fileCount, 0);
+  const indexedDirs = archives.reduce((sum, a) => sum + a.dirCount, 0);
   const encryptedVaults = archives.filter((a) => a.isEncrypted).length;
-  const totalIndexedBytes = archives.reduce(
-    (sum, archive) => sum + archive.uncompressedBytes,
-    0,
-  );
+  const totalIndexedBytes = archives.reduce((sum, a) => sum + a.uncompressedBytes, 0);
+  const totalPackedBytes = archives.reduce((sum, a) => sum + a.sizeBytes, 0);
 
   const uploadSingle = useCallback(
     async (file: File, itemId: string): Promise<ArchiveItem | null> => {
@@ -209,7 +202,11 @@ export function ArchivesVault({
         setUploadQueue((prev) =>
           prev.map((it) =>
             it.id === itemId
-              ? { ...it, stage: "error", error: "Unsupported format. Use .zip, .7z, or .rar." }
+              ? {
+                  ...it,
+                  stage: "error",
+                  error: "Unsupported format. Use .zip, .7z, or .rar.",
+                }
               : it,
           ),
         );
@@ -230,7 +227,14 @@ export function ArchivesVault({
       setUploadQueue((prev) =>
         prev.map((it) =>
           it.id === itemId
-            ? { ...it, stage: "uploading", percent: 0, startedAt: startTime, mbps: 0, etaSeconds: undefined }
+            ? {
+                ...it,
+                stage: "uploading",
+                percent: 0,
+                startedAt: startTime,
+                mbps: 0,
+                etaSeconds: undefined,
+              }
             : it,
         ),
       );
@@ -328,8 +332,6 @@ export function ArchivesVault({
       setUploadQueue((prev) => [...prev, ...newItems]);
       setGeneralError(null);
 
-      // Upload with controlled parallelism: at most UPLOAD_CONCURRENCY
-      // streams in flight, each updating its own progress bar live.
       let lastUploadedArchive = null as ArchiveItem | null;
       let cursor = 0;
       const worker = async () => {
@@ -360,14 +362,9 @@ export function ArchivesVault({
     [router, uploadSingle],
   );
 
-  const clearFailed = useCallback(() => {
-    setUploadQueue((prev) => prev.filter((it) => it.stage !== "error"));
-  }, []);
-  const clearFinished = useCallback(() => {
-    setUploadQueue((prev) => prev.filter((it) => it.stage !== "done"));
-  }, []);
   const failedCount = uploadQueue.filter((it) => it.stage === "error").length;
   const finishedCount = uploadQueue.filter((it) => it.stage === "done").length;
+
   const handleUnlock = useCallback(async () => {
     if (unlockArchive === null || isUnlocking) return;
     setUnlockError(null);
@@ -394,6 +391,7 @@ export function ArchivesVault({
     setUnlockPassword("");
     router.push(`/archives/${unlocked.id}`);
   }, [isUnlocking, router, unlockArchive, unlockPassword]);
+
   const handleReindexAll = useCallback(async () => {
     if (isReindexingAll) return;
     setIsReindexingAll(true);
@@ -459,7 +457,6 @@ export function ArchivesVault({
     if (res.ok && res.data.status === "ok") {
       const items = res.data.items || [];
       setScrapedItems(items);
-      // Select ONLY new archives by default (skip already archived AND blacklisted bad passwords)
       const selMap: Record<number, boolean> = {};
       const pwMap: Record<number, string> = {};
       for (const it of items) {
@@ -471,10 +468,14 @@ export function ArchivesVault({
       const newCount = items.filter((it) => !it.alreadyArchived && !it.blacklisted).length;
       const blCount = items.filter((it) => it.blacklisted).length;
       toast.success(
-        `Found ${items.length} archives (${newCount} new, ${blCount} bad password, ${items.length - newCount - blCount} in vault).`
+        `Found ${items.length} archives (${newCount} new, ${blCount} bad password, ${items.length - newCount - blCount} in vault).`,
       );
     } else {
-      toast.error(!res.ok ? (res.error?.message ?? "Scraping failed.") : (res.data?.message ?? "Scraping failed."));
+      toast.error(
+        !res.ok
+          ? (res.error?.message ?? "Scraping failed.")
+          : (res.data?.message ?? "Scraping failed."),
+      );
     }
   }, [scrapeLimit, selectedChannelId]);
 
@@ -497,16 +498,11 @@ export function ArchivesVault({
     }
   }, [handleScanChannel, selectedChannelId]);
 
-
   const selectAll = useCallback(() => {
     const next: Record<number, boolean> = {};
     for (const it of scrapedItems) next[it.messageId] = true;
     setSelectedMsgMap(next);
   }, [scrapedItems]);
-
-  const deselectAll = useCallback(() => {
-    setSelectedMsgMap({});
-  }, []);
 
   const handleImportScrapedBatch = useCallback(async () => {
     const selectedItems = scrapedItems.filter((it) => selectedMsgMap[it.messageId]);
@@ -535,7 +531,7 @@ export function ArchivesVault({
     if (res.ok) {
       setIsAutoScrapeOpen(false);
       toast.success(
-        `Added ${res.data.queuedCount} archives to server queue. You can close your browser anytime.`
+        `Added ${res.data.queuedCount} archives to server queue. You can close your browser anytime.`,
       );
       const q = await browserGetTelegramQueue();
       if (q.ok) setServerQueue(q.data);
@@ -546,7 +542,6 @@ export function ArchivesVault({
 
   const seenCompletedRef = useRef<Set<string> | null>(null);
 
-  // Periodic server queue monitor (runs even when modal is closed)
   useEffect(() => {
     let timer: NodeJS.Timeout;
     let cancelled = false;
@@ -591,388 +586,328 @@ export function ArchivesVault({
     };
   }, [router]);
 
-  const filteredArchives = archiveSearchQuery.trim()
-    ? archives.filter((a) =>
-        a.filename.toLowerCase().includes(archiveSearchQuery.trim().toLowerCase()) ||
-        a.format.toLowerCase().includes(archiveSearchQuery.trim().toLowerCase())
-      )
-    : archives;
-
-  const storageCapBytes = 500 * 1024 * 1024 * 1024; // 500 GiB reference tier
-  const storageUsagePct =
-    totalIndexedBytes > 0
-      ? Math.min(100, Math.max(1, Math.round((totalIndexedBytes / storageCapBytes) * 100)))
-      : 0;
-
-  const histogramDays = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
-  const histogramHeights = [22, 34, 28, 45, 38, 62, 54, 48, 72, 65, 84, 58, 92, 78];
+  const filteredArchives = archives.filter((a) => {
+    if (formatFilter !== "all" && a.format.toLowerCase() !== formatFilter) {
+      return false;
+    }
+    if (!archiveSearchQuery.trim()) return true;
+    const q = archiveSearchQuery.trim().toLowerCase();
+    return (
+      a.filename.toLowerCase().includes(q) ||
+      a.format.toLowerCase().includes(q)
+    );
+  });
 
   return (
-    <div className="flex flex-1 flex-col gap-5 spring-enter">
-      {/* SpinupMail 3-Card Top Telemetry Grid */}
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Card 1: Received Archives & Activity */}
-        <MotionSurface>
-          <div className="spinup-card flex h-full flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <Archive className="size-4 text-neutral-400" />
-                <span>Received Archives</span>
-              </div>
-              <span className="spinup-pill">Total Vault</span>
-            </div>
-
-            <div className="my-3 flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
-                <SpringCounter value={totalArchives} />
-              </span>
-              <span className="text-xs text-neutral-500">containers</span>
-            </div>
-
-            <div className="mt-auto pt-2">
-              <div className="grid grid-cols-14 items-end gap-1.5 h-14">
-                {histogramDays.map((day, idx) => {
-                  const h = totalArchives === 0 ? 12 : histogramHeights[idx];
-                  const isPeak = idx >= 10 && totalArchives > 0;
-                  return (
-                    <div key={day} className="flex flex-col items-center gap-1.5 h-full justify-end">
-                      <div className="relative flex w-full flex-1 items-end rounded-sm bg-white/[0.03] overflow-hidden">
-                        <div
-                          className={cn(
-                            "w-full rounded-sm transition-all duration-300",
-                            isPeak ? "bg-white/85" : "bg-neutral-500/50"
-                          )}
-                          style={{ height: `${h}%` }}
-                        />
-                      </div>
-                      <span className="font-mono text-[10px] leading-none text-neutral-600">
-                        {day}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+    <div className="flex min-w-0 w-full flex-1 flex-col gap-5">
+      {/* Architectural Obsidian Telemetry Ribbon */}
+      <section className="obsidian-panel grid grid-cols-2 divide-y divide-white/[0.06] overflow-hidden sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+        <div className="flex flex-col justify-between gap-2 p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs text-[#8b909a]">
+            <span className="font-medium">Vault Containers</span>
+            <Archive className="size-3.5 text-[#5c606a]" />
           </div>
-        </MotionSurface>
-
-        {/* Card 2: Total Indexed Member Files */}
-        <MotionSurface>
-          <div className="spinup-card flex h-full flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <FileText className="size-4 text-neutral-400" />
-                <span>Indexed Files</span>
-              </div>
-              <span className="spinup-pill">Uncompressed</span>
-            </div>
-
-            <div className="my-3 flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
-                <SpringCounter value={indexedFiles} />
-              </span>
-              <span className="text-xs text-neutral-500">member entries</span>
-            </div>
-
-            <div className="mt-auto pt-1">
-              <svg
-                viewBox="0 0 280 56"
-                className="h-14 w-full overflow-visible"
-                 preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                <defs>
-                  <linearGradient id="spinupAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="rgba(255,255,255,0.22)" />
-                    <stop offset="100%" stopColor="rgba(255,255,255,0.0)" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M0,48 C40,46 65,40 95,36 C130,31 155,28 190,18 C225,8 250,6 280,2 L280,56 L0,56 Z"
-                  fill="url(#spinupAreaGrad)"
-                />
-                <path
-                  d="M0,48 C40,46 65,40 95,36 C130,31 155,28 190,18 C225,8 250,6 280,2"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.8)"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#f3f4f6]">
+              {totalArchives.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-[#6b707b]">archives</span>
           </div>
-        </MotionSurface>
+        </div>
 
-        {/* Card 3: Statistics & Storage Capacity */}
-        <MotionSurface>
-          <div className="spinup-card flex h-full flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <BarChart3 className="size-4 text-neutral-400" />
-                <span>Statistics</span>
+        <div className="flex flex-col justify-between gap-2 p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs text-[#8b909a]">
+            <span className="font-medium">Indexed Entries</span>
+            <FileText className="size-3.5 text-[#5c606a]" />
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#f3f4f6]">
+              {indexedFiles.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-[#6b707b]">
+              files · {indexedDirs.toLocaleString()} dirs
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-between gap-2 p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs text-[#8b909a]">
+            <span className="font-medium">Uncompressed Data</span>
+            <HardDrive className="size-3.5 text-[#5c606a]" />
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#f3f4f6]">
+              {formatBytes(totalIndexedBytes)}
+            </span>
+            <span className="text-[11px] text-[#6b707b]">
+              ({formatBytes(totalPackedBytes)} packed)
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-between gap-2 p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs text-[#8b909a]">
+            <span className="font-medium">Encrypted Sets</span>
+            <Lock className="size-3.5 text-[#5c606a]" />
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#f3f4f6]">
+              {encryptedVaults.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-[#6b707b]">
+              password-protected
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Unified Ingestion & Pipeline Bar */}
+      <section className="obsidian-panel flex flex-col gap-3 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-disabled={isUploading}
+            onClick={() => {
+              if (!isUploading) fileInputRef.current?.click();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                if (!isUploading) fileInputRef.current?.click();
+              }
+            }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDragActive(true);
+            }}
+            onDragLeave={() => setIsDragActive(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsDragActive(false);
+              if (!isUploading) void onPickFiles(event.dataTransfer.files);
+            }}
+            className={cn(
+              "flex flex-1 cursor-pointer items-center justify-between gap-4 rounded-lg border border-dashed px-4 py-3 text-left transition-colors",
+              isDragActive
+                ? "border-white/30 bg-white/[0.04]"
+                : "border-white/[0.09] bg-[#101216] hover:border-white/[0.18] hover:bg-[#13161b]",
+              isUploading && "pointer-events-none opacity-60",
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-[#161920] text-[#c8ccd4]">
+                <Upload className="size-3.5" />
               </div>
-              <span className="spinup-pill">{formatBytes(totalIndexedBytes)}</span>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-medium text-[#f3f4f6]">
+                  Drop .zip, .7z, or multi-part .rar archives here, or click to browse
+                </p>
+                <p className="truncate text-[11px] text-[#6b707b]">
+                  Supports multi-volume sets (.part01.rar, .part02.rar) · Automatic password dictionary probing
+                </p>
+              </div>
             </div>
+            <span className="obsidian-pill shrink-0 font-mono text-[10px]">
+              Max 100 GB
+            </span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".zip,.7z,.rar"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                void onPickFiles(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </div>
 
-            <div className="my-3 grid grid-cols-3 gap-2 rounded-lg border border-white/[0.06] bg-[#0e0f11] p-2.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <FileArchive className="size-3.5 shrink-0 text-neutral-400" />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold tabular-nums text-white">
-                    {totalArchives}
-                  </p>
-                  <p className="truncate text-[10px] text-neutral-500">Total Archives</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 min-w-0 border-l border-white/[0.06] pl-2">
-                <Key className="size-3.5 shrink-0 text-neutral-400" />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold tabular-nums text-white">
-                    {encryptedVaults}
-                  </p>
-                  <p className="truncate text-[10px] text-neutral-500">Encrypted</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 min-w-0 border-l border-white/[0.06] pl-2">
-                <HardDrive className="size-3.5 shrink-0 text-neutral-400" />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold tabular-nums text-white">
-                    {formatBytes(totalIndexedBytes)}
-                  </p>
-                  <p className="truncate text-[10px] text-neutral-500">Indexed</p>
-                </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void openAutoScrapeDialog()}
+              className="h-9 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-3 text-xs text-[#e5e7eb] hover:bg-white/[0.05]"
+            >
+              <Radio className="size-3.5 text-[#10b981]" />
+              Telegram Scraper
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void handleReindexAll()}
+              disabled={isReindexingAll || isUploading}
+              className="h-9 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-3 text-xs text-[#e5e7eb] hover:bg-white/[0.05]"
+            >
+              <RefreshCw
+                className={cn("size-3.5", isReindexingAll && "animate-spin")}
+              />
+              {isReindexingAll ? "Reindexing…" : "Reindex All"}
+            </Button>
+          </div>
+        </div>
+
+        {generalError !== null ? (
+          <Alert variant="destructive" className="rounded-lg py-2.5 text-xs">
+            <AlertDescription>{generalError}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {/* Active Client Upload Queue */}
+        {uploadQueue.length > 0 ? (
+          <div className="obsidian-subpanel flex flex-col gap-2.5 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="font-medium text-[#f3f4f6]">
+                Upload Queue ({finishedCount}/{uploadQueue.length} completed)
+              </span>
+              <div className="flex items-center gap-3">
+                {failedCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setUploadQueue((prev) =>
+                        prev.filter((it) => it.stage !== "error"),
+                      )
+                    }
+                    className="text-[11px] text-[#f43f5e] hover:underline cursor-pointer"
+                  >
+                    Clear failed ({failedCount})
+                  </button>
+                ) : null}
+                {finishedCount > 0 && !isUploading ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setUploadQueue((prev) =>
+                        prev.filter((it) => it.stage !== "done"),
+                      )
+                    }
+                    className="text-[11px] text-[#10b981] hover:underline cursor-pointer"
+                  >
+                    Clear finished ({finishedCount})
+                  </button>
+                ) : null}
+                {!isUploading ? (
+                  <button
+                    type="button"
+                    onClick={() => setUploadQueue([])}
+                    className="text-[11px] text-[#6b707b] hover:text-[#f3f4f6] cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                ) : null}
               </div>
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-neutral-400">Storage Usage</span>
-                <span className="font-mono text-neutral-300">{storageUsagePct}%</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+              {uploadQueue.map((item) => (
                 <div
-                  className="h-full rounded-full bg-white/85 transition-all duration-300"
-                  style={{ width: `${storageUsagePct}%` }}
-                />
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="spinup-pill">Top format: .zip</span>
-                <span className="spinup-pill">Engine: Go 1.25 + 7zz</span>
-                <span className="spinup-pill">Parallel MTProto active</span>
-              </div>
-            </div>
-          </div>
-        </MotionSurface>
-      </section>
-
-      {/* Compact Sleek Upload Dropzone */}
-      <MotionSurface busy={isUploading}>
-        <section className="spinup-card p-4">
-          <div className="flex flex-col gap-3">
-            <div
-              role="button"
-              tabIndex={0}
-              aria-disabled={isUploading}
-              onClick={() => {
-                if (!isUploading) fileInputRef.current?.click();
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  if (!isUploading) fileInputRef.current?.click();
-                }
-              }}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setIsDragActive(true);
-              }}
-              onDragLeave={() => setIsDragActive(false)}
-              onDrop={(event) => {
-                event.preventDefault();
-                setIsDragActive(false);
-                if (!isUploading) onPickFiles(event.dataTransfer.files);
-              }}
-              className={cn(
-                "motion-sheen flex cursor-pointer flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-dashed px-5 py-4 text-left transition-colors duration-200",
-                isDragActive
-                  ? "border-white/30 bg-white/[0.04]"
-                  : "border-white/[0.1] bg-[#0e0f11]/70 hover:border-white/[0.22] hover:bg-white/[0.02]",
-                isUploading && "pointer-events-none opacity-60"
-              )}
-            >
-              <div className="flex items-center gap-3.5">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-neutral-300">
-                  <Upload className="size-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">
-                    Drag &amp; drop .zip, .7z, or multiple .rar archive parts here, or click to browse
-                  </p>
-                  <p className="text-xs text-neutral-500">
-                    Supports multi-file selection (.part1.rar, .part2.rar, etc.) · Password-protected archives detected automatically
-                  </p>
-                </div>
-              </div>
-              <span className="spinup-pill shrink-0">Up to 100 GB</span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".zip,.7z,.rar"
-                multiple
-                className="hidden"
-                onChange={(event) => {
-                  void onPickFiles(event.target.files);
-                  event.target.value = "";
-                }}
-              />
-            </div>
-
-            {generalError !== null ? (
-              <Alert variant="destructive" className="rounded-lg">
-                <AlertDescription>{generalError}</AlertDescription>
-              </Alert>
-            ) : null}
-
-            {/* Multi-archive upload queue cards */}
-            {uploadQueue.length > 0 ? (
-              <div className="flex flex-col gap-2 rounded-lg border border-white/[0.07] bg-[#0e0f11] p-3.5">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-400">
-                  <span className="font-medium text-white">
-                    Upload Queue ({uploadQueue.filter((it) => it.stage === "done").length}/{uploadQueue.length} completed)
-                  </span>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    {failedCount > 0 ? (
-                      <button
-                        type="button"
-                        onClick={clearFailed}
-                        className="whitespace-nowrap text-[11px] text-[#f91880] transition-none hover:opacity-80"
-                      >
-                        Clear failed ({failedCount})
-                      </button>
+                  key={item.id}
+                  className="rounded-md border border-white/[0.05] bg-[#0b0c0e] p-2.5"
+                >
+                  <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
+                    <span
+                      className="min-w-0 max-w-full truncate font-mono font-medium text-[#f3f4f6]"
+                      title={item.filename}
+                    >
+                      {item.filename}
+                    </span>
+                    {item.format !== null ? (
+                      <span className="obsidian-pill font-mono text-[10px] uppercase">
+                        {item.format}
+                      </span>
                     ) : null}
-                    {finishedCount > 0 && !isUploading ? (
-                      <button
-                        type="button"
-                        onClick={clearFinished}
-                        className="whitespace-nowrap text-[11px] text-[#00ba7c] transition-none hover:opacity-80"
-                      >
-                        Clear finished ({finishedCount})
-                      </button>
-                    ) : null}
-                    {!isUploading ? (
-                      <button
-                        type="button"
-                        onClick={() => setUploadQueue([])}
-                        className="whitespace-nowrap text-[11px] text-neutral-500 transition-none hover:text-white"
-                      >
-                        Clear all
-                      </button>
-                    ) : null}
+                    <span className="ml-auto flex items-center gap-2 font-mono text-[11px] tabular-nums text-[#8b909a]">
+                      {item.stage === "uploading" &&
+                      item.mbps !== undefined &&
+                      item.mbps > 0 ? (
+                        <span className="text-[#e5e7eb]">
+                          {item.mbps.toFixed(1)} Mbps
+                        </span>
+                      ) : null}
+                      {item.stage === "uploading" &&
+                      item.etaSeconds !== undefined &&
+                      item.etaSeconds > 0 ? (
+                        <span className="text-[#6b707b]">
+                          · {formatEta(item.etaSeconds)}
+                        </span>
+                      ) : null}
+                      <span>
+                        {formatBytes(item.loaded)} / {formatBytes(item.total)}
+                      </span>
+                      <span className="font-semibold text-[#f3f4f6]">
+                        {item.percent}%
+                      </span>
+                    </span>
+                  </div>
+                  <div className="relative h-1 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-[width] duration-200",
+                        item.stage === "error"
+                          ? "bg-[#f43f5e]"
+                          : item.stage === "done"
+                            ? "bg-[#10b981]"
+                            : "bg-[#f3f4f6]",
+                      )}
+                      style={{ width: `${item.percent}%` }}
+                    />
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[11px]">
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5",
+                        item.stage === "error"
+                          ? "text-[#f43f5e]"
+                          : item.stage === "done"
+                            ? "text-[#10b981]"
+                            : "text-[#8b909a]",
+                      )}
+                    >
+                      {item.stage === "uploading" || item.stage === "indexing" ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : null}
+                      {item.error ? item.error : STAGE_LABELS[item.stage]}
+                    </span>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2.5">
-                  {uploadQueue.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-lg border border-white/[0.05] bg-white/[0.015] p-2.5"
-                    >
-                      <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                        <span className="min-w-0 max-w-full truncate text-xs font-medium text-white" title={item.filename}>
-                          {item.filename}
-                        </span>
-                        {item.format !== null ? (
-                          <span className="spinup-pill uppercase font-mono text-[10px]">
-                            {item.format}
-                          </span>
-                        ) : null}
-                        <span className="ml-auto flex items-center gap-2 font-mono text-[11px] tabular-nums text-neutral-400">
-                          {item.stage === "uploading" && item.mbps !== undefined && item.mbps > 0 ? (
-                            <span className="text-neutral-200">
-                              {item.mbps.toFixed(1)} Mbps
-                            </span>
-                          ) : null}
-                          {item.stage === "uploading" && item.etaSeconds !== undefined && item.etaSeconds > 0 ? (
-                            <span className="text-neutral-500">
-                              · {formatEta(item.etaSeconds)}
-                            </span>
-                          ) : null}
-                          <span>
-                            {formatBytes(item.loaded)} / {formatBytes(item.total)}
-                          </span>
-                        </span>
-                        <span className="font-mono text-[11px] font-semibold tabular-nums text-white">
-                          {item.percent}%
-                        </span>
-                      </div>
-                      <div className="relative h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                        <div
-                          className={cn(
-                            "absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out",
-                            item.stage === "error"
-                              ? "bg-[#f91880]"
-                              : item.stage === "done"
-                                ? "bg-[#00ba7c]"
-                                : "kinetics-progress-fill",
-                          )}
-                          style={{ width: `${item.percent}%` }}
-                        />
-                        {item.stage === "uploading" || item.stage === "indexing" ? (
-                          <div aria-hidden="true" className="kinetics-progress-shimmer absolute inset-0" />
-                        ) : null}
-                      </div>
-                      <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                        <span
-                          className={cn(
-                            "inline-flex min-w-0 items-center gap-1 break-words font-medium",
-                            item.stage === "error"
-                              ? "text-[#f91880]"
-                              : item.stage === "done"
-                                ? "text-[#00ba7c]"
-                                : "text-neutral-400",
-                          )}
-                        >
-                          {item.stage === "uploading" || item.stage === "indexing" ? (
-                            <Loader2 className="size-3 animate-spin" />
-                          ) : null}
-                          {item.error ? item.error : STAGE_LABELS[item.stage]}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+              ))}
+            </div>
           </div>
-        </section>
-      </MotionSurface>
+        ) : null}
+      </section>
 
-      {/* Background Server Download Indicator */}
-      {serverQueue !== null && (serverQueue.active !== null || (serverQueue.activeList && serverQueue.activeList.length > 0) || serverQueue.pendingCount > 0) ? (
-        <div className="spinup-card flex flex-col gap-2.5 border-emerald-500/30 p-4 text-xs">
+      {/* Active Server MTProto Download Streams */}
+      {serverQueue !== null &&
+      (serverQueue.active !== null ||
+        (serverQueue.activeList && serverQueue.activeList.length > 0) ||
+        serverQueue.pendingCount > 0) ? (
+        <section className="obsidian-panel flex flex-col gap-2.5 p-4 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-2.5">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ba7c] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00ba7c]" />
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="size-2 rounded-full bg-[#10b981]" />
+              <span className="font-medium text-[#f3f4f6]">
+                MTProto Ingestion Queue
               </span>
-              <span className="font-mono font-medium text-white whitespace-nowrap">
-                Parallel Downloader
-              </span>
-              {(serverQueue.activeList && serverQueue.activeList.length > 0) ? (
-                <Badge variant="outline" className="text-[10px] text-[#00ba7c] border-white/[0.08] bg-white/[0.03] shrink-0 font-medium px-2 py-0.5">
-                  {serverQueue.activeList.length} stream{serverQueue.activeList.length > 1 ? "s" : ""} downloading in parallel
-                </Badge>
+              {serverQueue.activeList && serverQueue.activeList.length > 0 ? (
+                <span className="obsidian-pill font-mono text-[10px] text-[#10b981]">
+                  {serverQueue.activeList.length} active
+                </span>
               ) : null}
               {serverQueue.pendingCount > 0 ? (
-                <Badge variant="outline" className="text-[10px] text-neutral-400 shrink-0 font-normal">
-                  +{serverQueue.pendingCount} queued
-                </Badge>
+                <span className="obsidian-pill font-mono text-[10px]">
+                  +{serverQueue.pendingCount} pending
+                </span>
               ) : null}
             </div>
-            <div className="flex items-center gap-2 font-mono text-[11px] text-neutral-400 shrink-0">
+            <div className="flex items-center gap-3 font-mono text-[11px]">
               {serverQueue.totalSpeedMbps && serverQueue.totalSpeedMbps > 0 ? (
-                <span className="font-semibold text-[#00ba7c] border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 rounded text-[11px]">
-                  {serverQueue.totalSpeedMbps.toFixed(1)} Mbps total
+                <span className="text-[#10b981]">
+                  {serverQueue.totalSpeedMbps.toFixed(1)} Mbps
                 </span>
               ) : null}
               <button
@@ -983,10 +918,9 @@ export function ArchivesVault({
                   if (q.ok) setServerQueue(q.data);
                   toast.info("Cleared background download queue.");
                 }}
-                className="ml-2 whitespace-nowrap text-[10px] text-neutral-400 hover:text-[#f91880] cursor-pointer transition-none"
-                title="Cancel pending background downloads"
+                className="text-[11px] text-[#8b909a] hover:text-[#f43f5e] cursor-pointer"
               >
-                (Clear Queue)
+                Cancel Queue
               </button>
             </div>
           </div>
@@ -994,38 +928,50 @@ export function ArchivesVault({
           {(serverQueue.activeList && serverQueue.activeList.length > 0
             ? serverQueue.activeList
             : serverQueue.active
-            ? [serverQueue.active]
-            : []
+              ? [serverQueue.active]
+              : []
           ).map((stream, idx) => (
-            <div key={stream.id} className="flex flex-col gap-1.5 rounded-lg border border-white/[0.06] bg-[#0e0f11] p-2.5">
+            <div
+              key={stream.id}
+              className="obsidian-subpanel flex flex-col gap-1.5 p-2.5"
+            >
               <div className="flex flex-wrap items-center justify-between gap-1.5">
-                <div className="flex max-w-full items-center gap-2 min-w-0">
-                  <span className="shrink-0 font-mono text-[9px] uppercase px-1.5 py-0.5 rounded border border-white/[0.08] bg-white/[0.03] text-neutral-400 font-semibold">
-                    Stream #{idx + 1}
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="obsidian-pill font-mono text-[10px]">
+                    #{idx + 1}
                   </span>
-                  <span className="font-mono font-medium text-neutral-200 truncate text-[11px]" title={stream.filename}>
+                  <span
+                    className="truncate font-mono text-xs font-medium text-[#f3f4f6]"
+                    title={stream.filename}
+                  >
                     {stream.filename}
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-neutral-400">
+                <div className="flex items-center gap-2 font-mono text-[11px] text-[#8b909a]">
                   {stream.speedMbps > 0 ? (
-                    <span className="text-[#00ba7c] font-medium">{stream.speedMbps.toFixed(1)} Mbps</span>
+                    <span className="text-[#10b981]">
+                      {stream.speedMbps.toFixed(1)} Mbps
+                    </span>
                   ) : null}
                   {stream.etaSeconds > 0 ? (
-                    <span className="text-neutral-500">· {formatEta(stream.etaSeconds)}</span>
+                    <span className="text-[#6b707b]">
+                      · {formatEta(stream.etaSeconds)}
+                    </span>
                   ) : null}
                   {stream.totalBytes > 0 ? (
                     <span>
-                      {formatBytes(stream.loadedBytes)} / {formatBytes(stream.totalBytes)} ({stream.percent.toFixed(0)}%)
+                      {formatBytes(stream.loadedBytes)} /{" "}
+                      {formatBytes(stream.totalBytes)} (
+                      {stream.percent.toFixed(0)}%)
                     </span>
                   ) : null}
                 </div>
               </div>
-              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+              <div className="relative h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
                 <div
                   className={cn(
-                    "h-full rounded-full transition-all duration-300 kinetics-progress-fill",
-                    stream.stage === "indexing" && "w-full animate-pulse"
+                    "h-full rounded-full bg-[#10b981] transition-all duration-300",
+                    stream.stage === "indexing" && "w-full animate-pulse",
                   )}
                   style={
                     stream.stage === "downloading"
@@ -1036,80 +982,88 @@ export function ArchivesVault({
               </div>
             </div>
           ))}
-        </div>
+        </section>
       ) : null}
 
-      {/* SpinupMail Main Activity Table */}
-      <section className="spinup-card overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2.5">
-            <Clock className="size-4 text-neutral-400" />
-            <h3 className="text-sm font-semibold tracking-tight text-white">
-              Recent Archive Activity
-            </h3>
-            <span className="spinup-pill">{filteredArchives.length}</span>
+      {/* Vault Container Ledger */}
+      <section className="spinup-card obsidian-panel min-w-0 w-full overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-white/[0.06] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-semibold tracking-tight text-[#f3f4f6]">
+              Indexed Containers
+            </h2>
+            <span className="obsidian-pill font-mono text-[11px]">
+              {filteredArchives.length}
+            </span>
+
+            <div className="ml-1 flex items-center gap-1 rounded-md border border-white/[0.06] bg-[#101216] p-0.5">
+              {(["all", "zip", "rar", "7z"] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  onClick={() => setFormatFilter(fmt)}
+                  className={cn(
+                    "rounded px-2 py-0.5 font-mono text-[10px] uppercase transition-colors cursor-pointer",
+                    formatFilter === fmt
+                      ? "bg-white/[0.08] text-[#f3f4f6] font-medium"
+                      : "text-[#6b707b] hover:text-[#c8ccd4]",
+                  )}
+                >
+                  {fmt}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex items-center">
-              <Search className="pointer-events-none absolute left-2.5 size-3.5 text-neutral-500" />
-              <input
-                type="text"
-                value={archiveSearchQuery}
-                onChange={(e) => setArchiveSearchQuery(e.target.value)}
-                placeholder="Search archives..."
-                aria-label="Search archives"
-                className="spinup-input h-8 w-44 sm:w-56 pl-8 pr-3"
-              />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={openAutoScrapeDialog}
-              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-xs text-neutral-200 hover:bg-white/[0.04]"
-            >
-              <Radio className="size-3 text-[#00ba7c]" />
-              Auto-Scrape
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={handleReindexAll}
-              disabled={isReindexingAll || isUploading}
-              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-xs text-neutral-200 hover:bg-white/[0.04]"
-            >
-              <RefreshCw
-                className={isReindexingAll ? "size-3 animate-spin" : "size-3"}
-              />
-              {isReindexingAll ? "Reindexing…" : "Reindex All"}
-            </Button>
+          <div className="relative flex items-center">
+            <Search className="pointer-events-none absolute left-2.5 size-3.5 text-[#6b707b]" />
+            <input
+              type="text"
+              value={archiveSearchQuery}
+              onChange={(e) => setArchiveSearchQuery(e.target.value)}
+              placeholder="Filter containers..."
+              aria-label="Search archives"
+              className="obsidian-input h-8 w-full pl-8 pr-3 text-xs sm:w-64"
+            />
           </div>
         </div>
 
         {filteredArchives.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="text-sm font-medium text-white">
-              {archives.length === 0 ? "No archives indexed yet" : "No matching archives"}
-            </p>
-            <p className="mt-1 text-xs text-neutral-500">
+          <div className="px-6 py-14 text-center">
+            <p className="text-sm font-medium text-[#f3f4f6]">
               {archives.length === 0
-                ? "Upload a .zip, .7z, or .rar file above to open it in the multi-pane File Explorer."
-                : "Try clearing or adjusting your archive filter query."}
+                ? "No archives indexed yet"
+                : "No matching containers"}
+            </p>
+            <p className="mt-1 text-xs text-[#6b707b]">
+              {archives.length === 0
+                ? "Drop a .zip, .7z, or .rar archive above to index its directory structure and credentials."
+                : "Adjust your search filter or format selection."}
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-xs">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[860px] border-collapse text-left text-xs">
               <thead>
-                <tr className="border-b border-white/[0.06] bg-[#0e0f11]/60 text-[11px] font-medium text-neutral-400">
-                  <th className="py-3 px-4 font-medium">Archive Name</th>
-                  <th className="py-3 px-4 font-medium">Uncompressed Size</th>
-                  <th className="py-3 px-4 font-medium">Files / Folders</th>
-                  <th className="py-3 px-4 font-medium">Date Added</th>
-                  <th className="py-3 px-4 font-medium">Status</th>
-                  <th className="py-3 px-4 text-right font-medium">Actions</th>
+                <tr className="border-b border-white/[0.06] bg-[#101216]/70 text-[11px] font-medium text-[#8b909a]">
+                  <th className="w-full max-w-0 min-w-[260px] py-2.5 pl-4 pr-3 font-medium">
+                    Container
+                  </th>
+                  <th className="py-2.5 px-3 font-medium whitespace-nowrap">
+                    Volume Size
+                  </th>
+                  <th className="py-2.5 px-3 font-medium whitespace-nowrap">
+                    Structure
+                  </th>
+                  <th className="py-2.5 px-3 font-medium whitespace-nowrap">
+                    Indexed At
+                  </th>
+                  <th className="py-2.5 px-3 font-medium whitespace-nowrap">
+                    Status
+                  </th>
+                  <th className="py-2.5 pl-3 pr-5 text-right font-medium whitespace-nowrap">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04]">
@@ -1118,75 +1072,113 @@ export function ArchivesVault({
                     key={archive.id}
                     className="group transition-colors hover:bg-white/[0.02]"
                   >
-                    <td className="py-3.5 px-4">
+                    <td className="w-full max-w-0 min-w-[260px] py-3 pl-4 pr-3">
                       <Link
                         href={`/archives/${archive.id}`}
-                        className="flex items-center gap-3 min-w-0"
+                        className="flex min-w-0 items-center gap-3"
                       >
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.07] bg-[#0e0f11] text-neutral-300 group-hover:border-white/[0.15]">
-                          <FileArchive className="size-4 text-neutral-400" />
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-white/[0.07] bg-[#101216] text-[#8b909a] group-hover:border-white/[0.15] group-hover:text-[#f3f4f6]">
+                          <FileArchive className="size-3.5" />
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-2">
                             <span
-                              className="truncate text-sm font-medium text-white group-hover:underline"
+                              className="truncate text-xs font-medium text-[#f3f4f6] group-hover:underline"
                               title={archive.filename}
                             >
                               {archive.filename}
                             </span>
-                            <span className="spinup-pill uppercase font-mono text-[10px]">
+                            <span className="obsidian-pill shrink-0 font-mono text-[10px] uppercase">
                               {archive.format}
                             </span>
                           </div>
-                          <p className="mt-0.5 font-mono text-[11px] text-neutral-500">
-                            {formatBytes(archive.sizeBytes)} packed
+                          <p className="mt-0.5 truncate font-mono text-[11px] text-[#6b707b]">
+                            {formatBytes(archive.sizeBytes)} packed · sha256:
+                            {archive.sha256.slice(0, 8)}
                           </p>
                         </div>
                       </Link>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-xs tabular-nums text-neutral-200 whitespace-nowrap">
+                    <td className="py-3 px-3 font-mono text-xs tabular-nums text-[#e5e7eb] whitespace-nowrap">
                       {formatBytes(archive.uncompressedBytes)}
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-xs tabular-nums text-neutral-300 whitespace-nowrap">
+                    <td className="py-3 px-3 font-mono text-xs tabular-nums text-[#c8ccd4] whitespace-nowrap">
                       {archive.fileCount.toLocaleString()} files{" "}
-                      <span className="text-neutral-500">
+                      <span className="text-[#6b707b]">
                         · {archive.dirCount.toLocaleString()} dirs
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-xs tabular-nums text-neutral-400 whitespace-nowrap">
+                    <td className="py-3 px-3 font-mono text-[11px] tabular-nums text-[#8b909a] whitespace-nowrap">
                       {new Date(archive.createdAt)
                         .toISOString()
                         .slice(0, 16)
                         .replace("T", " ")}{" "}
                       UTC
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="py-3 px-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
-                        <span className="spinup-badge-active inline-flex items-center gap-1.5">
-                          <span className="size-1.5 rounded-full bg-[#00ba7c]" />
-                          Indexed
-                        </span>
-                        {archive.isEncrypted ? (
-                          <span className="spinup-pill inline-flex items-center gap-1 text-neutral-300">
-                            <Lock className="size-3 text-neutral-400" />
-                            Password Stored
-                          </span>
-                        ) : null}
+                        {archive.status === "password_required" ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUnlockArchive(archive);
+                              setUnlockPassword("");
+                              setUnlockError(null);
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-300 hover:bg-amber-500/20 cursor-pointer"
+                          >
+                            <Lock className="size-3" />
+                            Password Required
+                          </button>
+                        ) : (
+                          <>
+                            <span className="obsidian-badge-active inline-flex items-center gap-1.5">
+                              <span className="size-1.5 rounded-full bg-[#10b981]" />
+                              Indexed
+                            </span>
+                            {archive.isEncrypted ? (
+                              <span
+                                title="Password Stored"
+                                className="obsidian-pill inline-flex items-center gap-1 text-[#c8ccd4]"
+                              >
+                                <Lock className="size-2.5 text-[#8b909a]" />
+                                <span className="hidden xl:inline">Unlocked</span>
+                              </span>
+                            ) : null}
+                          </>
+                        )}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                    <td className="py-3 pl-3 pr-5 text-right whitespace-nowrap">
                       <div className="inline-flex items-center justify-end gap-1">
-                        <Button
-                          asChild
-                          size="xs"
-                          variant="outline"
-                          className="h-7 gap-1 rounded-lg border-white/[0.08] bg-[#0e0f11] px-2.5 text-xs text-white hover:bg-white/[0.06]"
-                        >
-                          <Link href={`/archives/${archive.id}`}>
-                            Open
-                            <ArrowUpRight className="size-3" />
-                          </Link>
-                        </Button>
+                        {archive.status === "password_required" ? (
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="outline"
+                            onClick={() => {
+                              setUnlockArchive(archive);
+                              setUnlockPassword("");
+                              setUnlockError(null);
+                            }}
+                            className="h-7 gap-1 rounded-md border-amber-500/30 bg-amber-500/10 px-2.5 text-xs text-amber-300 hover:bg-amber-500/20"
+                          >
+                            <Lock className="size-3" />
+                            Unlock
+                          </Button>
+                        ) : (
+                          <Button
+                            asChild
+                            size="xs"
+                            variant="outline"
+                            className="h-7 gap-1 rounded-md border-white/[0.08] bg-[#101216] px-2.5 text-xs text-[#f3f4f6] hover:bg-white/[0.06]"
+                          >
+                            <Link href={`/archives/${archive.id}`}>
+                              Inspect
+                              <ArrowUpRight className="size-3" />
+                            </Link>
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
@@ -1194,26 +1186,31 @@ export function ArchivesVault({
                           disabled={reindexingId === archive.id || isReindexingAll}
                           onClick={() => void handleReindexOne(archive.id)}
                           title="Re-run indexer on this archive"
-                          className="h-7 px-2 text-neutral-400 hover:text-white"
+                          className="h-7 w-7 p-0 text-[#8b909a] hover:text-[#f3f4f6]"
                         >
                           <RotateCcw
-                            className={
-                              reindexingId === archive.id
-                                ? "size-3.5 animate-spin"
-                                : "size-3.5"
-                            }
+                            className={cn(
+                              "size-3.5",
+                              reindexingId === archive.id && "animate-spin",
+                            )}
                           />
                         </Button>
                         <Button
+                          type="button"
                           size="xs"
                           variant="ghost"
                           aria-label={`Delete ${archive.filename}`}
-                          className="h-7 px-2 text-neutral-400 hover:text-[#f91880]"
+                          title={`Delete ${archive.filename}`}
+                          className="h-7 w-7 p-0 text-[#8b909a] hover:text-[#f43f5e]"
                           onClick={async () => {
                             const targetId = archive.id;
                             const targetName = archive.filename;
-                            setArchives((prev) => prev.filter((a) => a.id !== targetId));
-                            toast.success(`Deleted "${targetName}". Cleaning up in background...`);
+                            setArchives((prev) =>
+                              prev.filter((a) => a.id !== targetId),
+                            );
+                            toast.success(
+                              `Deleted "${targetName}". Cleaning up in background...`,
+                            );
 
                             const result = await browserDeleteArchive(targetId);
                             if (!result.ok) {
@@ -1241,7 +1238,7 @@ export function ArchivesVault({
         )}
       </section>
 
-      {/* Automatic Upload-Time Password Prompt */}
+      {/* Password Unlock Modal */}
       <Dialog
         open={unlockArchive !== null}
         onOpenChange={(nextOpen) => {
@@ -1254,30 +1251,31 @@ export function ArchivesVault({
           }
         }}
       >
-        <DialogContent className="rounded-[8px] border-[rgba(255,255,255,0.07)] bg-[#0f1011] sm:max-w-md">
+        <DialogContent className="rounded-xl border border-white/[0.08] bg-[#0b0c0e] text-[#f3f4f6] sm:max-w-md">
           {unlockArchive !== null ? (
             <div className="flex flex-col gap-4">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 pr-6 text-left text-base">
-                  <Icon3D name="lock" size="md" />
-                  Password-Protected Archive Detected
+                <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+                  <Lock className="size-4 text-amber-400" />
+                  Encrypted Archive Detected
                 </DialogTitle>
-                <DialogDescription className="text-xs text-[#8a8f98]">
-                  Enter the archive password once to index its contents and
-                  store it — viewers in the File Explorer will never be asked
-                  for a password.
+                <DialogDescription className="text-xs text-[#8b909a]">
+                  Enter the archive password once to index its contents and store
+                  it for zero-extraction browsing.
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex items-center gap-2">
-                <span className="min-w-0 truncate text-sm font-medium text-[#f7f8f8]">
+              <div className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-[#101216] px-3 py-2">
+                <span className="min-w-0 flex-1 truncate font-mono text-xs font-medium text-[#f3f4f6]">
                   {unlockArchive.filename}
                 </span>
-                <Badge variant="outline" className="uppercase font-mono">
+                <span className="obsidian-pill font-mono text-[10px] uppercase">
                   {unlockArchive.format}
-                </Badge>
+                </span>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="unlock-password">Archive password</Label>
+                <Label htmlFor="unlock-password" className="text-xs text-[#c8ccd4]">
+                  Archive password
+                </Label>
                 <div className="relative">
                   <Input
                     id="unlock-password"
@@ -1286,7 +1284,7 @@ export function ArchivesVault({
                     onChange={(event) => setUnlockPassword(event.target.value)}
                     disabled={isUnlocking}
                     autoFocus
-                    className="h-10 rounded-[8px] border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] pr-10 text-sm"
+                    className="obsidian-input h-9 pr-9 text-xs"
                   />
                   <button
                     type="button"
@@ -1294,81 +1292,76 @@ export function ArchivesVault({
                     aria-label={
                       showUnlockPassword ? "Hide password" : "Show password"
                     }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[9999px] p-1.5 text-[#8a8f98] transition-none hover:text-[#f7f8f8]"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8b909a] hover:text-[#f3f4f6]"
                   >
                     {showUnlockPassword ? (
-                      <EyeOff className="size-4" />
+                      <EyeOff className="size-3.5" />
                     ) : (
-                      <Eye className="size-4" />
+                      <Eye className="size-3.5" />
                     )}
                   </button>
                 </div>
                 {unlockError !== null ? (
-                  <Alert variant="destructive" className="rounded-[8px]">
+                  <Alert variant="destructive" className="py-2 text-xs">
                     <AlertDescription>{unlockError}</AlertDescription>
                   </Alert>
                 ) : null}
               </div>
-              <Magnetic strength={0.18}>
-                <Button
-                  className="spring-interactive h-auto min-h-10 w-full whitespace-normal rounded-[9999px] py-2"
-                  disabled={isUnlocking || unlockPassword.length === 0}
-                  onClick={() => void handleUnlock()}
-                >
-                  {isUnlocking ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Lock className="size-4" />
-                  )}
-                  Store password &amp; open File Explorer
-                </Button>
-              </Magnetic>
+              <Button
+                className="h-9 w-full rounded-lg bg-[#f3f4f6] text-xs font-medium text-[#050506] hover:bg-white"
+                disabled={isUnlocking || unlockPassword.length === 0}
+                onClick={() => void handleUnlock()}
+              >
+                {isUnlocking ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Lock className="size-3.5" />
+                )}
+                Unlock &amp; Index Archive
+              </Button>
             </div>
           ) : null}
         </DialogContent>
       </Dialog>
 
-      {/* Auto-Scrape Telegram Dialog */}
+      {/* Telegram Auto-Scrape Modal */}
       <Dialog open={isAutoScrapeOpen} onOpenChange={setIsAutoScrapeOpen}>
-        <DialogContent className="border border-[rgba(255,255,255,0.1)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-3xl w-[92vw] max-h-[85vh] flex flex-col p-6 overflow-hidden shadow-2xl">
-          <DialogHeader className="shrink-0 pb-3 border-b border-[rgba(255,255,255,0.06)]">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2.5 pr-6 text-left text-base font-semibold text-[#ffffff]">
-                <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[rgba(255,255,255,0.05)] text-[#d0d6e0] border border-[rgba(255,255,255,0.08)]">
-                  <Radio className="size-3.5 text-[#00ba7c]" />
-                </div>
-                Telegram Channel Auto-Scrape Importer
-              </DialogTitle>
-            </div>
-            <DialogDescription className="text-xs text-[#8a8f98]">
-              Scrape recent channel messages for archives, auto-resolve passwords, and queue downloads on the server.
+        <DialogContent className="flex max-h-[85vh] w-[92vw] flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#0b0c0e] p-6 text-[#f3f4f6] sm:max-w-3xl">
+          <DialogHeader className="shrink-0 border-b border-white/[0.06] pb-3">
+            <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-[#f3f4f6]">
+              <Radio className="size-4 text-[#10b981]" />
+              Telegram Channel Auto-Scrape Importer
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#8b909a]">
+              Scan recent channel messages for archives, resolve passwords, and enqueue parallel MTProto downloads.
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-2 sm:overflow-hidden">
             {scrapeChannels.length === 0 ? (
-              <div className="flex flex-col items-center justify-center flex-1 rounded-[8px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.015)] p-8 text-center">
-                <Radio className="size-8 text-[#62666d] mb-2" />
-                <p className="text-sm font-medium text-[#d0d6e0]">No channels configured</p>
-                <p className="mt-1 text-xs text-[#8a8f98] max-w-sm">
-                  Configure your Telegram channels and custom password scripts under Moderation &gt; Channels first.
+              <div className="obsidian-subpanel flex flex-1 flex-col items-center justify-center p-8 text-center">
+                <Radio className="mb-2 size-6 text-[#5c606a]" />
+                <p className="text-xs font-medium text-[#e5e7eb]">
+                  No channels configured
                 </p>
-                <Button asChild variant="outline" size="sm" className="mt-4">
-                  <Link href="/channels">Go to Channels</Link>
+                <p className="mt-1 max-w-sm text-xs text-[#6b707b]">
+                  Configure your Telegram channels and password extraction scripts in the Channels workspace first.
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-4 h-8 text-xs">
+                  <Link href="/channels">Configure Channels</Link>
                 </Button>
               </div>
             ) : (
               <>
-                {/* Channel & Limit controls */}
-                <div className="shrink-0 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <div className="sm:col-span-2 flex flex-col gap-1">
-                    <label className="text-[11px] font-medium text-[#8a8f98]">
-                      Select Channel
+                <div className="grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="flex flex-col gap-1 sm:col-span-2">
+                    <label className="text-[11px] font-medium text-[#8b909a]">
+                      Channel
                     </label>
                     <select
                       value={selectedChannelId}
                       onChange={(e) => setSelectedChannelId(e.target.value)}
-                      className="h-8.5 min-w-0 w-full rounded-[6px] border border-[rgba(255,255,255,0.08)] bg-[#08090a] px-2.5 text-xs text-[#d0d6e0] outline-none"
+                      className="obsidian-input h-8.5 w-full px-2.5 text-xs"
                     >
                       {scrapeChannels.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -1379,7 +1372,7 @@ export function ArchivesVault({
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-medium text-[#8a8f98]">
+                    <label className="text-[11px] font-medium text-[#8b909a]">
                       Messages to scan
                     </label>
                     <div className="flex items-center gap-1.5">
@@ -1388,16 +1381,17 @@ export function ArchivesVault({
                         min={10}
                         max={500}
                         value={scrapeLimit}
-                        onChange={(e) => setScrapeLimit(parseInt(e.target.value, 10) || 50)}
-                        className="h-8.5 font-mono text-xs bg-[#08090a]"
+                        onChange={(e) =>
+                          setScrapeLimit(parseInt(e.target.value, 10) || 50)
+                        }
+                        className="obsidian-input h-8.5 font-mono text-xs"
                       />
                       <Button
                         type="button"
-                        variant="default"
                         size="sm"
-                        onClick={handleScanChannel}
+                        onClick={() => void handleScanChannel()}
                         disabled={isScanningChannel}
-                        className="h-8.5 shrink-0 px-3.5"
+                        className="h-8.5 shrink-0 bg-[#f3f4f6] px-3.5 text-xs font-medium text-[#050506] hover:bg-white"
                       >
                         {isScanningChannel ? (
                           <Loader2 className="size-3.5 animate-spin" />
@@ -1408,71 +1402,75 @@ export function ArchivesVault({
                   </div>
                 </div>
 
-                {/* Scraped items selection list */}
                 {scrapedItems.length > 0 ? (
                   <div className="flex min-h-0 shrink-0 flex-col gap-2 sm:flex-1">
-                    <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 text-xs text-[#8a8f98]">
+                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 text-xs text-[#8b909a]">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="font-medium text-[#d0d6e0]">
+                        <span className="font-medium text-[#e5e7eb]">
                           Found {scrapedItems.length} archives
                         </span>
-                        <span className="text-[#62666d]">·</span>
-                        <span className="text-[#00ba7c] font-medium">
-                          {scrapedItems.filter((it) => !it.alreadyArchived && !it.blacklisted).length} new
+                        <span>·</span>
+                        <span className="font-medium text-[#10b981]">
+                          {
+                            scrapedItems.filter(
+                              (it) => !it.alreadyArchived && !it.blacklisted,
+                            ).length
+                          }{" "}
+                          new
                         </span>
-                        {scrapedItems.filter((it) => it.blacklisted).length > 0 ? (
+                        {scrapedItems.some((it) => it.blacklisted) ? (
                           <div className="flex items-center gap-1">
-                            <span className="text-[#62666d]">·</span>
-                            <span className="text-[#f91880] font-medium">
-                              {scrapedItems.filter((it) => it.blacklisted).length} bad password
+                            <span>·</span>
+                            <span className="font-medium text-[#f43f5e]">
+                              {scrapedItems.filter((it) => it.blacklisted).length}{" "}
+                              bad password
                             </span>
                             <button
                               type="button"
-                              onClick={handleClearBlacklist}
-                              className="text-[10px] text-[#8a8f98] hover:text-[#f91880] hover:underline cursor-pointer"
-                              title="Reset blacklist to allow re-trying"
+                              onClick={() => void handleClearBlacklist()}
+                              className="text-[10px] text-[#8b909a] hover:text-[#f43f5e] hover:underline cursor-pointer"
                             >
                               (Reset)
                             </button>
                           </div>
                         ) : null}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-[11px]">
                         <button
                           type="button"
                           onClick={selectOnlyNew}
-                          className="text-[11px] text-[#00ba7c] hover:underline cursor-pointer"
+                          className="text-[#10b981] hover:underline cursor-pointer"
                         >
                           Select new
                         </button>
-                        <span className="text-[#62666d]">|</span>
+                        <span className="text-[#3a3d45]">|</span>
                         <button
                           type="button"
                           onClick={selectAll}
-                          className="text-[11px] text-[#8a8f98] hover:text-[#d0d6e0] cursor-pointer"
+                          className="text-[#8b909a] hover:text-[#f3f4f6] cursor-pointer"
                         >
                           Select all
                         </button>
-                        <span className="text-[#62666d]">|</span>
+                        <span className="text-[#3a3d45]">|</span>
                         <button
                           type="button"
-                          onClick={deselectAll}
-                          className="text-[11px] text-[#8a8f98] hover:text-[#d0d6e0] cursor-pointer"
+                          onClick={() => setSelectedMsgMap({})}
+                          className="text-[#8b909a] hover:text-[#f3f4f6] cursor-pointer"
                         >
-                          Deselect
+                          Clear
                         </button>
                       </div>
                     </div>
 
-                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden divide-y divide-[rgba(255,255,255,0.03)] rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[#08090a]">
+                    <div className="min-h-0 flex-1 divide-y divide-white/[0.04] overflow-y-auto rounded-lg border border-white/[0.06] bg-[#101216]">
                       {scrapedItems.map((it) => {
                         const isChecked = Boolean(selectedMsgMap[it.messageId]);
                         return (
                           <div
                             key={it.messageId}
                             className={cn(
-                              "flex flex-wrap items-center gap-2.5 p-2.5 text-xs hover:bg-[rgba(255,255,255,0.02)] transition-none",
-                              isChecked && "bg-[rgba(255,255,255,0.015)]"
+                              "flex flex-wrap items-center gap-2.5 p-2.5 text-xs hover:bg-white/[0.02]",
+                              isChecked && "bg-white/[0.015]",
                             )}
                           >
                             <button
@@ -1483,10 +1481,10 @@ export function ArchivesVault({
                                   [it.messageId]: !isChecked,
                                 }))
                               }
-                              className="cursor-pointer text-[#8a8f98] hover:text-[#ffffff] shrink-0"
+                              className="shrink-0 text-[#8b909a] hover:text-white cursor-pointer"
                             >
                               {isChecked ? (
-                                <CheckSquare className="size-4 text-[#00ba7c]" />
+                                <CheckSquare className="size-4 text-[#10b981]" />
                               ) : (
                                 <Square className="size-4" />
                               )}
@@ -1494,26 +1492,34 @@ export function ArchivesVault({
 
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
-                                <p className="truncate font-mono font-medium text-[#d0d6e0]" title={it.filename}>
+                                <p
+                                  className="truncate font-mono font-medium text-[#f3f4f6]"
+                                  title={it.filename}
+                                >
                                   {it.filename}
                                 </p>
                                 {it.alreadyArchived ? (
-                                  <Badge variant="outline" className="text-[10px] text-[#8a8f98] border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] shrink-0 font-normal">
+                                  <span className="obsidian-pill text-[10px]">
                                     In Vault
-                                  </Badge>
+                                  </span>
                                 ) : it.blacklisted ? (
-                                  <Badge className="border-[rgba(249,24,128,0.3)] bg-[rgba(249,24,128,0.1)] text-[#f91880] text-[10px] shrink-0 font-normal">
+                                  <Badge
+                                    variant="destructive"
+                                    className="text-[10px] font-normal"
+                                  >
                                     Bad Password
                                   </Badge>
                                 ) : null}
                               </div>
-                              <p className="text-[11px] text-[#62666d]">
+                              <p className="font-mono text-[11px] text-[#6b707b]">
                                 {formatBytes(it.sizeBytes)} · {it.date.slice(0, 10)}
                               </p>
                             </div>
 
                             <div className="flex min-w-0 basis-full items-center gap-1.5 sm:w-44 sm:shrink-0 sm:basis-auto">
-                              <span className="text-[10px] text-[#8a8f98] shrink-0">PW:</span>
+                              <span className="shrink-0 font-mono text-[10px] text-[#6b707b]">
+                                PW:
+                              </span>
                               <Input
                                 type="text"
                                 value={
@@ -1528,7 +1534,7 @@ export function ArchivesVault({
                                   }))
                                 }
                                 placeholder="(none)"
-                                className="h-7 font-mono text-[11px] px-2 bg-[#0c0d0e] border-[rgba(255,255,255,0.08)]"
+                                className="obsidian-input h-7 px-2 font-mono text-[11px]"
                               />
                             </div>
                           </div>
@@ -1537,51 +1543,55 @@ export function ArchivesVault({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center flex-1 rounded-[8px] border border-[rgba(255,255,255,0.04)] bg-[#08090a] p-8 text-center text-[#8a8f98]">
-                    <p className="text-xs">Select a channel and click &ldquo;Scan&rdquo; to discover archives.</p>
+                  <div className="obsidian-subpanel flex flex-1 flex-col items-center justify-center p-8 text-center text-xs text-[#6b707b]">
+                    Select a channel and click &ldquo;Scan&rdquo; to discover archives.
                   </div>
                 )}
 
-                {/* Footer with summary and action buttons */}
-                <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[rgba(255,255,255,0.06)]">
-                  <div className="text-xs text-[#8a8f98]">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+                  <div className="text-xs text-[#8b909a]">
                     {scrapedItems.length > 0 ? (
                       <span>
                         Selected:{" "}
-                        <strong className="text-[#f7f8f8]">
-                          {scrapedItems.filter((it) => selectedMsgMap[it.messageId]).length}
+                        <strong className="text-[#f3f4f6]">
+                          {
+                            scrapedItems.filter(
+                              (it) => selectedMsgMap[it.messageId],
+                            ).length
+                          }
                         </strong>{" "}
                         archives (
                         {formatBytes(
                           scrapedItems
                             .filter((it) => selectedMsgMap[it.messageId])
-                            .reduce((acc, it) => acc + it.sizeBytes, 0)
+                            .reduce((acc, it) => acc + it.sizeBytes, 0),
                         )}
                         )
                       </span>
                     ) : null}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsAutoScrapeOpen(false)}
+                      className="h-8 text-xs text-[#8b909a]"
                     >
                       Close
                     </Button>
                     <Button
                       type="button"
-                      variant="default"
                       size="sm"
-                      onClick={handleImportScrapedBatch}
+                      onClick={() => void handleImportScrapedBatch()}
                       disabled={
                         isImportingScraped ||
                         scrapedItems.length === 0 ||
-                        scrapedItems.filter((it) => selectedMsgMap[it.messageId]).length === 0
+                        scrapedItems.filter((it) => selectedMsgMap[it.messageId])
+                          .length === 0
                       }
-                      className="gap-1.5"
+                      className="h-8 gap-1.5 bg-[#f3f4f6] text-xs font-medium text-[#050506] hover:bg-white"
                     >
                       {isImportingScraped ? (
                         <Loader2 className="size-3.5 animate-spin" />
@@ -1589,8 +1599,8 @@ export function ArchivesVault({
                         <Download className="size-3.5" />
                       )}
                       {isImportingScraped
-                        ? "Adding…"
-                        : `Add to Server Queue (${scrapedItems.filter((it) => selectedMsgMap[it.messageId]).length})`}
+                        ? "Queueing…"
+                        : `Queue Downloads (${scrapedItems.filter((it) => selectedMsgMap[it.messageId]).length})`}
                     </Button>
                   </div>
                 </div>

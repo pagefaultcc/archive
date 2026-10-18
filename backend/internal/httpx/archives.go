@@ -608,12 +608,30 @@ func (h *archiveHandlers) reindexAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rc := http.NewResponseController(w)
+	_ = rc.SetReadDeadline(time.Time{})
+	_ = rc.SetWriteDeadline(time.Time{})
+
 	archives, err := h.Store.GetAllArchivesForReindex(r.Context())
 	if err != nil {
 		h.logInternal(r.Context(), "getting archives for reindex failed", err)
 		WriteError(w, InternalServerError)
 		return
 	}
+
+	// Sync all by-name symlinks upfront so multipart volumes can resolve sibling parts.
+	for _, a := range archives {
+		_ = h.syncNamedLink(a.Filename, a.StoragePath)
+	}
+
+	type bgJob struct {
+		id          string
+		activePath  string
+		format      string
+		effectivePw string
+		entries     []archiveidx.Entry
+	}
+	var bgJobs []bgJob
 
 	reindexed := 0
 	var errs []string
@@ -639,12 +657,32 @@ func (h *archiveHandlers) reindexAll(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if status == "indexed" {
-			h.indexArchiveCookies(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
-			h.indexArchiveCredentials(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
+			if len(archives) <= 3 {
+				h.indexArchiveCookies(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
+				h.indexArchiveCredentials(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
+			} else {
+				bgJobs = append(bgJobs, bgJob{
+					id:          a.ID,
+					activePath:  activePath,
+					format:      a.Format,
+					effectivePw: effectivePw,
+					entries:     res.Entries,
+				})
+			}
 		}
 		reindexed++
 	}
 
+	if len(bgJobs) > 0 {
+		go func(jobs []bgJob) {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Hour)
+			defer cancel()
+			for _, j := range jobs {
+				h.indexArchiveCookies(bgCtx, j.id, j.activePath, j.format, j.effectivePw, j.entries)
+				h.indexArchiveCredentials(bgCtx, j.id, j.activePath, j.format, j.effectivePw, j.entries)
+			}
+		}(bgJobs)
+	}
 	WriteJSON(w, http.StatusOK, map[string]any{
 		"reindexed": reindexed,
 		"total":     len(archives),

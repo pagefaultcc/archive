@@ -3,57 +3,48 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ------------------------------------------------------------------ */
-/* Kinetics spring easing tokens (https://kinetics.colorion.co/)       */
+/* Obsidian Architectural Design System                                */
+/* Deep carbon void (#050506), matte charcoal surfaces (#0b0c0e),       */
+/* recessed trays (#101216), hairline borders (rgba(255,255,255,0.06)) */
 /* ------------------------------------------------------------------ */
 :root {
-  --spring-easing: linear(
-    0, 0.0088 0.75%, 0.0362 1.65%, 0.1482 3.62%, 0.3256 6.03%, 0.4921 8.6%,
-    0.6392 11.28%, 0.7661 14.14%, 0.8747 17.24%, 0.9637 20.48%, 1.0334 23.89%,
-    1.0813 27.44%, 1.1077 31.15%, 1.1148 34.63%, 1.1047 38.68%, 1.0787 39.32%,
-    1.0612 41.05%, 1.0295 45.02%, 1.0086 49.09%, 0.9983 52.95%, 0.9961 56.95%,
-    0.9995 61.19%, 1.0037 65.79%, 1.0059 71.09%, 1.0052 77.31%, 1.0001 91.85%
-  );
-  --spring-duration: 520ms;
-  --spring-duration-fast: 260ms;
+  --spring-easing: cubic-bezier(0.16, 1, 0.3, 1);
+  --spring-duration: 200ms;
+  --spring-duration-fast: 140ms;
 }
 
-/*
- * SpinupMail Obsidian Design System — deep pitch-black canvases (#030405),
- * ultra-clean surface cards (#0a0b0c / #0e0f11) with hairline borders,
- * #F7F8F8 / #FFFFFF high-contrast text.
- */
 :root,
 .dark {
-  --radius: 12px;
-  --background: #030405;
-  --foreground: #f7f8f8;
-  --card: #0a0b0c;
-  --card-foreground: #f7f8f8;
-  --popover: #0a0b0c;
-  --popover-foreground: #f7f8f8;
-  --surface: #0e0f11;
-  --primary: rgba(255, 255, 255, 0.06);
-  --primary-foreground: #f7f8f8;
-  --secondary: rgba(255, 255, 255, 0.03);
-  --secondary-foreground: #f7f8f8;
-  --muted: #121315;
-  --muted-foreground: #8e8e93;
-  --accent: rgba(255, 255, 255, 0.06);
+  --radius: 8px;
+  --background: #050506;
+  --foreground: #f3f4f6;
+  --card: #0b0c0e;
+  --card-foreground: #f3f4f6;
+  --popover: #0b0c0e;
+  --popover-foreground: #f3f4f6;
+  --surface: #101216;
+  --primary: #f3f4f6;
+  --primary-foreground: #050506;
+  --secondary: #14171c;
+  --secondary-foreground: #e5e7eb;
+  --muted: #121418;
+  --muted-foreground: #8b909a;
+  --accent: rgba(255, 255, 255, 0.05);
   --accent-foreground: #ffffff;
-  --destructive: #f91880;
+  --destructive: #f43f5e;
   --destructive-foreground: #ffffff;
-  --border: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.06);
   --input: rgba(255, 255, 255, 0.08);
-  --ring: rgba(255, 255, 255, 0.15);
-  --sidebar: #030405;
-  --sidebar-foreground: #f7f8f8;
+  --ring: rgba(255, 255, 255, 0.16);
+  --sidebar: #08090b;
+  --sidebar-foreground: #f3f4f6;
   --sidebar-primary: rgba(255, 255, 255, 0.06);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(255, 255, 255, 0.06);
+  --sidebar-accent: rgba(255, 255, 255, 0.05);
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-ring: rgba(255, 255, 255, 0.15);
-  --accent-soft: rgba(255, 255, 255, 0.05);
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: rgba(255, 255, 255, 0.16);
+  --accent-soft: rgba(255, 255, 255, 0.04);
 }
 
 @theme inline {
@@ -101,35 +92,36 @@ body {
   color: var(--foreground);
   font-family: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 24px;
-  letter-spacing: 0px;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1 {
-  font-size: 24px;
-  font-weight: 590;
-  line-height: 31.92px;
-  letter-spacing: 0px;
-  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  letter-spacing: -0.02em;
+  color: #f3f4f6;
 }
 
 h2 {
-  font-size: 20px;
-  font-weight: 590;
-  line-height: 26.6px;
-  letter-spacing: 0px;
-  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  letter-spacing: -0.015em;
+  color: #f3f4f6;
 }
 
 h3,
 [data-slot="card-title"] {
-  font-size: 16px;
-  font-weight: 590;
-  line-height: 24px;
-  letter-spacing: 0px;
-  color: #f7f8f8;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  color: #f3f4f6;
 }
 
 code,
@@ -137,134 +129,75 @@ pre,
 .font-mono {
   font-family: "Berkeley Mono", var(--font-mono-code), "Monaco", "Courier New",
     monospace;
-  font-size: 13px;
-  line-height: 21px;
+  font-size: 12.5px;
+  line-height: 19px;
 }
 
 /* ------------------------------------------------------------------ */
-/* Application shell                                                    */
+/* Obsidian Surface & Component Primitives                             */
 /* ------------------------------------------------------------------ */
-.app-shell {
-  min-height: 100svh;
+.app-surface,
+.obsidian-panel,
+.spinup-card,
+.obsidian-card {
+  background-color: #0b0c0e;
+  color: #f3f4f6;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
 }
 
-.app-sidebar-brand {
-  color: var(--sidebar-foreground);
-  border-radius: 6px;
-  transition:
-    color var(--spring-duration-fast) var(--spring-easing),
-    background-color var(--spring-duration-fast) var(--spring-easing);
-}
-.app-sidebar-brand:hover {
-  background-color: var(--sidebar-accent);
-  color: var(--sidebar-accent-foreground);
-}
-
-.app-nav-link {
-  position: relative;
-  display: flex;
-  align-items: center;
-  color: #8a8f98;
-  font-size: 14px;
-  font-weight: 510;
-  line-height: 21px;
-  border-radius: 6px;
-  transition:
-    color var(--spring-duration-fast) var(--spring-easing),
-    background-color var(--spring-duration-fast) var(--spring-easing);
-}
-.app-nav-link:hover {
-  color: #f7f8f8;
-  background-color: rgba(255, 255, 255, 0.05);
-}
-.app-nav-link:focus-visible {
-  outline: 2px solid var(--sidebar-ring);
-  outline-offset: 2px;
-}
-
-/* Microkit spotlight active rail — Linear #FFFFFF active state */
-.app-nav-active {
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.05);
-}
-.app-nav-active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  translate: 0 -50%;
-  width: 2px;
-  height: 58%;
-  border-radius: 9999px;
-  background: #ffffff;
-  transition: height var(--spring-duration) var(--spring-easing);
-}
-.app-nav-active:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-.app-page-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px 16px;
-  padding: 20px 0 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.app-surface {
-  background-color: #0a0b0c;
-  color: #f7f8f8;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 12px;
-}
-
-/* ------------------------------------------------------------------ */
-/* SpinupMail Utility Classes                                           */
-/* ------------------------------------------------------------------ */
-.spinup-card {
-  background-color: #0a0b0c;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
-}
-
-.spinup-pill {
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background-color: rgba(255, 255, 255, 0.03);
-  color: #a3a3a3;
-  font-size: 12px;
-  line-height: 16px;
-  padding: 2px 10px;
-  font-weight: 500;
-}
-
-.spinup-badge-active {
-  border-radius: 9999px;
-  border: 1px solid rgba(64, 64, 64, 0.8);
-  background-color: rgba(23, 23, 23, 0.9);
-  color: #e5e5e5;
-  font-size: 12px;
-  line-height: 16px;
-  padding: 2px 10px;
-  font-weight: 500;
-}
-
-.spinup-input {
-  background-color: #0e0f11;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.obsidian-subpanel {
+  background-color: #101216;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  font-size: 12px;
+}
+
+.spinup-pill,
+.obsidian-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background-color: rgba(255, 255, 255, 0.025);
+  color: #8b909a;
+  font-size: 11px;
   line-height: 16px;
-  color: #ffffff;
+  padding: 2px 7px;
+  font-weight: 500;
 }
-.spinup-input::placeholder {
-  color: #737373;
+
+.spinup-badge-active,
+.obsidian-badge-active {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #f3f4f6;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 2px 8px;
+  font-weight: 500;
 }
-.spinup-input:focus {
+
+.spinup-input,
+.obsidian-input {
+  background-color: #101216;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 7px;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: #f3f4f6;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+.spinup-input::placeholder,
+.obsidian-input::placeholder {
+  color: #5c606a;
+}
+.spinup-input:focus,
+.obsidian-input:focus {
   border-color: rgba(255, 255, 255, 0.2);
+  background-color: #12151a;
   outline: none;
 }
 
@@ -273,266 +206,54 @@ pre,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
   padding: 48px 24px;
   text-align: center;
   border-radius: 8px;
 }
 
-/* ------------------------------------------------------------------ */
-/* Kinetics spring motion (https://kinetics.colorion.co/)               */
-/* ------------------------------------------------------------------ */
-.spring-interactive {
-  transition:
-    transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    background-color 200ms ease,
-    border-color 200ms ease,
-    box-shadow 260ms ease;
-}
-.spring-interactive:hover {
-  transform: translateY(-1.5px) scale(1.02);
-}
-.spring-interactive:active {
-  transform: translateY(0px) scale(0.96);
-}
-
+/* Restrained, subtle transitions — no bounce or flashy animations */
+.spring-interactive,
 .kinetics-card {
   transition:
-    transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    border-color 220ms ease,
-    box-shadow 260ms ease;
-}
-.kinetics-card:hover {
-  transform: translateY(-3px) scale(1.005);
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.7);
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
 }
 
-/* Border effects stay on the surface edge; content and focus rings stay clear. */
-.motion-surface > .kinetics-card:hover {
-  transform: none;
-}
-.motion-surface[data-beam]::before {
-  display: none !important;
-}
+.motion-surface[data-beam]::before,
+.motion-surface[data-beam]::after,
 .motion-surface[data-beam] > [data-beam-bloom] {
   display: none !important;
 }
-.motion-surface[data-motion-enabled="false"],
-.motion-surface[data-motion-enabled="false"]::after {
-  animation-play-state: paused !important;
-}
-.motion-surface[data-motion-enabled="false"]::after {
-  display: none !important;
-}
-.motion-surface[data-motion-running="false"] .kinetics-progress-shimmer {
-  animation-play-state: paused !important;
-}
-.motion-surface[data-motion-running="true"] .kinetics-progress-shimmer {
-  animation-play-state: running;
-}
-
-/* Opt-in, single-pass acknowledgment for primary actions only. */
-.motion-sheen {
-  position: relative;
-  overflow: hidden;
-}
-.motion-sheen::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    110deg,
-    transparent 25%,
-    rgba(255, 255, 255, 0.12) 50%,
-    transparent 75%
-  );
-  opacity: 0;
-  transform: translateX(-125%);
-  pointer-events: none;
-}
-.motion-sheen:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible)::after {
-  animation: motion-sheen 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.motion-sheen:disabled::after,
-.motion-sheen[aria-disabled="true"]::after {
-  animation: none;
-  opacity: 0;
-}
-@keyframes motion-sheen {
-  0% {
-    opacity: 0;
-    transform: translateX(-125%);
-  }
-  20% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(125%);
-  }
-}
-
-.kinetics-magnetic {
-  transition: transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  will-change: transform;
-}
-
-.kinetics-icon-tile {
-  transition:
-    transform 460ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    border-color 220ms ease,
-    background-color 220ms ease;
-}
-.kinetics-icon-float {
-  transition: transform 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-:hover > .kinetics-icon-tile,
-.kinetics-icon-tile:hover {
-  transform: translateY(-2px) scale(1.08) rotate(-4deg);
-  border-color: rgba(255, 255, 255, 0.16);
-  background-color: rgba(255, 255, 255, 0.06);
-}
-:hover > .kinetics-icon-tile .kinetics-icon-float,
-.kinetics-icon-tile:hover .kinetics-icon-float {
-  transform: scale(1.12) rotate(-4deg);
-}
-
-.kinetics-counter {
-  transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.kinetics-counter-bump {
-  transform: scale(1.22) translateY(-5px);
-}
-
-.spring-enter {
-  animation: spring-enter 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-.kinetics-stagger > * {
-  animation: spring-enter 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-.kinetics-stagger > *:nth-child(1) {
-  animation-delay: 0ms;
-}
-.kinetics-stagger > *:nth-child(2) {
-  animation-delay: 40ms;
-}
-.kinetics-stagger > *:nth-child(3) {
-  animation-delay: 80ms;
-}
-.kinetics-stagger > *:nth-child(4) {
-  animation-delay: 120ms;
-}
-@keyframes spring-enter {
-  0% {
-    opacity: 0.96;
-    transform: translateY(10px) scale(0.975);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0px) scale(1);
-  }
-}
 
 .kinetics-progress-fill {
-  background: linear-gradient(90deg, #4c8dff 0%, #7ab6ff 60%, #9ecbff 100%);
-  box-shadow: 0 0 12px rgba(96, 165, 250, 0.55);
-}
-.kinetics-progress-shimmer {
-  background: linear-gradient(
-    100deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.14) 50%,
-    transparent 70%
-  );
-  background-size: 220% 100%;
-  animation: kinetics-shimmer 1.4s linear infinite;
-}
-@keyframes kinetics-shimmer {
-  0% {
-    background-position: 130% 0;
-  }
-  100% {
-    background-position: -90% 0;
-  }
-}
-.kinetics-pulse {
-  animation: kinetics-pulse 1.6s ease-in-out infinite;
-}
-@keyframes kinetics-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
+  background-color: #10b981;
 }
 
-/* Apple-style subtle tab page transition */
-@keyframes appleTabEnter {
+.kinetics-progress-shimmer {
+  display: none;
+}
+
+@keyframes obsidianFadeIn {
   0% {
     opacity: 0;
-    transform: translateY(6px) scale(0.998);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
-.apple-tab-enter {
-  animation: appleTabEnter 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: opacity, transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .spring-interactive,
-  .spring-interactive:hover,
-  .spring-interactive:active,
-  .kinetics-card,
-  .kinetics-card:hover,
-  .kinetics-magnetic,
-  .kinetics-icon-tile,
-  .kinetics-icon-float,
-  .kinetics-counter,
-  .kinetics-counter-bump {
-    transform: none !important;
-    scale: none !important;
-    transition: none !important;
-  }
-  .spring-enter,
-  .kinetics-stagger > * {
-    animation: none !important;
-  }
-  .app-sidebar-brand,
-  .app-nav-link,
-  .app-nav-active::before {
-    transition: none !important;
-  }
-  .kinetics-progress-shimmer,
-  .kinetics-pulse {
-    animation: none !important;
-  }
-  .motion-sheen::after {
-    animation: none !important;
-    display: none !important;
-  }
-  .motion-surface[data-beam],
-  .motion-surface[data-beam]::after {
-    animation-play-state: paused !important;
-  }
-  .motion-surface[data-beam]::after {
-    display: none !important;
-  }
+.apple-tab-enter,
+.spring-enter {
+  animation: obsidianFadeIn 140ms ease-out both;
 }
 
 /* Sonner toast canonical status icon color overrides */
 [data-sonner-toast][data-type='success'] [data-icon] {
-  color: #00ba7c;
+  color: #10b981;
 }
 
 [data-sonner-toast][data-type='error'] [data-icon] {
-  color: #f91880;
+  color: #f43f5e;
 }

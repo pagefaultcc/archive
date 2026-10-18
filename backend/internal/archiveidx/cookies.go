@@ -16,6 +16,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"unicode/utf8"
+
+	"github.com/nwaples/rardecode/v2"
 )
 
 // DomainCookieChunk represents all cookies for a single root domain inside one source cookie file.
@@ -135,6 +137,11 @@ func ExtractCookieDomains(
 
 	bin, ok := sevenZBin()
 	effectivePath := ResolvePrimaryArchiveVolume(filePath)
+	pathsToTry := []string{filePath}
+	if effectivePath != filePath {
+		pathsToTry = append(pathsToTry, effectivePath)
+	}
+	passwordsToTry := candidatePasswords(password)
 
 	if ok {
 		var relPaths []string
@@ -147,37 +154,85 @@ func ExtractCookieDomains(
 			return nil
 		}
 		listFilePath := filepath.Join(tmpDir, "listfile.txt")
-		if err := os.WriteFile(listFilePath, []byte(strings.Join(relPaths, "\n")+"\n"), 0o600); err != nil {
-			return nil
+		if err := os.WriteFile(listFilePath, []byte(strings.Join(relPaths, "\n")+"\n"), 0o600); err == nil {
+			for _, p := range pathsToTry {
+				for _, pw := range passwordsToTry {
+					args := []string{
+						"x", "-y", "-spd", "-bso0", "-bse0", "-mmt=on",
+						"-p" + pw,
+						"-o" + tmpDir,
+						"@" + listFilePath,
+						"--", p,
+					}
+					_, _ = run7z(ctx, bin, args)
+					if dirHasExtractedFiles(tmpDir, "listfile.txt") {
+						break
+					}
+				}
+				if dirHasExtractedFiles(tmpDir, "listfile.txt") {
+					break
+				}
+			}
+			_ = os.Remove(listFilePath)
 		}
-		args := []string{
-			"x", "-y", "-spd", "-bso0", "-bse0", "-mmt=on",
-			"-p" + cleanPw,
-			"-o" + tmpDir,
-			"@" + listFilePath,
-			"--", effectivePath,
+
+		if !dirHasExtractedFiles(tmpDir, "") {
+			for _, p := range pathsToTry {
+				for _, pw := range passwordsToTry {
+					wildcardArgs := []string{
+						"x", "-y", "-spd", "-bso0", "-bse0", "-mmt=on",
+						"-p" + pw,
+						"-o" + tmpDir,
+						"-ir!*cookie*", "-ir!*browser*", "-ir!*profile*", "-ir!*default*", "-ir!*.json", "-ir!*.txt", "-ir!*.log",
+						"-xr!*password*", "-xr!*autofill*", "-xr!*history*", "-xr!*wallet*", "-xr!*screenshot*",
+						"-xr!*.exe", "-xr!*.dll", "-xr!*.png", "-xr!*.jpg", "-xr!*.jpeg", "-xr!*.gif", "-xr!*.zip", "-xr!*.rar", "-xr!*.7z",
+						"--", p,
+					}
+					_, _ = run7z(ctx, bin, wildcardArgs)
+					if dirHasExtractedFiles(tmpDir, "") {
+						break
+					}
+				}
+				if dirHasExtractedFiles(tmpDir, "") {
+					break
+				}
+			}
 		}
-		out, err := run7z(ctx, bin, args)
-		if err != nil && effectivePath != filePath {
-			args[len(args)-1] = filePath
-			_, _ = run7z(ctx, bin, args)
-		}
-		_ = out
-		_ = os.Remove(listFilePath)
-	} else if format == "zip" {
-		extractZipCookiesToDir(filePath, tmpDir)
-		if effectivePath != filePath {
-			extractZipCookiesToDir(effectivePath, tmpDir)
-		}
-	} else {
-		return nil
 	}
-	var result []DomainCookieChunk
-	_ = filepath.Walk(tmpDir, func(fullPath string, info os.FileInfo, err error) error {
-		if err != nil || info == nil || info.IsDir() {
+
+	if !dirHasExtractedFiles(tmpDir, "") {
+		if format == "zip" {
+			extractZipCookiesToDir(filePath, tmpDir)
+			if !dirHasExtractedFiles(tmpDir, "") && effectivePath != filePath {
+				extractZipCookiesToDir(effectivePath, tmpDir)
+			}
+		} else if format == "rar" {
+			for _, p := range pathsToTry {
+				for _, pw := range passwordsToTry {
+					extractRarCookiesToDir(p, pw, tmpDir)
+					if dirHasExtractedFiles(tmpDir, "") {
+						break
+					}
+				}
+				if dirHasExtractedFiles(tmpDir, "") {
+					break
+				}
+			}
+		}
+	}
+
+	type diskCookieJob struct {
+		fullPath  string
+		entryPath string
+		entryName string
+	}
+	var diskJobs []diskCookieJob
+	_ = filepath.WalkDir(tmpDir, func(fullPath string, d os.DirEntry, err error) error {
+		if err != nil || d == nil || d.IsDir() {
 			return nil
 		}
-		if info.Size() <= 0 || info.Size() > 15*1024*1024 {
+		info, ierr := d.Info()
+		if ierr != nil || info.Size() <= 0 || info.Size() > 15*1024*1024 {
 			return nil
 		}
 		rel, rerr := filepath.Rel(tmpDir, fullPath)
@@ -189,20 +244,60 @@ func ExtractCookieDomains(
 		if !isCandidateCookieFile(entryPath, entryName, info.Size()) {
 			return nil
 		}
-		raw, rerr := os.ReadFile(fullPath)
-		if rerr != nil || len(raw) == 0 {
-			return nil
-		}
-		// Sub-microsecond pre-check before running full parser
-		if !hasCookieSignatures(raw) {
-			return nil
-		}
-		chunks := parseCookieFileBytes(entryPath, entryName, raw)
-		if len(chunks) > 0 {
-			result = append(result, chunks...)
-		}
+		diskJobs = append(diskJobs, diskCookieJob{
+			fullPath:  fullPath,
+			entryPath: entryPath,
+			entryName: entryName,
+		})
 		return nil
 	})
+	if len(diskJobs) == 0 {
+		return nil
+	}
+
+	numWorkers := runtime.NumCPU() * 2
+	if numWorkers < 4 {
+		numWorkers = 4
+	}
+	if numWorkers > len(diskJobs) {
+		numWorkers = len(diskJobs)
+	}
+
+	jobsCh := make(chan diskCookieJob, len(diskJobs))
+	for _, j := range diskJobs {
+		jobsCh <- j
+	}
+	close(jobsCh)
+
+	var wg sync.WaitGroup
+	resultsCh := make(chan []DomainCookieChunk, numWorkers)
+	for range numWorkers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var local []DomainCookieChunk
+			for job := range jobsCh {
+				raw, rerr := os.ReadFile(job.fullPath)
+				if rerr != nil || len(raw) == 0 || !hasCookieSignatures(raw) {
+					continue
+				}
+				chunks := parseCookieFileBytes(job.entryPath, job.entryName, raw)
+				if len(chunks) > 0 {
+					local = append(local, chunks...)
+				}
+			}
+			if len(local) > 0 {
+				resultsCh <- local
+			}
+		}()
+	}
+	wg.Wait()
+	close(resultsCh)
+
+	var result []DomainCookieChunk
+	for chunkList := range resultsCh {
+		result = append(result, chunkList...)
+	}
 	return result
 }
 
@@ -276,7 +371,9 @@ func hasCookieSignatures(raw []byte) bool {
 		return bytes.Contains(trimmed, []byte(`"domain"`)) ||
 			bytes.Contains(trimmed, []byte(`"host"`)) ||
 			bytes.Contains(trimmed, []byte(`"Domain"`)) ||
-			bytes.Contains(trimmed, []byte(`"cookies"`))
+			bytes.Contains(trimmed, []byte(`"Host"`)) ||
+			bytes.Contains(trimmed, []byte(`"cookies"`)) ||
+			bytes.Contains(trimmed, []byte(`"cookieList"`))
 	}
 
 	// 2. Netscape check:
@@ -287,10 +384,10 @@ func hasCookieSignatures(raw []byte) bool {
 	}
 
 	// 3. Scan lines for Netscape line signature:
-	// Line starts with a domain or #HttpOnly_, followed by \t, and column 1 has TRUE or FALSE
+	// Line starts with a domain or #HttpOnly_, followed by \t, and column 1 or 3 has TRUE/FALSE/1/0
 	idx := 0
 	linesScanned := 0
-	for idx < len(trimmed) && linesScanned < 40 {
+	for idx < len(trimmed) && linesScanned < 100 {
 		next := bytes.IndexByte(trimmed[idx:], '\n')
 		var lineBytes []byte
 		if next < 0 {
@@ -316,13 +413,94 @@ func hasCookieSignatures(raw []byte) bool {
 		fields := bytes.Split(cleanLine, []byte{'\t'})
 		if len(fields) >= 6 {
 			dom := bytes.TrimSpace(fields[0])
-			flag := bytes.ToUpper(bytes.TrimSpace(fields[1]))
-			if (bytes.Equal(flag, []byte("TRUE")) || bytes.Equal(flag, []byte("FALSE"))) && bytes.Contains(dom, []byte(".")) {
+			flag1 := bytes.ToUpper(bytes.TrimSpace(fields[1]))
+			flag3 := bytes.ToUpper(bytes.TrimSpace(fields[3]))
+			validFlag1 := bytes.Equal(flag1, []byte("TRUE")) || bytes.Equal(flag1, []byte("FALSE")) || bytes.Equal(flag1, []byte("1")) || bytes.Equal(flag1, []byte("0"))
+			validFlag3 := bytes.Equal(flag3, []byte("TRUE")) || bytes.Equal(flag3, []byte("FALSE")) || bytes.Equal(flag3, []byte("1")) || bytes.Equal(flag3, []byte("0"))
+			if (validFlag1 || validFlag3) && bytes.Contains(dom, []byte(".")) {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+func dirHasExtractedFiles(dir, ignoreFile string) bool {
+	found := false
+	_ = filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d == nil || d.IsDir() {
+			return nil
+		}
+		if ignoreFile != "" && d.Name() == ignoreFile {
+			return nil
+		}
+		if info, ierr := d.Info(); ierr == nil && info.Size() > 0 {
+			found = true
+			return io.EOF
+		}
+		return nil
+	})
+	return found
+}
+
+func candidatePasswords(password string) []string {
+	seen := make(map[string]bool)
+	var out []string
+	add := func(pw string) {
+		if !seen[pw] {
+			seen[pw] = true
+			out = append(out, pw)
+		}
+	}
+	cleanPw := strings.Trim(strings.TrimSpace(password), "`'\"")
+	if cleanPw != "" {
+		add(cleanPw)
+	}
+	if password != "" && password != cleanPw {
+		add(password)
+	}
+	add("")
+	for _, dp := range DefaultPasswords() {
+		add(dp)
+	}
+	return out
+}
+
+func extractRarCookiesToDir(filePath, password, tmpDir string) {
+	var opts []rardecode.Option
+	if password != "" {
+		opts = append(opts, rardecode.Password(password))
+	}
+	rc, err := rardecode.OpenReader(filePath, opts...)
+	if err != nil {
+		return
+	}
+	defer rc.Close()
+	cleanTmp := filepath.Clean(tmpDir) + string(filepath.Separator)
+	for {
+		hdr, err := rc.Next()
+		if err != nil {
+			break
+		}
+		if hdr.IsDir {
+			continue
+		}
+		np := normalizePath(hdr.Name)
+		if np == "" || !isCandidateCookieFile(np, filepath.Base(np), hdr.UnPackedSize) {
+			continue
+		}
+		dest := filepath.Join(tmpDir, filepath.FromSlash(np))
+		cleanDest := filepath.Clean(dest)
+		if !strings.HasPrefix(cleanDest, cleanTmp) {
+			continue
+		}
+		_ = os.MkdirAll(filepath.Dir(cleanDest), 0o755)
+		out, err := os.Create(cleanDest)
+		if err == nil {
+			_, _ = io.Copy(out, io.LimitReader(rc, 15*1024*1024))
+			_ = out.Close()
+		}
+	}
 }
 
 func extractZipCookiesToDir(filePath, tmpDir string) {

@@ -19,7 +19,6 @@ export function CodeViewer({
     return dot >= 0 ? filename.slice(dot + 1).toLowerCase() : "";
   }, [filename]);
 
-  // Clean raw escaped characters (e.g. literal `\r\n` or `\t` text)
   const normalizedContent = useMemo(() => {
     if (!content) return "";
     return content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -40,24 +39,26 @@ export function CodeViewer({
   const isJSON = ext === "json";
 
   return (
-    <div className="rounded-[6px] border border-[rgba(255,255,255,0.05)] bg-[#08090a] p-3 font-mono text-[12.5px] leading-[20px]">
+    <div className="rounded-lg border border-white/[0.06] bg-[#08090b] py-2.5 font-mono text-[12px] leading-[19px]">
       {visibleLines.map((line, idx) => {
-        const renderedLine = isJSON ? highlightJSONLine(line) : highlightTextLine(line);
+        const renderedLine = isJSON
+          ? highlightJSONLine(line)
+          : line.includes("\t")
+            ? line.replace(/\t/g, "    ")
+            : line;
 
         return (
           <div
             key={idx}
-            className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 hover:bg-[rgba(255,255,255,0.03)] transition-none"
+            className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 px-2.5 hover:bg-white/[0.025] transition-none"
           >
-            <span className="select-none text-right text-[#62666d] tabular-nums text-[11.5px]">
+            <span className="select-none text-right text-[#4e535d] tabular-nums text-[11px]">
               {idx + 1}
             </span>
             <span
               className={cn(
-                "text-[#d0d6e0]",
-                wrapLines
-                  ? "break-words whitespace-pre-wrap"
-                  : "whitespace-pre",
+                "text-[#d4d8e0]",
+                wrapLines ? "break-words whitespace-pre-wrap" : "whitespace-pre",
               )}
             >
               {renderedLine || " "}
@@ -66,7 +67,7 @@ export function CodeViewer({
         );
       })}
       {isCapped ? (
-        <div className="mt-2 border-t border-[rgba(255,255,255,0.05)] pt-2 text-center font-sans text-xs text-[#8a8f98]">
+        <div className="mt-2 border-t border-white/[0.06] px-3 pt-2 text-center font-sans text-xs text-[#8b909a]">
           Preview capped at 2,500 lines — download file for full contents
         </div>
       ) : null}
@@ -74,7 +75,6 @@ export function CodeViewer({
   );
 }
 
-// Clean JSON syntax highlighting
 function highlightJSONLine(line: string): React.ReactNode {
   const trimmed = line.trimStart();
   const indent = line.slice(0, line.length - trimmed.length);
@@ -86,8 +86,8 @@ function highlightJSONLine(line: string): React.ReactNode {
     return (
       <>
         <span>{indent}</span>
-        <span className="text-[#ffffff] font-medium">{rawKey}</span>
-        <span className="text-[#8a8f98]">: </span>
+        <span className="font-medium text-[#f3f4f6]">{rawKey}</span>
+        <span className="text-[#6b707b]">: </span>
         {formatJSONValue(rest)}
       </>
     );
@@ -109,38 +109,26 @@ function formatJSONValue(val: string): React.ReactNode {
   if (core.startsWith('"') && core.endsWith('"')) {
     return (
       <>
-        <span className="text-[#d0d6e0]">{core}</span>
-        {trailingComma ? <span className="text-[#8a8f98]">{trailingComma}</span> : null}
+        <span className="text-[#c8ccd4]">{core}</span>
+        {trailingComma ? <span className="text-[#6b707b]">{trailingComma}</span> : null}
       </>
     );
   }
   if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(core)) {
     return (
       <>
-        <span className="text-[#8a8f98] font-semibold">{core}</span>
-        {trailingComma ? <span className="text-[#8a8f98]">{trailingComma}</span> : null}
+        <span className="font-semibold text-[#10b981]">{core}</span>
+        {trailingComma ? <span className="text-[#6b707b]">{trailingComma}</span> : null}
       </>
     );
   }
   if (["true", "false", "null"].includes(core.toLowerCase())) {
     return (
       <>
-        <span className="text-[#8a8f98] font-semibold">{core}</span>
-        {trailingComma ? <span className="text-[#8a8f98]">{trailingComma}</span> : null}
+        <span className="font-semibold text-[#8b909a]">{core}</span>
+        {trailingComma ? <span className="text-[#6b707b]">{trailingComma}</span> : null}
       </>
     );
   }
-  return <span className="text-[#d0d6e0]">{val}</span>;
-}
-
-// Clean text line highlighting:
-// Replaces literal tabs with genuine visual indentation spaces.
-// NEVER prints literal "\t", "\n", or "\r".
-function highlightTextLine(line: string): React.ReactNode {
-  // If line contains tabs, expand them to 4 clean spaces
-  if (line.includes("\t")) {
-    const expanded = line.replace(/\t/g, "    ");
-    return <span className="text-[#d0d6e0]">{expanded}</span>;
-  }
-  return <span className="text-[#d0d6e0]">{line}</span>;
+  return <span className="text-[#c8ccd4]">{val}</span>;
 }

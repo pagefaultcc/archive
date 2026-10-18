@@ -69,10 +69,8 @@ export function MotionSurface({
     revealTimer.current = window.setTimeout(() => setRevealing(false), 2500);
   }, [enabled, busy]);
 
-  const running = enabled && (busy || revealing || hovered || focused);
-  // The package retains its pulse driver during fade-out. Switching only the
-  // decorative preset removes that driver immediately when motion is gated.
-  const pulse = busy && enabled;
+  const running = false;
+  const pulse = false;
 
   return (
     <BorderBeam
@@ -80,8 +78,8 @@ export function MotionSurface({
       size={pulse ? "pulse-inner" : "line"}
       colorVariant="mono"
       theme="dark"
-      strength={busy ? 0.22 : 0.3}
-      duration={pulse ? 3 : 2.5}
+      strength={0}
+      duration={2.5}
       borderRadius={radius}
       active={running}
       className={cn("motion-surface w-full", className)}

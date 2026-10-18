@@ -7,8 +7,12 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-svh items-center justify-center bg-[radial-gradient(circle,rgba(0,0,0,0.035)_1px,transparent_1px)] [background-size:20px_20px] p-4">
-      <div className="spring-enter w-full max-w-sm">
+    <main className="relative flex min-h-svh flex-col items-center justify-center bg-[#050506] px-4 py-12">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.018)_1px,transparent_1px)] bg-[size:32px_32px]"
+      />
+      <div className="relative z-10 w-full max-w-[380px]">
         <LoginForm />
       </div>
     </main>

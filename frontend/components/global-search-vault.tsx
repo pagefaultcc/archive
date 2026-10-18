@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertCircle,
@@ -17,12 +17,9 @@ import {
   Loader2,
   Search,
   SlidersHorizontal,
-  Sparkles,
   WrapText,
   Zap,
 } from "lucide-react";
-import { Icon3D, SpringCounter } from "@/components/kinetics-ui";
-import { MotionSurface } from "@/components/motion-surface";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,16 +37,14 @@ import {
   browserPrepareSearchDownload,
   browserPreviewArchiveFile,
   browserSearchArchiveEntries,
-  searchBulkDownloadUrl,
 } from "@/lib/api";
-import { copyToClipboard } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import type {
   ArchiveFilePreview,
   ArchiveSearchResult,
   SearchDownloadJob,
   SearchParams,
 } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -184,25 +179,22 @@ export function GlobalSearchVault() {
     }, 450);
   };
 
-  const openFilePreview = useCallback(
-    async (item: ArchiveSearchResult) => {
-      const reqId = ++previewReqRef.current;
-      setSelectedResult(item);
-      setIsLoadingFile(true);
-      setFileError(null);
-      const res = await browserPreviewArchiveFile(item.archiveId, item.path);
-      if (reqId !== previewReqRef.current) return;
-      setIsLoadingFile(false);
-      if (!res.ok) {
-        if (res.aborted) return;
-        setPreview(null);
-        setFileError(res.error?.message ?? "Failed to read file from archive.");
-        return;
-      }
-      setPreview(res.data);
-    },
-    [],
-  );
+  const openFilePreview = useCallback(async (item: ArchiveSearchResult) => {
+    const reqId = ++previewReqRef.current;
+    setSelectedResult(item);
+    setIsLoadingFile(true);
+    setFileError(null);
+    const res = await browserPreviewArchiveFile(item.archiveId, item.path);
+    if (reqId !== previewReqRef.current) return;
+    setIsLoadingFile(false);
+    if (!res.ok) {
+      if (res.aborted) return;
+      setPreview(null);
+      setFileError(res.error?.message ?? "Failed to read file from archive.");
+      return;
+    }
+    setPreview(res.data);
+  }, []);
 
   const executeSearch = useCallback(
     async (overrideParams?: Partial<SearchParams>) => {
@@ -248,7 +240,9 @@ export function GlobalSearchVault() {
             setIsLoadingFile(false);
           }
         } else {
-          toast.error(res.error?.message ?? "Search failed. Check your regex syntax.");
+          toast.error(
+            res.error?.message ?? "Search failed. Check your regex syntax.",
+          );
         }
       } catch {
         // Aborted or network error
@@ -294,93 +288,26 @@ export function GlobalSearchVault() {
     };
   }, [clearDownloadPoll]);
 
-  const handleGlobalQueryChange = (val: string) => {
-    setQ(val);
-  };
-
-  const handleFileNameChange = (val: string) => {
-    setFileName(val);
-  };
-  const textLines = preview?.kind === "text" && preview.text ? preview.text.split("\n") : [];
+  const textLines =
+    preview?.kind === "text" && preview.text ? preview.text.split("\n") : [];
 
   return (
-    <div className="flex flex-1 flex-col gap-5 spring-enter">
-      {/* SpinupMail 3-Card Search Telemetry Grid */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MotionSurface busy={isSearching}>
-          <div className="spinup-card flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <Search className="size-4 text-neutral-400" />
-                <span>Indexed Entries</span>
-              </div>
-              <span className="spinup-pill">Trigram GIN</span>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
-                <SpringCounter value={totalCount} />
-              </span>
-              <span className="text-xs text-neutral-500">matched</span>
-            </div>
-          </div>
-        </MotionSurface>
-
-        <MotionSurface>
-          <div className="spinup-card flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <Zap className="size-4 text-neutral-400" />
-                <span>Query Latency</span>
-              </div>
-              <span className="spinup-pill">Engine Speed</span>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
-                {searchDurationMs !== null ? `${searchDurationMs}` : "—"}
-              </span>
-              <span className="text-xs text-neutral-500">ms</span>
-            </div>
-          </div>
-        </MotionSurface>
-
-        <MotionSurface>
-          <div className="spinup-card flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
-                <Filter className="size-4 text-neutral-400" />
-                <span>Active Filters</span>
-              </div>
-              <span className="spinup-pill">Scope</span>
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="truncate font-mono text-2xl font-semibold tracking-tight text-white">
-                {fileType ? `.${fileType}` : "All types"}
-              </span>
-              {fileName ? (
-                <span className="truncate font-mono text-xs text-neutral-400">
-                  · {fileName}
-                </span>
-              ) : null}
-            </div>
-          </div>
-        </MotionSurface>
-      </section>
-
-      {/* Main Search Bar & Quick Filters */}
-      <section className="spinup-card flex flex-col gap-3 p-4">
+    <div className="flex min-w-0 w-full flex-1 flex-col gap-4">
+      {/* Unified Search Command & Telemetry Panel */}
+      <section className="obsidian-panel flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-10 min-w-0 basis-full items-center gap-2.5 rounded-lg border border-white/[0.08] bg-[#0e0f11] px-3.5 transition-none focus-within:border-white/20 sm:flex-1 sm:basis-0">
-            <Search className="size-4 shrink-0 text-neutral-400" />
+          <div className="flex h-9 min-w-0 basis-full items-center gap-2.5 rounded-lg border border-white/[0.08] bg-[#101216] px-3 focus-within:border-white/20 sm:flex-1 sm:basis-0">
+            <Search className="size-3.5 shrink-0 text-[#6b707b]" />
             <input
               data-vault-search-input
               type="search"
               value={q}
-              onChange={(e) => handleGlobalQueryChange(e.target.value)}
+              onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") executeSearch();
+                if (e.key === "Enter") void executeSearch();
               }}
-              placeholder="Search all archives (e.g. auth.json, passwords, or regex)..."
-              className="min-w-0 w-full bg-transparent font-mono text-xs text-white outline-none placeholder:text-neutral-500"
+              placeholder="Search paths, filenames, or regex across all containers (e.g. auth.json, passwords)..."
+              className="min-w-0 w-full bg-transparent font-mono text-xs text-[#f3f4f6] outline-none placeholder:text-[#5c606a]"
             />
           </div>
 
@@ -391,126 +318,149 @@ export function GlobalSearchVault() {
             onClick={() => setShowAdvanced((s) => !s)}
             aria-expanded={showAdvanced}
             aria-controls="archive-search-filters"
-            className="h-10 gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-xs text-neutral-200 transition-none hover:bg-white/[0.04] hover:scale-100 active:scale-100"
+            className="h-9 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-3 text-xs text-[#c8ccd4] hover:bg-white/[0.04] hover:text-white"
           >
             <SlidersHorizontal className="size-3.5" />
             Filters
-            {showAdvanced ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            {showAdvanced ? (
+              <ChevronUp className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
           </Button>
 
           <Button
             type="button"
-            variant="default"
             size="sm"
-            onClick={() => executeSearch()}
+            onClick={() => void executeSearch()}
             disabled={isSearching}
-            className="motion-sheen h-10 gap-1.5 rounded-lg text-xs transition-none hover:scale-100 active:scale-100"
+            className="h-9 gap-1.5 rounded-lg bg-[#f3f4f6] px-4 text-xs font-medium text-[#050506] hover:bg-white"
           >
-            <Sparkles className={cn("size-3.5", isSearching && "animate-spin")} />
+            {isSearching ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Search className="size-3.5" />
+            )}
             Search
           </Button>
         </div>
 
-        {/* Quick extension pills */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="text-[11px] text-neutral-500 pr-1 flex items-center gap-1">
-            <Filter className="size-3" /> Quick Type:
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setFileType("");
-              executeSearch({ type: undefined });
-            }}
-            className={cn(
-              "font-mono text-[11px] transition-none cursor-pointer",
-              fileType === "" ? "spinup-badge-active" : "spinup-pill hover:text-white"
-            )}
-          >
-            All
-          </button>
-          {COMMON_EXTENSIONS.map((ext) => {
-            const active = fileType.toLowerCase() === ext;
-            return (
-              <button
-                key={ext}
-                type="button"
-                onClick={() => {
-                  const next = active ? "" : ext;
-                  setFileType(next);
-                  executeSearch({ type: next || undefined });
-                }}
-                className={cn(
-                  "font-mono text-[11px] transition-none cursor-pointer",
-                  active ? "spinup-badge-active" : "spinup-pill hover:text-white"
-                )}
-              >
-                .{ext}
-              </button>
-            );
-          })}
+        {/* Extension Filter Strip + Inline Telemetry */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-1 flex items-center gap-1 text-[11px] text-[#6b707b]">
+              <Filter className="size-3" /> Type:
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setFileType("");
+                void executeSearch({ type: undefined });
+              }}
+              className={cn(
+                "font-mono text-[11px] cursor-pointer",
+                fileType === ""
+                  ? "obsidian-badge-active"
+                  : "obsidian-pill hover:text-[#e5e7eb]",
+              )}
+            >
+              All
+            </button>
+            {COMMON_EXTENSIONS.map((ext) => {
+              const active = fileType.toLowerCase() === ext;
+              return (
+                <button
+                  key={ext}
+                  type="button"
+                  onClick={() => {
+                    const next = active ? "" : ext;
+                    setFileType(next);
+                    void executeSearch({ type: next || undefined });
+                  }}
+                  className={cn(
+                    "font-mono text-[11px] cursor-pointer",
+                    active
+                      ? "obsidian-badge-active"
+                      : "obsidian-pill hover:text-[#e5e7eb]",
+                  )}
+                >
+                  .{ext}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2 font-mono text-[11px] text-[#8b909a]">
+            <span>
+              <strong className="text-[#f3f4f6]">
+                {totalCount.toLocaleString()}
+              </strong>{" "}
+              matched
+            </span>
+            <span className="text-[#3a3d45]">·</span>
+            <span className="inline-flex items-center gap-1">
+              <Zap className="size-3 text-[#10b981]" />
+              {searchDurationMs !== null ? `${searchDurationMs} ms` : "—"}
+            </span>
+          </div>
         </div>
 
-        {/* Collapsible Advanced Filters Drawer */}
         {showAdvanced ? (
-          <div id="archive-search-filters" className="grid grid-cols-1 gap-3 border-t border-white/[0.06] pt-3 sm:grid-cols-3">
+          <div
+            id="archive-search-filters"
+            className="grid grid-cols-1 gap-3 border-t border-white/[0.06] pt-3 sm:grid-cols-3"
+          >
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium text-neutral-400">
+              <label className="text-[11px] font-medium text-[#8b909a]">
                 File Name Filter (Regex / Substring)
               </label>
               <Input
                 type="text"
                 value={fileName}
-                onChange={(e) => handleFileNameChange(e.target.value)}
+                onChange={(e) => setFileName(e.target.value)}
                 placeholder="e.g. passwords.txt or ^token.*"
-                className="spinup-input h-8 font-mono text-xs"
+                className="obsidian-input h-8 font-mono text-xs"
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium text-neutral-400">
-                Custom Extension (Type)
+              <label className="text-[11px] font-medium text-[#8b909a]">
+                Custom Extension
               </label>
               <Input
                 type="text"
                 value={fileType}
-                onChange={(e) => {
-                  setFileType(e.target.value);
-                }}
+                onChange={(e) => setFileType(e.target.value)}
                 placeholder="e.g. txt, ldb, pdf, json"
-                className="spinup-input h-8 font-mono text-xs"
+                className="obsidian-input h-8 font-mono text-xs"
               />
             </div>
 
             <div className="flex min-w-0 items-end gap-2">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label className="text-[11px] font-medium text-neutral-400">
+                <label className="text-[11px] font-medium text-[#8b909a]">
                   Min Size (KiB)
                 </label>
                 <Input
                   type="number"
                   min="0"
                   value={minSizeKB}
-                  onChange={(e) => {
-                    setMinSizeKB(e.target.value);
-                  }}
+                  onChange={(e) => setMinSizeKB(e.target.value)}
                   placeholder="0"
-                  className="spinup-input h-8 font-mono text-xs"
+                  className="obsidian-input h-8 font-mono text-xs"
                 />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label className="text-[11px] font-medium text-neutral-400">
+                <label className="text-[11px] font-medium text-[#8b909a]">
                   Max Size (KiB)
                 </label>
                 <Input
                   type="number"
                   min="0"
                   value={maxSizeKB}
-                  onChange={(e) => {
-                    setMaxSizeKB(e.target.value);
-                  }}
+                  onChange={(e) => setMaxSizeKB(e.target.value)}
                   placeholder="No limit"
-                  className="spinup-input h-8 font-mono text-xs"
+                  className="obsidian-input h-8 font-mono text-xs"
                 />
               </div>
             </div>
@@ -518,49 +468,42 @@ export function GlobalSearchVault() {
         ) : null}
       </section>
 
-      {/* 2-Pane Results & Zero-Extraction Previewer */}
-      <div className="grid min-h-[640px] grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        {/* Left Pane: Search Results */}
-        <section className="spinup-card flex min-w-0 flex-col overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-4 py-3">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-white">
-                Search Results ({results.length} of {totalCount.toLocaleString()})
+      {/* 2-Pane Results & Zero-Extraction File Inspector */}
+      <div className="grid min-h-[640px] grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        {/* Left Pane: Matched Entries */}
+        <section className="obsidian-panel flex min-w-0 flex-col overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] bg-[#101216]/60 px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-[#f3f4f6]">
+                Matched Files
               </span>
-              <span className="spinup-pill font-mono text-[10px]">
-                GIN trigram
+              <span className="obsidian-pill font-mono text-[10px]">
+                {results.length} / {totalCount.toLocaleString()}
               </span>
             </div>
 
-            {results.length > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                onClick={() => void startBulkDownload()}
-                disabled={isPreparingDownload}
-                className="gap-1.5 rounded-lg border-white/[0.08] bg-[#0e0f11] text-neutral-200 hover:bg-white/[0.04]"
-              >
-                <Download className="size-3" />
-                Download All ({Math.min(totalCount, 5000)}) .zip
-              </Button>
-            ) : (
-              <Button variant="outline" size="xs" disabled className="gap-1.5 rounded-lg">
-                <Download className="size-3" />
-                Download All .zip
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => void startBulkDownload()}
+              disabled={results.length === 0 || isPreparingDownload}
+              className="h-7 gap-1.5 rounded-md border-white/[0.08] bg-[#101216] px-2.5 text-xs text-[#e5e7eb] hover:bg-white/[0.05]"
+            >
+              <Download className="size-3" />
+              Export ({Math.min(totalCount, 5000)}) .zip
+            </Button>
           </div>
 
-          <div className="flex-1 divide-y divide-white/[0.04] overflow-y-auto max-h-[640px]">
+          <div className="max-h-[640px] flex-1 divide-y divide-white/[0.04] overflow-y-auto">
             {isSearching ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-xs text-neutral-400">
+              <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8b909a]">
                 <Loader2 className="size-4 animate-spin" />
-                Searching 4.6M+ entries…
+                Scanning index…
               </div>
             ) : results.length === 0 ? (
-              <div className="py-12 text-center text-xs text-neutral-500">
-                No files matched your search specifications.
+              <div className="py-12 text-center text-xs text-[#6b707b]">
+                No files matched your search criteria.
               </div>
             ) : (
               results.map((item) => {
@@ -569,29 +512,32 @@ export function GlobalSearchVault() {
                   <div
                     key={item.id}
                     className={cn(
-                      "group flex flex-col gap-1 px-4 py-3 transition-none",
-                      isSelected
-                        ? "bg-white/[0.05]"
-                        : "hover:bg-white/[0.02]",
+                      "group flex flex-col gap-1 px-4 py-2.5 transition-none",
+                      isSelected ? "bg-white/[0.06]" : "hover:bg-white/[0.02]",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <button
                         type="button"
                         onClick={() => void openFilePreview(item)}
-                        className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left cursor-pointer"
                       >
-                        <FileText className="size-3.5 shrink-0 text-neutral-400" />
-                        <span className="truncate font-mono text-xs font-medium text-white">
+                        <FileText className="size-3.5 shrink-0 text-[#8b909a]" />
+                        <span className="truncate font-mono text-xs font-medium text-[#f3f4f6]">
                           {item.name}
                         </span>
-                        <span className="spinup-pill shrink-0 font-mono text-[10px]">
+                        <span className="obsidian-pill shrink-0 font-mono text-[10px]">
                           {formatBytes(item.sizeBytes)}
                         </span>
                       </button>
 
                       <div className="flex shrink-0 items-center gap-1">
-                        <Button asChild variant="ghost" size="xs" className="text-neutral-400 hover:text-white">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="xs"
+                          className="h-6 px-2 text-[11px] text-[#8b909a] hover:text-white"
+                        >
                           <a
                             href={archiveDownloadUrl(
                               item.archiveId,
@@ -602,13 +548,17 @@ export function GlobalSearchVault() {
                             title="Download raw file"
                           >
                             <Download className="size-3" />
-                            File
                           </a>
                         </Button>
-                        <Button asChild variant="outline" size="xs" className="rounded-lg border-white/[0.08] bg-[#0e0f11]">
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="xs"
+                          className="h-6 rounded border-white/[0.08] bg-[#101216] px-1.5"
+                        >
                           <Link
                             href={`/archives/${item.archiveId}?path=${encodeURIComponent(item.path)}`}
-                            title={`Open in Archive Explorer: ${item.archiveFilename}`}
+                            title={`Open in Archive Inspector: ${item.archiveFilename}`}
                           >
                             <ArrowUpRight className="size-3" />
                           </Link>
@@ -618,13 +568,11 @@ export function GlobalSearchVault() {
 
                     <Link
                       href={`/archives/${item.archiveId}?path=${encodeURIComponent(item.path)}`}
-                      className="group inline-flex max-w-full items-center gap-1 truncate font-mono text-[11px] text-neutral-500 hover:text-neutral-200 hover:underline"
-                      title={`Open in Archive File Viewer: ${item.archiveFilename} → ${item.path}`}
+                      className="inline-flex max-w-full items-center gap-1 truncate font-mono text-[10.5px] text-[#6b707b] hover:text-[#c8ccd4] hover:underline"
                     >
                       <span className="truncate">
                         {item.archiveFilename} / {item.path}
                       </span>
-                      <ArrowUpRight className="size-3 shrink-0 opacity-70 group-hover:opacity-100" />
                     </Link>
                   </div>
                 );
@@ -633,39 +581,41 @@ export function GlobalSearchVault() {
           </div>
         </section>
 
-        {/* Right Pane: Zero-Extraction File Viewer */}
-        <section className="spinup-card flex min-w-0 flex-col overflow-hidden">
+        {/* Right Pane: Zero-Extraction Stream Viewer */}
+        <section className="obsidian-panel flex min-w-0 flex-col overflow-hidden">
           {selectedResult === null ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
-              <FileCode className="size-6 text-neutral-500" />
-              <p className="text-sm font-medium text-white">
-                Select any file to inspect
+              <FileCode className="size-6 text-[#5c606a]" />
+              <p className="text-xs font-medium text-[#e5e7eb]">
+                Select a file to inspect
               </p>
-              <p className="max-w-xs text-xs text-neutral-500">
-                Files are streamed directly from archive volumes in memory without disk extraction.
+              <p className="max-w-xs text-[11px] text-[#6b707b]">
+                Files stream directly from archive volumes in memory without extraction to disk.
               </p>
             </div>
           ) : (
             <>
-              {/* File Viewer Header */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] bg-[#101216]/60 px-4 py-2.5">
                 <div className="min-w-0 max-w-full">
                   <div className="flex items-center gap-2">
-                    <span className="truncate font-mono text-xs font-semibold text-white" title={selectedResult.name}>
+                    <span
+                      className="truncate font-mono text-xs font-semibold text-[#f3f4f6]"
+                      title={selectedResult.name}
+                    >
                       {selectedResult.name}
                     </span>
-                    <span className="spinup-pill font-mono text-[10px]">
+                    <span className="obsidian-pill font-mono text-[10px]">
                       {formatBytes(selectedResult.sizeBytes)}
                     </span>
                     {textLines.length >= 2500 ? (
-                      <span className="spinup-pill font-mono text-[10px] text-amber-400">
+                      <span className="obsidian-pill font-mono text-[10px] text-amber-400">
                         2,500-line cap
                       </span>
                     ) : null}
                   </div>
                   <Link
                     href={`/archives/${selectedResult.archiveId}?path=${encodeURIComponent(selectedResult.path)}`}
-                    className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate font-mono text-[11px] text-neutral-500 hover:text-neutral-200 hover:underline"
+                    className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate font-mono text-[10.5px] text-[#6b707b] hover:text-[#c8ccd4] hover:underline"
                   >
                     <span className="truncate">
                       {selectedResult.archiveFilename} / {selectedResult.path}
@@ -674,7 +624,7 @@ export function GlobalSearchVault() {
                   </Link>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1">
                   {preview?.kind === "text" && preview.text !== undefined ? (
                     <>
                       <Button
@@ -682,22 +632,22 @@ export function GlobalSearchVault() {
                         variant="ghost"
                         size="xs"
                         onClick={() => setWrapLines((w) => !w)}
-                        className="text-neutral-400 hover:text-white"
+                        className="h-6 gap-1 px-2 text-[11px] text-[#8b909a] hover:text-white"
                       >
                         <WrapText className="size-3" />
-                        {wrapLines ? "Wrapped" : "No wrap"}
+                        {wrapLines ? "Wrap" : "No wrap"}
                       </Button>
                       <Button
                         type="button"
                         variant="ghost"
                         size="xs"
-                        className="text-neutral-400 hover:text-white"
+                        className="h-6 gap-1 px-2 text-[11px] text-[#8b909a] hover:text-white"
                         onClick={async () => {
                           const ok = await copyToClipboard(preview.text ?? "");
                           if (ok) {
                             toast.success("Copied file content to clipboard.");
                           } else {
-                            toast.error("Failed to copy file content to clipboard.");
+                            toast.error("Failed to copy file content.");
                           }
                         }}
                       >
@@ -707,7 +657,12 @@ export function GlobalSearchVault() {
                     </>
                   ) : null}
 
-                  <Button asChild variant="outline" size="xs" className="rounded-lg border-white/[0.08] bg-[#0e0f11]">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="xs"
+                    className="h-6 gap-1 rounded border-white/[0.08] bg-[#101216] px-2 text-[11px]"
+                  >
                     <a
                       href={archiveDownloadUrl(
                         selectedResult.archiveId,
@@ -717,10 +672,15 @@ export function GlobalSearchVault() {
                       download
                     >
                       <Download className="size-3" />
-                      Download
+                      Raw
                     </a>
                   </Button>
-                  <Button asChild variant="outline" size="xs" className="rounded-lg border-white/[0.08] bg-[#0e0f11]">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="xs"
+                    className="h-6 gap-1 rounded border-white/[0.08] bg-[#101216] px-2 text-[11px]"
+                  >
                     <a
                       href={archiveDownloadUrl(
                         selectedResult.archiveId,
@@ -736,22 +696,19 @@ export function GlobalSearchVault() {
                 </div>
               </div>
 
-              {/* File Viewer Body */}
-              <div className="flex-1 overflow-auto p-3.5 max-h-[580px]">
+              <div className="max-h-[580px] flex-1 overflow-auto p-3">
                 {isLoadingFile ? (
-                  <div className="flex items-center justify-center gap-2 py-12 text-xs text-neutral-400">
+                  <div className="flex items-center justify-center gap-2 py-12 text-xs text-[#8b909a]">
                     <Loader2 className="size-4 animate-spin" />
                     Streaming {selectedResult.name}…
                   </div>
                 ) : fileError ? (
-                  <div className="flex flex-col gap-2 rounded-lg border border-[rgba(249,24,128,0.3)] bg-[rgba(249,24,128,0.08)] p-4 text-[13px] text-neutral-200">
-                    <div className="flex items-center gap-2 font-medium text-[#f91880]">
+                  <div className="flex flex-col gap-2 rounded-lg border border-rose-500/25 bg-rose-500/10 p-4 text-xs text-[#f3f4f6]">
+                    <div className="flex items-center gap-2 font-medium text-[#f43f5e]">
                       <AlertCircle className="size-4 shrink-0" />
-                      <span>Cannot preview file</span>
+                      <span>Preview unavailable</span>
                     </div>
-                    <p className="text-xs leading-relaxed text-neutral-200">
-                      {fileError}
-                    </p>
+                    <p className="text-[#c8ccd4]">{fileError}</p>
                   </div>
                 ) : preview?.kind === "image" && preview.base64Data ? (
                   <div className="flex items-center justify-center p-4">
@@ -759,7 +716,7 @@ export function GlobalSearchVault() {
                     <img
                       src={`data:${preview.mimeType};base64,${preview.base64Data}`}
                       alt={selectedResult.name}
-                      className="max-h-[480px] rounded-lg border border-white/[0.08] object-contain"
+                      className="max-h-[480px] rounded-md border border-white/[0.08] object-contain"
                     />
                   </div>
                 ) : preview?.kind === "text" ? (
@@ -769,7 +726,7 @@ export function GlobalSearchVault() {
                     wrapLines={wrapLines}
                   />
                 ) : preview?.kind === "binary" ? (
-                  <pre className="overflow-x-auto rounded-lg border border-white/[0.06] bg-[#030405] p-3 font-mono text-xs leading-[19px] text-neutral-200">
+                  <pre className="overflow-x-auto rounded-md border border-white/[0.06] bg-[#08090b] p-3 font-mono text-xs leading-5 text-[#c8ccd4]">
                     {preview.hexPreview}
                   </pre>
                 ) : null}
@@ -778,7 +735,8 @@ export function GlobalSearchVault() {
           )}
         </section>
       </div>
-      {/* Interactive Bulk Download Progress Modal */}
+
+      {/* Bulk Export Modal */}
       <Dialog
         open={isDownloadModalOpen}
         onOpenChange={(open) => {
@@ -788,55 +746,59 @@ export function GlobalSearchVault() {
           }
         }}
       >
-        <DialogContent className="border-[rgba(255,255,255,0.08)] bg-[#0f1011] text-[#f7f8f8] sm:max-w-md">
+        <DialogContent className="rounded-xl border border-white/[0.08] bg-[#0b0c0e] text-[#f3f4f6] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 pr-6 text-left text-base text-[#ffffff]">
-              <FileArchive className="size-4 text-[#8a8f98]" />
-              Packaging Search Results Archive
+            <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+              <FileArchive className="size-4 text-[#8b909a]" />
+              Packaging Search Results
             </DialogTitle>
-            <DialogDescription className="text-xs text-[#8a8f98]">
+            <DialogDescription className="text-xs text-[#8b909a]">
               {downloadJob?.status === "ready"
                 ? "Archive is ready and download has started."
                 : downloadJob?.status === "error"
                   ? "Packaging encountered an error."
-                  : "Streaming files directly from archive volumes into a structured .zip…"}
+                  : "Streaming matched files directly into a structured .zip…"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-2">
-            {/* Progress bar and counters */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-[#8a8f98]">
-                  {downloadJob ? `${downloadJob.processed} of ${downloadJob.total} files` : "—"}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between font-mono text-xs">
+                <span className="text-[#8b909a]">
+                  {downloadJob
+                    ? `${downloadJob.processed} of ${downloadJob.total} files`
+                    : "—"}
                 </span>
-                <span className="font-semibold text-[#ffffff]">
+                <span className="font-semibold text-[#f3f4f6]">
                   {downloadJob?.percent ?? 0}%
                 </span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-300",
                     downloadJob?.status === "error"
-                      ? "bg-[#f91880]"
+                      ? "bg-[#f43f5e]"
                       : downloadJob?.status === "ready"
-                        ? "bg-[#00ba7c]"
-                        : "kinetics-progress-fill",
+                        ? "bg-[#10b981]"
+                        : "bg-[#f3f4f6]",
                   )}
                   style={{ width: `${downloadJob?.percent ?? 0}%` }}
                 />
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-[6px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] p-2.5 text-xs">
+            <div className="obsidian-subpanel flex items-center justify-between gap-2 p-2.5 text-xs">
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 {downloadJob?.status === "preparing" ? (
-                  <Loader2 className="size-3.5 animate-spin text-[#8a8f98]" />
+                  <Loader2 className="size-3.5 animate-spin text-[#8b909a]" />
                 ) : (
-                  <FileArchive className="size-3.5 text-[#8a8f98]" />
+                  <FileArchive className="size-3.5 text-[#8b909a]" />
                 )}
-                <span className="truncate font-mono text-[#d0d6e0]" title={downloadJob?.zipName ?? "search-results.zip"}>
+                <span
+                  className="truncate font-mono text-[#c8ccd4]"
+                  title={downloadJob?.zipName ?? "search-results.zip"}
+                >
                   {downloadJob?.zipName ?? "search-results.zip"}
                 </span>
               </div>
@@ -844,8 +806,10 @@ export function GlobalSearchVault() {
                 variant="outline"
                 className={cn(
                   "font-mono text-[10px] uppercase",
-                  downloadJob?.status === "ready" && "border-[#00ba7c] text-[#00ba7c]",
-                  downloadJob?.status === "error" && "border-[#f91880] text-[#f91880]",
+                  downloadJob?.status === "ready" &&
+                    "border-emerald-500/30 text-[#10b981]",
+                  downloadJob?.status === "error" &&
+                    "border-rose-500/30 text-[#f43f5e]",
                 )}
               >
                 {downloadJob?.status ?? "preparing"}
@@ -853,19 +817,24 @@ export function GlobalSearchVault() {
             </div>
 
             {downloadJob?.status === "ready" && downloadJob.downloadUrl ? (
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-1">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => setIsDownloadModalOpen(false)}
+                  className="h-8 text-xs text-[#8b909a]"
                 >
-                  Done
+                  Close
                 </Button>
-                <Button asChild size="sm" variant="default" className="gap-1.5">
+                <Button
+                  asChild
+                  size="sm"
+                  className="h-8 gap-1.5 bg-[#f3f4f6] text-xs font-medium text-[#050506] hover:bg-white"
+                >
                   <a href={downloadJob.downloadUrl} download={downloadJob.zipName}>
                     <Download className="size-3.5" />
-                    Re-download .zip
+                    Download .zip
                   </a>
                 </Button>
               </div>
