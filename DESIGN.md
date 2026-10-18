@@ -29,7 +29,7 @@ Defined in `globals.css` (`:root`/`.dark` identical — dark-only), mapped to Ta
 | `--border` | `rgba(255,255,255,0.05)` | Standard hairline |
 | `--input` | `rgba(255,255,255,0.08)` | Input borders |
 | `--ring` | `rgba(255,255,255,0.15)` | Focus rings |
-| `--sidebar` | `#000000` | Dock background (overlaid w/ `bg-[#0c0d0e]/80` glass) |
+| `--sidebar` | `#000000` | Token retained for shadcn Sidebar primitives; the rail itself uses literal `bg-[#08090b]` |
 
 ## 3. Working palette (literal tiers — what components actually use)
 
@@ -39,7 +39,7 @@ When extending an existing view, match the literals already in that view. These 
 |---|---|---|
 | Page canvas | `#08090a` | `bg-[#08090a]` |
 | Card / panel | `#0f1011` | `bg-[#0f1011]` |
-| Dock glass | `#0c0d0e` @ 80% + blur | `bg-[#0c0d0e]/80 backdrop-blur-2xl` |
+| Rail canvas | `#08090b` solid | `bg-[#08090b]` navigation rail; page shell `bg-[#050506]` |
 | Raised fill | `#121316` | `bg-[#121316]` |
 | Text — headline/active | `#ffffff` | `text-[#ffffff]` |
 | Text — primary | `#f7f8f8` | `text-[#f7f8f8]` |
@@ -64,9 +64,9 @@ When extending an existing view, match the literals already in that view. These 
 
 ## 5. Shape & elevation
 
-- **Radius ladder:** `rounded-[8px]` cards/panels · `rounded-[6px]` inner controls/inputs/buttons · `rounded-[4px]` tiny chips · `rounded-[9999px]` pills/dock.
+- **Radius ladder:** `rounded-[8px]` cards/panels · `rounded-[6px]` inner controls/inputs/buttons · `rounded-[4px]` tiny chips · `rounded-md` nav rail chips/brand mark.
 - **Card shadow (hover lift):** `0 10px 24px -8px rgba(0,0,0,0.7)`.
-- **Dock edge & shadow:** one uniform `1px solid rgba(255,255,255,0.14)` border and outer shadow `0 16px 50px rgba(0,0,0,0.65)`. No additional outer ring or top/bottom inset highlights on the dock.
+- **Rail edge:** hairlines `rgba(255,255,255,0.06)` (rail borders, command-bar bottom); no outer rings or directional inset highlights on the rail.
 - **Inset speculars** (`inset 0 1px 1px rgba(255,255,255,0.2–0.25)`) simulate top-lit glass on raised elements.
 
 ## 6. Typography
@@ -98,9 +98,9 @@ When extending an existing view, match the literals already in that view. These 
 - **Peer controls:** match input/button heights within each toolbar (40px search, 36px admin forms, 32px compact validator actions). Wrap whole action groups below headings on small screens. Inputs use `min-w-0`; tables scroll inside their own container, not the page. Center empty/loading messages outside a wide table's scroll area.
 - **Dialogs:** cap height to the viewport and allow vertical scrolling; wrap titles, identities, source paths, and footers without squeezing text into narrow columns. Associate labels with unique input IDs. Keep menu opening and data selection instant.
 - **Table rows:** `border-b border-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.03)] transition-none`; mono cells `truncate` + `title` tooltip.
-- **Page shell:** max width `max-w-[1500px]`, `px-4 md:px-6 lg:px-8 pt-6 pb-28` (bottom clearance for the floating dock), content wrapped in `.apple-tab-enter`.
-- **Mobile dock:** constrain the island to viewport width minus 32px; scroll the navigation strip horizontally while keeping the profile trigger outside it. Reveal active/focused routes, preserve 36px targets, and account for the bottom safe area. Decorative hover tooltips remain desktop-only.
-- **Profile popup:** the compact dock account menu is 224px wide, centered above its avatar with a collision-aware 12×6px pointer. Use a 12px trigger offset and 16px viewport padding; let the panel shift inward on narrow screens while its pointer stays anchored to the avatar. Keep the outer arrow unclipped and scroll the inner menu on short screens. Highlight the open avatar subtly and hide its hover tooltip while the menu is open. Avatar keyboard focus changes its existing border/background, without an outer outline or additional ring. Opening, closing, and selection remain instant.
+- **Page shell:** workspace column `max-w-[1480px]`, `px-4 sm:px-6 lg:px-8 py-6`, content wrapped in `.apple-tab-enter`; sticky `h-13` command bar (`bg-[#050506]/90 backdrop-blur-md`) carries the breadcrumb and quick search.
+- **Navigation rail (`AppSidebar`, `aria-label="Workspace navigation"`):** mobile — full-width brand bar (`h-13`) with a horizontally scrolling nav strip; desktop — `md:h-screen md:w-56` left rail with `border-r`. Grouped sections (Workspace / Intelligence / Administration / System) use 10px uppercase labels (`text-[#5c606a] tracking-[0.08em]`). Active item: `bg-white/[0.06]` with a 2px left bar `bg-[#f3f4f6]`; hover `bg-white/[0.025] text-[#e5e7eb]`; `transition-colors` only. `UserMenu` sits at the rail bottom (border-t) on desktop and compact in the mobile brand bar.
+- **Account popup:** `w-56 rounded-lg border-white/[0.08] bg-[#0b0c0e]` with `sideOffset 8`, opening above the rail chip (below it on mobile). Keep menu opening, closing, and selection instant. Avatar keyboard focus changes its existing border/background, without an outer outline or additional ring.
 - **Empty states:** `.app-empty-state` — centered column, muted text, one hint line.
 - **Page header:** `.app-page-header` — baseline row, hairline bottom border.
 - **Primitives:** shadcn/ui new-york style in `components/ui/`; icons lucide-react only (`size-3.5`/`size-4`/`size-5`); toasts via sonner; forms via react-hook-form + zod; conditional classes always through `cn()`.
