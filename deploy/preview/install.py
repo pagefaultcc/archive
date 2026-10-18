@@ -145,6 +145,9 @@ def main():
     parser.add_argument("--deploy-key-file", type=Path, required=True)
     parser.add_argument("--review-key-file", type=Path, action="append", required=True,
                         help="reviewer public key; repeat for additional reviewers")
+    parser.add_argument("--forbidden-production-ip", default="",
+                        help="operator-supplied production address to refuse on this host; "
+                             "keep real production addresses out of this public repository")
     args = parser.parse_args()
     if sys.version_info < (3, 12):
         fail("Python 3.12+ is required")
@@ -159,8 +162,8 @@ def main():
     addresses = set()
     for interface in json.loads(run([ip, "-json", "address", "show"])):
         addresses.update(item.get("local", "") for item in interface.get("addr_info", []))
-    if "85.9.208.82" in addresses:
-        fail("known production host refused")
+    if args.forbidden_production_ip and args.forbidden_production_ip in addresses:
+        fail("operator-marked production address refused")
     production_paths = [Path("/srv/archive"), Path("/opt/archive"), Path("/root/archive"),
                         *Path("/home").glob("*/archive")]
     if any(path.exists() for path in production_paths):
