@@ -47,9 +47,9 @@ type AuditEntry struct {
 
 // AuditPage is one cursor page of audit entries.
 type AuditPage struct {
-	Entries      []AuditEntry `json:"entries"`
-	NextCursor   *string      `json:"nextCursor"`
-	HasMore      bool         `json:"hasMore"`
+	Entries    []AuditEntry `json:"entries"`
+	NextCursor *string      `json:"nextCursor"`
+	HasMore    bool         `json:"hasMore"`
 }
 
 // AuditFilter narrows audit queries.
@@ -761,5 +761,3 @@ func txSetRolePermissions(ctx context.Context, tx pgx.Tx, roleID string, permiss
 	}
 	return nil
 }
-
-

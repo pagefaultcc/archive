@@ -20,19 +20,19 @@ func (e *APIError) Error() string { return e.Code }
 
 // Stable code/message pairs.
 var (
-	InvalidRequest         = &APIError{Status: 400, Code: "invalid_request", Message: "Check the submitted fields."}
-	InvalidCredentials     = &APIError{Status: 401, Code: "invalid_credentials", Message: "Invalid username or password."}
-	Unauthenticated        = &APIError{Status: 401, Code: "unauthenticated", Message: "Authentication required."}
-	Forbidden              = &APIError{Status: 403, Code: "forbidden", Message: "You do not have permission to perform this action."}
-	BodyTooLarge           = &APIError{Status: 413, Code: "body_too_large", Message: "Request body is too large."}
-	UnsupportedMediaType   = &APIError{Status: 415, Code: "unsupported_media_type", Message: "Content-Type must be application/json."}
-	UsernameTaken          = &APIError{Status: 409, Code: "username_taken", Message: "That username is already in use."}
-	RoleConflict           = &APIError{Status: 409, Code: "role_conflict", Message: "The requested change conflicts with the current state."}
-	ImmutableTarget        = &APIError{Status: 409, Code: "immutable_target", Message: "This resource cannot be modified."}
-	NotFound               = &APIError{Status: 404, Code: "not_found", Message: "Resource not found."}
-	AuthenticationBusy     = &APIError{Status: 429, Code: "authentication_busy", Message: "Authentication is temporarily busy. Try again."}
-	ServiceUnavailable     = &APIError{Status: 503, Code: "service_unavailable", Message: "Service temporarily unavailable."}
-	InternalServerError    = &APIError{Status: 500, Code: "internal_error", Message: "An unexpected error occurred."}
+	InvalidRequest       = &APIError{Status: 400, Code: "invalid_request", Message: "Check the submitted fields."}
+	InvalidCredentials   = &APIError{Status: 401, Code: "invalid_credentials", Message: "Invalid username or password."}
+	Unauthenticated      = &APIError{Status: 401, Code: "unauthenticated", Message: "Authentication required."}
+	Forbidden            = &APIError{Status: 403, Code: "forbidden", Message: "You do not have permission to perform this action."}
+	BodyTooLarge         = &APIError{Status: 413, Code: "body_too_large", Message: "Request body is too large."}
+	UnsupportedMediaType = &APIError{Status: 415, Code: "unsupported_media_type", Message: "Content-Type must be application/json."}
+	UsernameTaken        = &APIError{Status: 409, Code: "username_taken", Message: "That username is already in use."}
+	RoleConflict         = &APIError{Status: 409, Code: "role_conflict", Message: "The requested change conflicts with the current state."}
+	ImmutableTarget      = &APIError{Status: 409, Code: "immutable_target", Message: "This resource cannot be modified."}
+	NotFound             = &APIError{Status: 404, Code: "not_found", Message: "Resource not found."}
+	AuthenticationBusy   = &APIError{Status: 429, Code: "authentication_busy", Message: "Authentication is temporarily busy. Try again."}
+	ServiceUnavailable   = &APIError{Status: 503, Code: "service_unavailable", Message: "Service temporarily unavailable."}
+	InternalServerError  = &APIError{Status: 500, Code: "internal_error", Message: "An unexpected error occurred."}
 	// Archive-specific codes.
 	InvalidArchiveFormat   = &APIError{Status: 400, Code: "invalid_archive_format", Message: "Only .zip, .7z, and .rar archives are allowed."}
 	InvalidArchivePassword = &APIError{Status: 422, Code: "invalid_archive_password", Message: "Incorrect password for this encrypted archive."}
