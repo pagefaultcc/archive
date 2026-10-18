@@ -30,10 +30,10 @@ type ValidationItem struct {
 
 // ValidationSummary contains summary counts for the current validation service queue.
 type ValidationSummary struct {
-	Total       int `json:"total"`
-	NotChecked  int `json:"notChecked"`
-	Valid       int `json:"valid"`
-	NotValid    int `json:"notValid"`
+	Total      int `json:"total"`
+	NotChecked int `json:"notChecked"`
+	Valid      int `json:"valid"`
+	NotValid   int `json:"notValid"`
 }
 
 // ListValidationItems retrieves items matching service and optional status filter.
@@ -278,6 +278,7 @@ func (s *Store) AddValidationCustom(ctx context.Context, domain, service, cookie
 	}
 	return insertedID, err
 }
+
 // CheckValidationItems runs validation check on items (simulated/placeholder checker).
 func (s *Store) CheckValidationItems(ctx context.Context, service string, ids []string) (int, error) {
 	service = strings.ToLower(strings.TrimSpace(service))

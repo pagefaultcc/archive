@@ -115,6 +115,17 @@ jobs:
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
 
+      # Report-only signal: HIGH/CRITICAL findings are published to the job
+      # summary but do not block publication.
+      - name: Scan API image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.API_IMAGE }}:sha-${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+          ignore-unfixed: true
+
   build-frontend:
     needs: [changes, frontend-test]
     if: github.ref == 'refs/heads/main' && needs.changes.outputs.frontend == 'true' && needs.frontend-test.result == 'success'
@@ -143,5 +154,13 @@ jobs:
           tags: |
             ${{ env.FRONTEND_IMAGE }}:latest
             ${{ env.FRONTEND_IMAGE }}:sha-${{ github.sha }}
-          cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Scan frontend image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.FRONTEND_IMAGE }}:sha-${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+          ignore-unfixed: true

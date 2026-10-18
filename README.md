@@ -28,7 +28,7 @@ Backend integration tests use a separate tmpfs-backed PostgreSQL service and res
 
 Use one short-lived branch per feature/fix and open a PR into `main`; do not push directly to `main`. Keep PRs focused, bring in current `main` before merging, and use separate Git worktrees when local agents work simultaneously. `AGENTS.md` contains the same rules for coding agents.
 
-Every PR runs `.github/workflows/review.yml`: **Backend review** includes PostgreSQL integration tests, **Frontend review** builds Next.js and runs Vitest, and **Review gate** fails unless both pass. These checks do not publish images. A different person reviews the PR; after approval and passing checks, squash merge and delete the branch. Production image publishing remains main-only, including manual image-workflow dispatch.
+Every PR runs `.github/workflows/review.yml`: **Backend review** enforces `gofmt`/`go vet` and includes PostgreSQL integration tests, **Frontend review** builds Next.js and runs Vitest, and **Review gate** fails unless both pass. A separate **Lint review** job reports ESLint findings (currently non-blocking until the existing react-hooks findings are fixed, then it joins the gate). These checks do not publish images. A different person reviews the PR; after approval and passing checks, squash merge and delete the branch. Production image publishing remains main-only, including manual image-workflow dispatch.
 
 ### Enable protected merges (repository admin)
 
@@ -62,6 +62,12 @@ Files inside either image context are treated conservatively as build inputs, in
 Selected images are published to `ghcr.io/pagefaultcc/archive-api` and `ghcr.io/pagefaultcc/archive-frontend` with `latest` and `sha-<commit>` tags. Unchanged images retain their previous tags; a documentation-only commit does not create new image tags.
 
 The configured VPS timer checks GHCR every five minutes. It pulls both image references but only recreates containers whose image or local Compose configuration changed. Documentation-only changes leave the running application unchanged. Compose, Caddy, and systemd configuration are not delivered through image pulls and must be synchronized separately when edited.
+
+## Releases
+
+Production images publish on every `main` merge with `latest` and `sha-<commit>` tags; roll back by pinning `image:` to `:sha-<commit>` in Compose. Each publish job also runs a report-only Trivy scan of the pushed image and surfaces HIGH/CRITICAL, unfixed findings in the job summary.
+
+To mark a release, run the **release** workflow from the Actions tab (or `gh workflow run release.yml -f version=v1.2.3`) while on `main`: it validates the unused `vX.Y.Z` tag, tags the current `main` commit, and creates a GitHub release with auto-generated notes from merged PRs.
 
 ## Private PR previews
 

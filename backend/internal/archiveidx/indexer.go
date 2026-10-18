@@ -102,6 +102,7 @@ func SetDefaultPasswords(pws []string) {
 	}
 	currentPasswords = clean
 }
+
 // DetectFormat validates the lowercase file extension and the magic header
 // bytes and returns "zip", "7z", or "rar".
 func DetectFormat(filename string, header []byte) (string, error) {
