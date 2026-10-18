@@ -135,6 +135,18 @@ Read [PRODUCT.md](PRODUCT.md) for the research purpose, users, workflows, curren
 │   ├── components/                 # React UI components, shadcn/ui primitives
 │   ├── lib/api.ts                  # Type-safe API client with session cookie handling
 │   └── tests/                      # Vitest unit & behavior test suites
+├── .github/
+│   ├── workflows/                  # docker.yml (main-only publish), review.yml (PR gates),
+│   │                               # preview.yml (private per-PR previews), release.yml (tags)
+│   ├── scripts/image-changes.sh    # Selective image detector (NUL-safe diff)
+│   ├── main-protection.json        # Desired branch protection; admin must apply via API
+│   ├── pull_request_template.md    # PR summary/verification checklist
+│   └── CODEOWNERS                  # Auto-requested reviewers
+├── deploy/
+│   ├── archive-autodeploy.*        # Production VPS timer/service (GHCR pull path)
+│   └── preview/                    # TRUSTED preview controller/installer; never executes
+│                                   #   branch-supplied code; installed out-of-band on the
+│                                   #   dedicated preview host (see README "Private PR previews")
 ├── compose.yaml                    # Production & dev Docker compose topology
 ├── Caddyfile                       # Caddy reverse proxy & TLS configuration
 └── README.md                       # High-level product overview & setup guide
@@ -156,10 +168,11 @@ docker compose up -d --build
 
 ### Running Tests
 ```bash
-# Backend unit tests
-cd backend && go test ./...
+# Backend: formatting and vet are CI gates, then unit tests
+cd backend && gofmt -l . && go vet ./... && go test ./...
 
-# Frontend unit tests & build check
+# Frontend: build and unit tests (npm run lint is a non-gating report job
+# until the existing react-hooks findings are fixed; expect it to fail)
 cd frontend && npm run build && npm test
 ```
 
@@ -231,14 +244,11 @@ The VPS (`deploy@85.9.208.82`, deploy dir NOT a git repo) runs `archive-autodepl
   - Calling `DELETE /api/channels/queue` cancels all running command contexts to immediately SIGKILL active Python downloader subprocesses.
   - Automatically cleans up any orphaned `tg-download-*` files and temporary download exports on disk, and invalidates the in-memory cookie cache.
 
-### E. Bottom Clear-Glass Island Dock UI Navigation
-- **Replaced Left Sidebar:** Traditional rigid left-side navigation removed in favor of full-width content viewing and a floating bottom dynamic dock (`BottomIslandDock`).
-- **Liquid Glassmorphism:** Styled with `backdrop-blur-2xl`, `bg-[#0c0d0e]/80`, a uniform 1px translucent border `border-white/[0.14]`, and a soft outer shadow (`shadow-[0_16px_50px_rgba(0,0,0,0.65)]`). No extra outer ring or directional inset edge highlights.
-- **Apple Island Animated Hover & Tooltips:**
-  - Tactile spring scaling on icon hover (`hover:scale-115 active:scale-95 ease-[cubic-bezier(0.34,1.56,0.64,1)]`).
-  - Animated floating glass pill tooltip above the hovered icon with smooth fade-in and slide-up.
-  - Active route indicator with neon green ambient dot underneath.
-  - Compact circular user avatar with upward glass dropdown menu.
+### E. Obsidian Sidebar Rail Navigation
+- **Left workspace rail (`AppSidebar`):** sticky `<aside aria-label="Workspace navigation">` — full-width brand bar with horizontally scrolling nav strip on mobile; `md:h-screen md:w-56` rail with `border-r` on desktop. Hairlines `border-white/[0.06]`, canvas `bg-[#08090b]`, page shell `bg-[#050506]`.
+- **Grouped sections** with 10px uppercase labels (`text-[#5c606a] tracking-[0.08em]`): Workspace (Archives, Search), Intelligence (Cookies, Validator, Channels), Administration (Users/Roles/Logs, permission-gated), System (Settings). Active item: `bg-white/[0.06]` with a 2px left bar (`bg-[#f3f4f6]`); hover `bg-white/[0.025]`; `transition-colors` only.
+- **Top command bar** in the workspace column: sticky `h-13` header (`bg-[#050506]/90 backdrop-blur-md`) with `HeaderTitle` breadcrumb and `HeaderQuickSearch` ("Jump to search...", `aria-label="Quick search vault"`, Ctrl K), content canvas `max-w-[1480px]`.
+- **UserMenu** sits at the rail bottom on desktop (border-t separator) and compact in the mobile brand header. Opening, closing, settings, and logout remain instant; keyboard focus uses the avatar's existing border, never an outer ring.
 
 ### F. Cookie Validator & User Account Settings
 - **OpenAI Validator (`/validator`):**
