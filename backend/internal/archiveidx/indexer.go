@@ -356,6 +356,7 @@ func parseListingStream(r io.Reader, diag *bytes.Buffer) ([]Entry, error) {
 			flush()
 			continue
 		}
+		if k, v, ok := strings.Cut(line, " = "); ok {
 			if cur == nil {
 				cur = map[string]string{}
 			}
