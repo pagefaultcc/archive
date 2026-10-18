@@ -1,0 +1,67 @@
+name: dependabot-automerge
+
+# Machine-authored dependency bumps are approved and queued for merge only
+# after the review workflow (backend PostgreSQL suite + frontend build/tests)
+# has fully succeeded. Human-authored PRs are never touched by this workflow;
+# their approval stays a human decision.
+
+on:
+  workflow_run:
+    workflows: [review]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-automerge-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    name: Approve and queue Dependabot bump
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/') &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Approve and queue auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          pr_json="$(gh pr list --head "$HEAD_BRANCH" --state open \
+            --json number,author,baseRefName,headRefOid --limit 5)"
+          python3 - "$pr_json" <<'PY'
+          import json, os, sys
+          prs = json.loads(sys.argv[1])
+          candidates = [p for p in prs
+                        if p["author"]["login"] == "dependabot[bot]"
+                        and p["baseRefName"] == "main"]
+          if len(candidates) != 1:
+              raise SystemExit(0)
+          pr = candidates[0]
+          if pr["headRefOid"] != os.environ["HEAD_SHA"]:
+              # A newer push exists; its own review run will handle approval.
+              print(f"Skipping stale run for {os.environ['HEAD_SHA'][:7]}")
+              raise SystemExit(0)
+          print(os.environ["GITHUB_OUTPUT"] and "" or "")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"pr={pr['number']}\n")
+          PY
+          pr="$(sed -n 's/^pr=//p' "$GITHUB_OUTPUT" | tail -1)"
+          if [[ -z "$pr" ]]; then
+            echo "No eligible Dependabot PR for this run."
+            exit 0
+          fi
+          gh pr review "$pr" --approve \
+            --body "Dependency bump: Review gate green (backend PostgreSQL suite, frontend build/tests). Auto-approved by repository automation policy; merge queued behind required checks."
+          gh pr merge "$pr" --squash --auto
+          echo "PR #$pr approved and queued for auto-merge."
