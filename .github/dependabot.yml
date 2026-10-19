@@ -6,6 +6,10 @@ updates:
       interval: weekly
     groups:
       go-modules:
+        applies-to: version-updates
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
         patterns:
           - "*"
   - package-ecosystem: npm
@@ -14,6 +18,10 @@ updates:
       interval: weekly
     groups:
       frontend-packages:
+        applies-to: version-updates
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
         patterns:
           - "*"
   - package-ecosystem: github-actions
@@ -22,5 +30,9 @@ updates:
       interval: weekly
     groups:
       github-actions:
+        applies-to: version-updates
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
         patterns:
           - "*"
