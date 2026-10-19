@@ -99,7 +99,6 @@ beforeEach(() => {
 
 describe("UserRowActions", () => {
   it("shows Immutable root and no mutation controls for a root user", async () => {
-    const user = userEvent.setup();
     render(
       <UserRowActions
         user={rootUser}

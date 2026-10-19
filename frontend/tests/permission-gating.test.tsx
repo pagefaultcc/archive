@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AddUserDialog } from "@/components/add-user-dialog";
 
 describe("permission-gated navigation", () => {
   it("shows Users entry only with users:read", async () => {

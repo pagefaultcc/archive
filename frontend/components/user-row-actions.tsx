@@ -210,7 +210,7 @@ function ResetPasswordDialog({ user, open, onOpenChange }: ResetPasswordDialogPr
           <DialogTitle>Reset password</DialogTitle>
           <DialogDescription>
             Set a new password for {user.username}. Resetting the password revokes
-            the user's active sessions.
+            the user&apos;s active sessions.
           </DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={handleSubmit}>

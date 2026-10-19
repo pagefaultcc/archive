@@ -150,7 +150,9 @@ export function CookiesVault() {
   );
 
   useEffect(() => {
-    void fetchDomains("", 0, false);
+    queueMicrotask(() => {
+      void fetchDomains("", 0, false);
+    });
     return () => {
       domainsAbortRef.current?.abort();
     };

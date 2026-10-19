@@ -107,13 +107,15 @@ export function GlobalSearchVault() {
     minSizeKB,
     maxSizeKB,
   });
-  filtersRef.current = {
-    q,
-    fileName,
-    fileType,
-    minSizeKB,
-    maxSizeKB,
-  };
+  useEffect(() => {
+    filtersRef.current = {
+      q,
+      fileName,
+      fileType,
+      minSizeKB,
+      maxSizeKB,
+    };
+  }, [q, fileName, fileType, minSizeKB, maxSizeKB]);
 
   const clearDownloadPoll = useCallback(() => {
     if (downloadPollRef.current !== undefined) {
@@ -258,17 +260,19 @@ export function GlobalSearchVault() {
   useEffect(() => {
     if (isInitialMountRef.current) {
       isInitialMountRef.current = false;
-      const urlQ =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("q")?.trim() ?? ""
-          : "";
-      if (urlQ) {
-        setQ(urlQ);
-        filtersRef.current.q = urlQ;
-        void executeSearch({ q: urlQ });
-      } else {
-        void executeSearch();
-      }
+      queueMicrotask(() => {
+        const urlQ =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("q")?.trim() ?? ""
+            : "";
+        if (urlQ) {
+          setQ(urlQ);
+          filtersRef.current.q = urlQ;
+          void executeSearch({ q: urlQ });
+        } else {
+          void executeSearch();
+        }
+      });
       return;
     }
     window.clearTimeout(searchTimerRef.current);

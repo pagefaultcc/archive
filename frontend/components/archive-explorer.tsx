@@ -164,30 +164,32 @@ export function ArchiveExplorer({
   );
 
   useEffect(() => {
-    if (initialFilePath) {
-      const lastSlash = initialFilePath.lastIndexOf("/");
-      const parentDir = lastSlash >= 0 ? initialFilePath.slice(0, lastSlash) : "";
-      const baseName =
-        lastSlash >= 0 ? initialFilePath.slice(lastSlash + 1) : initialFilePath;
-      void navigateFolder(parentDir, "");
-      void openFilePreview({
-        id: 0,
-        path: initialFilePath,
-        parentPath: parentDir,
-        name: baseName,
-        isDir: false,
-        sizeBytes: 0,
-        packedBytes: 0,
-        crc32: "",
-        encrypted: false,
-        modifiedAt: null,
-      });
-    } else {
-      const firstFile = initialDetail.entries.find((e) => !e.isDir);
-      if (firstFile) {
-        void openFilePreview(firstFile);
+    queueMicrotask(() => {
+      if (initialFilePath) {
+        const lastSlash = initialFilePath.lastIndexOf("/");
+        const parentDir = lastSlash >= 0 ? initialFilePath.slice(0, lastSlash) : "";
+        const baseName =
+          lastSlash >= 0 ? initialFilePath.slice(lastSlash + 1) : initialFilePath;
+        void navigateFolder(parentDir, "");
+        void openFilePreview({
+          id: 0,
+          path: initialFilePath,
+          parentPath: parentDir,
+          name: baseName,
+          isDir: false,
+          sizeBytes: 0,
+          packedBytes: 0,
+          crc32: "",
+          encrypted: false,
+          modifiedAt: null,
+        });
+      } else {
+        const firstFile = initialDetail.entries.find((e) => !e.isDir);
+        if (firstFile) {
+          void openFilePreview(firstFile);
+        }
       }
-    }
+    });
     return () => {
       clearTimeout(searchTimerRef.current ?? undefined);
     };

@@ -13,7 +13,6 @@ import {
   EyeOff,
   FileArchive,
   FileText,
-  FolderTree,
   HardDrive,
   Loader2,
   Lock,
@@ -151,7 +150,9 @@ export function ArchivesVault({
   const router = useRouter();
   const [archives, setArchives] = useState<ArchiveItem[]>(initialArchives);
   useEffect(() => {
-    setArchives(initialArchives);
+    queueMicrotask(() => {
+      setArchives(initialArchives);
+    });
   }, [initialArchives]);
 
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -311,7 +312,7 @@ export function ArchivesVault({
 
       return archive;
     },
-    [],
+    [setUnlockArchive, setUnlockError, setUnlockPassword],
   );
 
   const onPickFiles = useCallback(
@@ -390,7 +391,7 @@ export function ArchivesVault({
     setUnlockArchive(null);
     setUnlockPassword("");
     router.push(`/archives/${unlocked.id}`);
-  }, [isUnlocking, router, unlockArchive, unlockPassword]);
+  }, [isUnlocking, router, setUnlockArchive, setUnlockError, setUnlockPassword, unlockArchive, unlockPassword]);
 
   const handleReindexAll = useCallback(async () => {
     if (isReindexingAll) return;
@@ -438,7 +439,7 @@ export function ArchivesVault({
     } else {
       setScrapeChannels([]);
     }
-  }, []);
+  }, [setIsAutoScrapeOpen, setSelectedChannelId]);
 
   const handleScanChannel = useCallback(async () => {
     if (!selectedChannelId) {
@@ -477,7 +478,7 @@ export function ArchivesVault({
           : (res.data?.message ?? "Scraping failed."),
       );
     }
-  }, [scrapeLimit, selectedChannelId]);
+  }, [setPasswordOverrideMap, scrapeLimit, selectedChannelId, setSelectedMsgMap]);
 
   const selectOnlyNew = useCallback(() => {
     const next: Record<number, boolean> = {};
@@ -485,7 +486,7 @@ export function ArchivesVault({
       next[it.messageId] = !it.alreadyArchived && !it.blacklisted;
     }
     setSelectedMsgMap(next);
-  }, [scrapedItems]);
+  }, [scrapedItems, setSelectedMsgMap]);
 
   const handleClearBlacklist = useCallback(async () => {
     if (!selectedChannelId) return;
@@ -502,7 +503,7 @@ export function ArchivesVault({
     const next: Record<number, boolean> = {};
     for (const it of scrapedItems) next[it.messageId] = true;
     setSelectedMsgMap(next);
-  }, [scrapedItems]);
+  }, [scrapedItems, setSelectedMsgMap]);
 
   const handleImportScrapedBatch = useCallback(async () => {
     const selectedItems = scrapedItems.filter((it) => selectedMsgMap[it.messageId]);
@@ -538,7 +539,7 @@ export function ArchivesVault({
     } else {
       toast.error(res.error?.message || "Failed to enqueue archives");
     }
-  }, [passwordOverrideMap, scrapedItems, selectedChannelId, selectedMsgMap]);
+  }, [passwordOverrideMap, scrapedItems, selectedChannelId, selectedMsgMap, setIsAutoScrapeOpen]);
 
   const seenCompletedRef = useRef<Set<string> | null>(null);
 

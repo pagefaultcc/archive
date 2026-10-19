@@ -83,7 +83,9 @@ export function ValidatorView() {
   );
 
   useEffect(() => {
-    void loadItems(true);
+    queueMicrotask(() => {
+      void loadItems(true);
+    });
   }, [loadItems]);
 
   const handleRunValidation = async () => {
