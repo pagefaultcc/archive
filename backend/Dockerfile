@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine AS build
+FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -21,7 +21,7 @@ COPY --from=build /out/api /app/api
 EXPOSE 8080
 ENTRYPOINT ["/app/api"]
 
-FROM golang:1.25-alpine AS test
+FROM golang:1.26-alpine AS test
 COPY 7zz /usr/local/bin/7zz
 RUN chmod +x /usr/local/bin/7zz
 WORKDIR /src
