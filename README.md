@@ -30,8 +30,9 @@ Use one short-lived branch per feature/fix and open a PR into `main`; do not pus
 
 Every PR runs `.github/workflows/review.yml`: **Backend review** enforces `gofmt`, `go vet` and `golangci-lint` (new-code issues) and includes PostgreSQL integration tests, **Frontend review** builds Next.js and runs Vitest, **Lint review** gates on ESLint, and **Review gate** fails unless all pass. These checks do not publish images. Local git hooks (`.githooks/`) catch formatting and lint while you work — enable them once with `git config core.hooksPath .githooks`. A different person reviews the PR; after approval and passing checks, squash merge and delete the branch. Production image publishing remains main-only, including manual image-workflow dispatch.
 
-### Enable protected merges (repository admin)
+Dependency upkeep is automated: `.github/dependabot.yml` opens **weekly grouped** version-update PRs per ecosystem (backend Go modules, frontend npm, GitHub Actions), and Dependabot security fixes still arrive immediately per alert. When the full review workflow passes, Dependabot PRs are auto-approved and squash-merged by automation — **except major version bumps**, which wait for a human review.
 
+### Enable protected merges (repository admin)
 The desired policy is checked in as `.github/main-protection.json`, but GitHub does not apply that file automatically. After the first PR has registered `Review gate`, an administrator with suitable repository permissions can apply it:
 
 ```sh
