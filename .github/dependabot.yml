@@ -8,8 +8,8 @@ updates:
       go-modules:
         applies-to: version-updates
         update-types:
-          - "version-update:semver-minor"
-          - "version-update:semver-patch"
+          - "minor"
+          - "patch"
         patterns:
           - "*"
   - package-ecosystem: npm
@@ -20,8 +20,8 @@ updates:
       frontend-packages:
         applies-to: version-updates
         update-types:
-          - "version-update:semver-minor"
-          - "version-update:semver-patch"
+          - "minor"
+          - "patch"
         patterns:
           - "*"
   - package-ecosystem: github-actions
@@ -32,7 +32,7 @@ updates:
       github-actions:
         applies-to: version-updates
         update-types:
-          - "version-update:semver-minor"
-          - "version-update:semver-patch"
+          - "minor"
+          - "patch"
         patterns:
           - "*"
