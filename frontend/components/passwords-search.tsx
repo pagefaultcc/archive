@@ -34,7 +34,9 @@ export function PasswordsSearch() {
   const searchAbortRef = useRef<AbortController | null>(null);
   const offsetRef = useRef(0);
   const qRef = useRef(q);
-  qRef.current = q;
+  useEffect(() => {
+    qRef.current = q;
+  }, [q]);
 
   const executeSearch = useCallback(async (queryOverride?: string) => {
     searchAbortRef.current?.abort();
@@ -122,7 +124,9 @@ export function PasswordsSearch() {
   };
 
   useEffect(() => {
-    void executeSearch("");
+    queueMicrotask(() => {
+      void executeSearch("");
+    });
     return () => {
       searchAbortRef.current?.abort();
       clearTimeout(searchTimerRef.current);

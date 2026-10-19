@@ -108,7 +108,9 @@ export function ChannelsView() {
   }
 
   useEffect(() => {
-    void loadData();
+    queueMicrotask(() => {
+      void loadData();
+    });
   }, []);
 
   async function handleSaveSettings() {

@@ -1,0 +1,12 @@
+version: "2"
+
+linters:
+  enable:
+    - gosec
+  settings:
+    gosec:
+      # This codebase intentionally handles attacker-controlled archive
+      # contents; G104/G304-style audit noise stays out of the default gate.
+      excludes:
+        - G104
+        - G304

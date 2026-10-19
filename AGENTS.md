@@ -168,11 +168,18 @@ docker compose up -d --build
 
 ### Running Tests
 ```bash
+# One-time: enable the local git hooks (pre-commit = staged gofmt/eslint,
+# pre-push = vet + golangci-lint + frontend lint/build).
+git config core.hooksPath .githooks
+
 # Backend: formatting and vet are CI gates, then unit tests
 cd backend && gofmt -l . && go vet ./... && go test ./...
 
-# Frontend: build and unit tests (npm run lint is a non-gating report job
-# until the existing react-hooks findings are fixed; expect it to fail)
+# golangci-lint (CI gates only on issues in changed lines; install v2 with:
+# go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest)
+cd backend && golangci-lint run --new-from-rev "$(git merge-base origin/main HEAD)"
+
+# Frontend: build and unit tests; npm run lint is a required CI gate
 cd frontend && npm run build && npm test
 ```
 

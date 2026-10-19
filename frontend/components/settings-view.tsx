@@ -71,7 +71,9 @@ export function SettingsView({
   }
 
   useEffect(() => {
-    void loadPasswords();
+    queueMicrotask(() => {
+      void loadPasswords();
+    });
   }, []);
 
   async function savePasswordsList(list: string[]) {
@@ -120,7 +122,9 @@ export function SettingsView({
 
   useEffect(() => {
     if (!initialStats) {
-      void loadStats();
+      queueMicrotask(() => {
+        void loadStats();
+      });
     }
   }, [initialStats]);
 
