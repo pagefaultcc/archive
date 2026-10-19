@@ -49,7 +49,7 @@ jobs:
           PY
 
       # Source is data only: no branch scripts, actions, Dockerfiles, or hooks run here.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: github.event.action != 'closed'
         with:
           ref: ${{ github.event.pull_request.head.sha }}
