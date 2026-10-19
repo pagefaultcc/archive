@@ -1,19 +1,26 @@
 {
-  "required_status_checks": {
-    "strict": true,
-    "checks": [
-      { "context": "Review gate", "app_id": 15368 }
-    ]
-  },
-  "enforce_admins": true,
-  "required_pull_request_reviews": {
-    "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": false,
-    "required_approving_review_count": 1,
-    "require_last_push_approval": true
-  },
-  "restrictions": null,
-  "required_linear_history": true,
-  "allow_force_pushes": false,
-  "allow_deletions": false
+  "$comment": "Merge policy for main, applied as GitHub repository RULESETS (managed via the API, visible in Settings > Rules). main-checks has no bypass actors: the Review gate (strict/up-to-date), linear history, no force-push and no deletion apply to everyone including admins. main-reviews requires 1 approving review (stale approvals dismissed, approval required after the last push, squash-only merges) and grants repository admins a pull_request-context bypass so either maintainer can ship their own green PR when the other is unavailable. Every bypass is recorded in the organization audit log.",
+  "rulesets": [
+    {
+      "name": "main-checks",
+      "enforcement": "active",
+      "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"]}},
+      "rules": [
+        {"type": "required_status_checks", "parameters": {"strict_required_status_checks_policy": true, "required_status_checks": [{"context": "Review gate", "integration_id": 15368}]}},
+        {"type": "required_linear_history"},
+        {"type": "non_fast_forward"},
+        {"type": "deletion"}
+      ],
+      "bypass_actors": []
+    },
+    {
+      "name": "main-reviews",
+      "enforcement": "active",
+      "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"]}},
+      "rules": [
+        {"type": "pull_request", "parameters": {"required_approving_review_count": 1, "dismiss_stale_reviews_on_push": true, "require_last_push_approval": true, "require_code_owner_review": false, "require_extra_approval_for_unattributed_changes": true, "required_review_thread_resolution": false, "required_reviewers": [], "dismissal_restriction": {"enabled": false, "allowed_actors": []}, "allowed_merge_methods": ["squash"]}}
+      ],
+      "bypass_actors": [{"actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "pull_request"}]
+    }
+  ]
 }

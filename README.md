@@ -30,16 +30,14 @@ Use one short-lived branch per feature/fix and open a PR into `main`; do not pus
 
 Every PR runs `.github/workflows/review.yml`: **Backend review** enforces `gofmt`, `go vet` and `golangci-lint` (new-code issues) and includes PostgreSQL integration tests, **Frontend review** builds Next.js and runs Vitest, **Lint review** gates on ESLint, and **Review gate** fails unless all pass. These checks do not publish images. Local git hooks (`.githooks/`) catch formatting and lint while you work — enable them once with `git config core.hooksPath .githooks`. A different person reviews the PR; after approval and passing checks, squash merge and delete the branch. Production image publishing remains main-only, including manual image-workflow dispatch.
 
-### Enable protected merges (repository admin)
+### Merge protection (live)
 
-The desired policy is checked in as `.github/main-protection.json`, but GitHub does not apply that file automatically. After the first PR has registered `Review gate`, an administrator with suitable repository permissions can apply it:
+`main` is protected by two repository rulesets (inspect them under **Settings → Rules**; the applied definitions are also checked in as `.github/main-protection.json`):
 
-```sh
-gh api --method PUT repos/pagefaultcc/archive/branches/main/protection \
-  --input .github/main-protection.json
-```
+- **main-checks** — required `Review gate` check from GitHub Actions (branch must be up to date), linear history, no force-push, no deletion. **No bypass for anyone**: nobody merges untested code, including administrators.
+- **main-reviews** — requires 1 approving review (stale approvals dismissed, approval required after the last push, squash-only merges). **Repository admins have a pull_request-context bypass** so either maintainer can ship their own green PR when the other maintainer is unavailable. Every bypass is recorded in the organization audit log.
 
-This requires an up-to-date branch, `Review gate` from GitHub Actions, one other person's approval after the last push, dismissal of stale approvals, linear history, and no force-push or branch deletion; administrators are included. The repository is public, so protected branches are available on the free plan. Repository policy changes can replace existing rules: inspect the current protection before applying this file.
+Approving someone else's PR stays the default; a bypass merge on your own PR is the fallback when the other maintainer is genuinely unavailable.
 
 ## Production
 
