@@ -46,7 +46,7 @@ jobs:
           import json, os, sys
           prs = json.loads(sys.argv[1])
           candidates = [p for p in prs
-                        if p["author"]["login"] == "dependabot[bot]"
+                        if p["author"]["login"] in ("dependabot[bot]", "app/dependabot")
                         and p["baseRefName"] == "main"]
           if len(candidates) != 1:
               raise SystemExit(0)
