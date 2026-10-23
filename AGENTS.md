@@ -29,7 +29,7 @@ Read [PRODUCT.md](PRODUCT.md) for the research purpose, users, workflows, curren
 
 - **Backend:** Go 1.25 (`backend/`), standard library HTTP router + `jackc/pgx/v5`, strict PHC Argon2id passwords (`m=65536, t=3, p=2`), origin validation, sliding session cookies.
 - **Frontend:** Next.js 16 App Router + Turbopack + React 19 + Tailwind CSS + Radix UI / shadcn/ui.
-- **Database:** PostgreSQL 17 with migrations `001_initial.sql` through `015_archive_credentials.sql` (prod history additionally has versions 12–14 applied from an untracked experiment — see §2.E).
+- **Database:** PostgreSQL 17 with migrations `001_initial.sql` through `017_credential_login_search.sql` (prod history additionally has versions 12–14 applied from an untracked experiment — see §2.E).
 - **Archive Extractor / Indexer:** In-memory streaming ZIP reader (`archive/zip`) for uncompressed/pass-free archives; external `7zz` pipeline for RAR, 7z, and encrypted archives.
 - **Telegram MTProto Scraper:** Python 3 + Telethon UserBot (`backend/scraper/tg_engine.py`) communicating with Telegram Datacenters over MTProto 2.0 with parallel segmented downloads.
 
@@ -118,7 +118,7 @@ Read [PRODUCT.md](PRODUCT.md) for the research purpose, users, workflows, curren
 │   │   ├── config/                 # Env loading & validation
 │   │   ├── httpx/                  # Handlers, router, session middleware, queue worker
 │   │   └── store/                  # PostgreSQL database queries, caches, audit logs
-│   ├── migrations/                 # Goose SQL migrations (001–015; 013–014 exist only in prod history)
+│   ├── migrations/                 # Goose SQL migrations (001–011, 015–017; 012–014 exist only in prod history)
 │   ├── scraper/
 │   │   └── tg_engine.py            # Telethon MTProto UserBot CLI engine
 │   ├── 7zz                         # Standalone Linux x86_64 7-Zip executable
@@ -291,11 +291,11 @@ The production VPS (address held by operators, not this public repository; deplo
   - Infinite scroll dynamically streams next chunks as the user approaches the bottom of the list.
   - Maintains 120 FPS silky smooth scrolling with zero DOM lag or memory bloat.
 
-### I. Credential Index & URL-Based Password Search
+### I. Credential Index & URL/Email-Domain Password Search
 - **What:** Every archive is additionally mined for stealer-log password files (`passwords.txt`, `Password.txt`, per-domain files under `Passwords/` folders). Parsed `url/login/password` rows land in `archive_credentials` (migration `015`; prod goose history already had versions 12–14 applied from an untracked earlier experiment, so this file was renumbered to skip them) keyed by normalized root `domain` (reuses `NormalizeRootDomain`), so searching `.auth.openai.com` resolves to `openai.com`.
 - **Extraction:** `archiveidx/credentials.go` mirrors the cookie pipeline: in-memory ZIP worker pool fast path for plain zips, `7zz` include-filter pass (`-ir!*password*`, binary/SQLite exclusions) for 7z/rar/encrypted. Supported line shapes: `url\tlogin\tpass` (RedLine/Vidar/Lumma/Meta), `url\tlogin:pass`, `login\tpass\turl`, `url|login|pass`, and colon-only forms (`site.com:login:pass`, `https://site/path:login:pass`, bare `login:pass` attributed via per-domain file names). Rows without any resolvable URL are dropped.
-- **API:** `GET /api/passwords?q=&limit=&offset=` (case-insensitive substring over `domain`/`url`, trigram GIN indexes, `ORDER BY id DESC`, exact `totalCount` for filtered queries, `reltuples` estimate for the empty-query fast path). Extraction runs at every `indexArchiveCookies` call site (upload, unlock, reindex, channel import), so reindexing backfills credentials for existing archives.
-- **UI:** `/search` has a Files/Passwords tab switcher (`search-tabs.tsx`); the Passwords tab renders the URL → user:pass table with masked passwords (global reveal toggle), per-row copy, source archive/file attribution, and Load-more pagination (200/page).
+- **API:** `GET /api/passwords?q=&limit=&offset=` uses case-insensitive substring matching over website `domain`/`url` by default. A leading `@` switches to case-insensitive, end-anchored matching over `login`: `@example.com` finds email logins across websites, excluding subdomains and suffix lookalikes; bare `@` returns no matches. `%`, `_`, and backslash remain literal. Migration `017` adds a trigram GIN index on `lower(login)` for existing rows; no archive reindex is needed for this search mode. Both modes retain `ORDER BY id DESC`, exact filtered `totalCount`, and the empty-query `reltuples` estimate. Extraction runs at every `indexArchiveCookies` call site (upload, unlock, reindex, channel import), so reindexing backfills credentials for existing archives.
+- **UI:** `/search` has a File Index/Credential Index switcher (`search-tabs.tsx`); Credential Index accepts website URL queries or `@example.com` email-domain queries and renders the URL → user:pass table with masked passwords (global reveal toggle), per-row copy, source archive/file attribution, and Load-more pagination (200/page).
 
 ## 7. Frontend Design System & UI Stack
 - **Design language:** the visual contract (color tiers, alpha ladder, shape, motion, component recipes, Do/Don't) lives in the repo-root **`DESIGN.md`** — follow it for every UI change. This section covers the tooling stack only.

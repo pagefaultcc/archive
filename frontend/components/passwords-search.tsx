@@ -150,7 +150,9 @@ export function PasswordsSearch() {
                   void executeSearch(q);
                 }
               }}
-              placeholder="Filter credentials by URL or root domain (e.g. auth.openai.com, github.com)..."
+              aria-label="Search credentials by URL or email domain"
+              aria-describedby="credential-search-hint"
+              placeholder="auth.openai.com or @example.com"
               className="min-w-0 w-full bg-transparent font-mono text-xs text-[#f3f4f6] outline-none placeholder:text-[#5c606a]"
             />
           </div>
@@ -189,6 +191,9 @@ export function PasswordsSearch() {
             Search
           </Button>
         </div>
+        <p id="credential-search-hint" className="text-xs text-[#8b909a]">
+          Search by website URL, or use @example.com for an exact login email domain.
+        </p>
 
         <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] text-[#8b909a]">
           <span>

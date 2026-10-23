@@ -4,10 +4,12 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -466,5 +468,179 @@ func TestCredentialSearchByURL(t *testing.T) {
 	}
 	if len(last.Results) != 1 || last.HasMore || last.Results[0].Login != "victim1@mail.com" {
 		t.Fatalf("last page = %+v (%s)", last, r4.body)
+	}
+}
+
+func TestCredentialSearchByEmailDomain(t *testing.T) {
+	a := newArchiveEnv(t)
+	// Deterministic tabbed password file order.
+	// Format: URL \t LOGIN \t PASSWORD
+	content := makeZip(t, map[string]string{
+		"Browser/Chrome/passwords.txt": "" +
+			// 1-3: Target records for @mail.com search (mixed case, plus tag, unrelated URLs)
+			"https://alpha.example.org/login\tfirst@mail.com\tPass1\n" +
+			"https://beta.example.com/signin\tsecond+tag@MAIL.COM\tPass2\n" +
+			"https://gamma.corp.net/auth\tThird@Mail.Com\tPass3\n" +
+			// 4: Subdomain lookalike (must NOT match @mail.com; must match @sub.mail.com)
+			"https://delta.io/session\tsubuser@sub.mail.com\tPass4\n" +
+			// 5-6: Suffix lookalikes (must NOT match @mail.com)
+			"https://epsilon.org/app\tfakeuser@mail.com.fake\tPass5\n" +
+			"https://zeta.com/portal\tnotuser@notmail.com\tPass6\n" +
+			// 7: URL-only @ match (must NOT match @mail.com; bare mail.com stays URL mode)
+			"https://mail.com/login?ref=@mail.com\turlonly_user\tPass7\n" +
+			// 8: Password-only match (must NOT match @mail.com)
+			"https://eta.net/login\tpwonly_user@other.org\tsecret@mail.com\n" +
+			// 9-10: Wildcard % literal test
+			"https://theta.org/login\tpct@wild%card.org\tPass9\n" +
+			"https://iota.com/login\tpct@wildXcard.org\tPass10\n" +
+			// 11-12: Wildcard _ literal test
+			"https://kappa.org/login\tund@under_score.net\tPass11\n" +
+			"https://lambda.net/login\tund@underXscore.net\tPass12\n" +
+			// 13-14: Backslash \ literal test
+			"https://mu.org/login\tslash@esc\\domain.io\tPass13\n" +
+			"https://nu.com/login\tslash@escXdomain.io\tPass14\n",
+	})
+
+	res := a.upload(t, "email_creds.zip", content, "")
+	if res.status != 201 {
+		t.Fatalf("upload status %d: %s", res.status, res.body)
+	}
+
+	type credItem struct {
+		ID              int64  `json:"id"`
+		ArchiveID       string `json:"archiveId"`
+		ArchiveFilename string `json:"archiveFilename"`
+		EntryPath       string `json:"entryPath"`
+		EntryName       string `json:"entryName"`
+		URL             string `json:"url"`
+		Domain          string `json:"domain"`
+		Login           string `json:"login"`
+		Password        string `json:"password"`
+	}
+
+	type credResponse struct {
+		Results    []credItem `json:"results"`
+		TotalCount int64      `json:"totalCount"`
+		Limit      int        `json:"limit"`
+		Offset     int        `json:"offset"`
+		HasMore    bool       `json:"hasMore"`
+	}
+
+	search := func(query string, limit, offset int) credResponse {
+		t.Helper()
+		path := fmt.Sprintf("/api/passwords?q=%s&limit=%d&offset=%d", url.QueryEscape(query), limit, offset)
+		r := do(t, a.srv, "GET", path, "", origin, a.cookie)
+		if r.status != 200 {
+			t.Fatalf("search %q status %d: %s", query, r.status, r.body)
+		}
+		var resp credResponse
+		if err := json.Unmarshal(r.body, &resp); err != nil {
+			t.Fatalf("unmarshal search %q response: %v (%s)", query, err, r.body)
+		}
+		return resp
+	}
+
+	// 1. Exact @mail.com excludes subdomain/suffix lookalikes, URL-only @ match, password-only match.
+	// Returns newest first (descending ID): Third@Mail.Com (3), second+tag@MAIL.COM (2), first@mail.com (1).
+	allMail := search("@mail.com", 100, 0)
+	if allMail.TotalCount != 3 || len(allMail.Results) != 3 {
+		t.Fatalf("expected 3 @mail.com credentials, got totalCount=%d len=%d", allMail.TotalCount, len(allMail.Results))
+	}
+	if allMail.Results[0].Login != "Third@Mail.Com" ||
+		allMail.Results[1].Login != "second+tag@MAIL.COM" ||
+		allMail.Results[2].Login != "first@mail.com" {
+		t.Fatalf("unexpected @mail.com results order: %+v", allMail.Results)
+	}
+	if allMail.HasMore {
+		t.Errorf("expected hasMore=false for full page, got true")
+	}
+	if allMail.Results[2].ArchiveFilename != "email_creds.zip" ||
+		allMail.Results[2].EntryPath != "Browser/Chrome/passwords.txt" ||
+		allMail.Results[2].Domain != "example.org" ||
+		allMail.Results[2].URL != "https://alpha.example.org/login" ||
+		allMail.Results[2].Password != "Pass1" {
+		t.Fatalf("first@mail.com identity fields mismatch: %+v", allMail.Results[2])
+	}
+
+	// 2. Filtered count and paginated newest order / hasMore.
+	page1 := search("@mail.com", 2, 0)
+	if page1.TotalCount != 3 || len(page1.Results) != 2 || !page1.HasMore {
+		t.Fatalf("page 1 mismatch: totalCount=%d len=%d hasMore=%v", page1.TotalCount, len(page1.Results), page1.HasMore)
+	}
+	if page1.Results[0].Login != "Third@Mail.Com" || page1.Results[1].Login != "second+tag@MAIL.COM" {
+		t.Fatalf("page 1 items mismatch: %+v", page1.Results)
+	}
+
+	page2 := search("@mail.com", 2, 2)
+	if page2.TotalCount != 3 || len(page2.Results) != 1 || page2.HasMore {
+		t.Fatalf("page 2 mismatch: totalCount=%d len=%d hasMore=%v", page2.TotalCount, len(page2.Results), page2.HasMore)
+	}
+	if page2.Results[0].Login != "first@mail.com" {
+		t.Fatalf("page 2 item mismatch: %+v", page2.Results)
+	}
+
+	// 3. @sub.mail.com exact.
+	subResp := search("@sub.mail.com", 100, 0)
+	if subResp.TotalCount != 1 || len(subResp.Results) != 1 {
+		t.Fatalf("expected 1 @sub.mail.com credential, got %d", subResp.TotalCount)
+	}
+	if subResp.Results[0].Login != "subuser@sub.mail.com" {
+		t.Fatalf("expected subuser@sub.mail.com, got %q", subResp.Results[0].Login)
+	}
+
+	// 4. Whitespace and case insensitivity.
+	for _, q := range []string{"  @mail.com  ", "@MAIL.COM", "@MaIL.CoM", "  @MAIL.COM  "} {
+		caseResp := search(q, 100, 0)
+		if caseResp.TotalCount != 3 || len(caseResp.Results) != 3 {
+			t.Fatalf("search %q expected 3 results, got %d", q, caseResp.TotalCount)
+		}
+		if caseResp.Results[0].Login != "Third@Mail.Com" ||
+			caseResp.Results[1].Login != "second+tag@MAIL.COM" ||
+			caseResp.Results[2].Login != "first@mail.com" {
+			t.Fatalf("search %q unexpected order: %+v", q, caseResp.Results)
+		}
+	}
+
+	// 5. Bare @ returns none.
+	for _, q := range []string{"@", "   @   "} {
+		bareResp := search(q, 100, 0)
+		if bareResp.TotalCount != 0 || len(bareResp.Results) != 0 || bareResp.HasMore {
+			t.Fatalf("bare @ search %q expected 0 results, got totalCount=%d len=%d", q, bareResp.TotalCount, len(bareResp.Results))
+		}
+	}
+
+	// 6. Bare mail.com stays URL mode: excludes @mail.com logins on unrelated URLs,
+	// matches only the record whose URL/domain is mail.com.
+	urlModeResp := search("mail.com", 100, 0)
+	if urlModeResp.TotalCount != 1 || len(urlModeResp.Results) != 1 {
+		t.Fatalf("bare mail.com expected 1 URL match, got %d (%+v)", urlModeResp.TotalCount, urlModeResp.Results)
+	}
+	if urlModeResp.Results[0].Login != "urlonly_user" {
+		t.Fatalf("bare mail.com expected urlonly_user, got %q", urlModeResp.Results[0].Login)
+	}
+
+	// 7. Wildcard %, _, backslash literal cases.
+	pctResp := search("@wild%card.org", 100, 0)
+	if pctResp.TotalCount != 1 || len(pctResp.Results) != 1 {
+		t.Fatalf("expected 1 @wild%%card.org credential, got %d", pctResp.TotalCount)
+	}
+	if pctResp.Results[0].Login != "pct@wild%card.org" {
+		t.Fatalf("expected pct@wild%%card.org, got %q", pctResp.Results[0].Login)
+	}
+
+	undResp := search("@under_score.net", 100, 0)
+	if undResp.TotalCount != 1 || len(undResp.Results) != 1 {
+		t.Fatalf("expected 1 @under_score.net credential, got %d", undResp.TotalCount)
+	}
+	if undResp.Results[0].Login != "und@under_score.net" {
+		t.Fatalf("expected und@under_score.net, got %q", undResp.Results[0].Login)
+	}
+
+	slashResp := search("@esc\\domain.io", 100, 0)
+	if slashResp.TotalCount != 1 || len(slashResp.Results) != 1 {
+		t.Fatalf("expected 1 @esc\\domain.io credential, got %d", slashResp.TotalCount)
+	}
+	if slashResp.Results[0].Login != "slash@esc\\domain.io" {
+		t.Fatalf("expected slash@esc\\domain.io, got %q", slashResp.Results[0].Login)
 	}
 }

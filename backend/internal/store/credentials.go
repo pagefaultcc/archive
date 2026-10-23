@@ -73,7 +73,7 @@ func escapeLike(s string) string {
 	return s
 }
 
-// SearchCredentials queries indexed credentials matching domain or url, or returns newest credentials if query is empty.
+// SearchCredentials queries indexed credentials matching domain or url, login email domain when prefixed with '@', or returns newest credentials if query is empty.
 func (s *Store) SearchCredentials(ctx context.Context, query string, limit, offset int) ([]CredentialItem, int64, error) {
 	if limit <= 0 {
 		limit = 100
@@ -118,14 +118,24 @@ func (s *Store) SearchCredentials(ctx context.Context, query string, limit, offs
 		return results, totalCount, nil
 	}
 
+	var predicate string
+	if strings.HasPrefix(cleanQuery, "@") {
+		if cleanQuery == "@" {
+			return []CredentialItem{}, 0, nil
+		}
+		predicate = "lower(c.login) LIKE '%' || lower($1)"
+	} else {
+		predicate = "lower(c.domain) LIKE '%' || lower($1) || '%' OR lower(c.url) LIKE '%' || lower($1) || '%'"
+	}
+
 	escaped := escapeLike(cleanQuery)
 
 	var totalCount int64
-	if err := s.pool.QueryRow(ctx, `
+	if err := s.pool.QueryRow(ctx, fmt.Sprintf(`
 		SELECT count(*)
 		FROM archive_credentials c
-		WHERE lower(c.domain) LIKE '%' || lower($1) || '%' OR lower(c.url) LIKE '%' || lower($1) || '%'
-	`, escaped).Scan(&totalCount); err != nil {
+		WHERE %s
+	`, predicate), escaped).Scan(&totalCount); err != nil {
 		return nil, 0, fmt.Errorf("counting matching credentials: %w", err)
 	}
 
@@ -133,14 +143,14 @@ func (s *Store) SearchCredentials(ctx context.Context, query string, limit, offs
 		return []CredentialItem{}, 0, nil
 	}
 
-	rows, err := s.pool.Query(ctx, `
+	rows, err := s.pool.Query(ctx, fmt.Sprintf(`
 		SELECT c.id, c.archive_id, coalesce(a.filename, ''), c.entry_path, c.entry_name, c.url, c.domain, c.login, c.password
 		FROM archive_credentials c
 		JOIN archives a ON a.id = c.archive_id
-		WHERE lower(c.domain) LIKE '%' || lower($1) || '%' OR lower(c.url) LIKE '%' || lower($1) || '%'
+		WHERE %s
 		ORDER BY c.id DESC
 		LIMIT $2 OFFSET $3;
-	`, escaped, limit, offset)
+	`, predicate), escaped, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("searching credentials: %w", err)
 	}

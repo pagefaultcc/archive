@@ -22,7 +22,7 @@ Administrators manage access to the same research environment through users, rol
 
 1. **Ingest:** upload supported archives, provide an archive password when necessary, or import archive attachments through configured Telegram channels.
 2. **Index and categorize:** enumerate archive members and extract supported cookie and password records. Retain the source archive and member path; normalize website domains for lookup.
-3. **Investigate:** browse archive contents, search files across the collection, explore cookie records by website, or search password records by URL/domain. Inspect the source rather than relying on an aggregate count alone.
+3. **Investigate:** browse archive contents, search files across the collection, explore cookie records by website, or search password records by URL/domain or login email domain (`@example.com`). Inspect the source rather than relying on an aggregate count alone.
 4. **Retrieve:** preview files and download relevant files, archives, or supported exports for further research.
 5. **Maintain:** reindex existing collections when parsers improve, manage queued imports, remove unwanted archives, and administer access.
 
@@ -41,7 +41,7 @@ Current categorization is based on archive/source paths, artifact type, and webs
 
 - Supports ZIP, RAR, and 7z archive workflows, including supported password-protected archives and multipart RAR handling. Extraction depends on the archive format and available tooling.
 - Provides archive browsing, file previews, downloads, and cross-archive file-name/path search. The Files search is not arbitrary full-text search inside every archived document.
-- Extracts supported text-based cookie and password formats. Password search queries indexed URL/domain records; it does not search only for files named `passwords.txt`.
+- Extracts supported text-based cookie and password formats. Password search queries indexed URL/domain records; prefix a query with `@` to match the exact login email domain, case-insensitively (for example, `@example.com` excludes `@sub.example.com`). It does not search only for files named `passwords.txt`. Email-domain search works on already indexed logins without reindexing archives.
 - Keeps source archive/file attribution alongside extracted records. Password values are masked by default in the search UI and can be revealed or copied explicitly.
 - Supports reindexing to backfill existing archives after indexing changes. A parser improvement does not imply that all previously ingested data has already been reprocessed.
 - Provides configured Telegram-channel imports and a concurrent download queue. This is an ingestion source, not an infostealer deployed on endpoints.
