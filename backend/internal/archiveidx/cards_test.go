@@ -165,8 +165,8 @@ func TestCheckLuhn(t *testing.T) {
 	if !checkLuhn("5396890411561678") {
 		t.Error("expected 5396890411561678 to pass Luhn")
 	}
-	if !checkLuhn("4111222233334444") {
-		t.Error("expected 4111222233334444 to pass Luhn")
+	if !checkLuhn("4111111111111111") {
+		t.Error("expected 4111111111111111 to pass Luhn")
 	}
 	// Invalid checksum
 	if checkLuhn("5396890411561679") {

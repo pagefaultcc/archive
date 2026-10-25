@@ -639,10 +639,10 @@ func parseCardFileBytes(entryPath, entryName string, raw []byte) []CardChunk {
 			}
 			continue
 		}
-		// Separator lines (ASCII and Unicode box drawing ═, ─) or Card headers
+		// Separator lines (ASCII and Unicode box drawing ═, ─) or Card headers (without colons)
 		if strings.HasPrefix(line, "===") || strings.HasPrefix(line, "---") || strings.HasPrefix(line, "***") ||
 			strings.HasPrefix(line, "═══") || strings.HasPrefix(line, "───") || strings.HasPrefix(line, "___") ||
-			strings.HasPrefix(line, "Card ") || strings.HasPrefix(line, "card ") {
+			((strings.HasPrefix(line, "Card ") || strings.HasPrefix(line, "card ")) && strings.IndexByte(line, ':') < 0) {
 			if curNumber != "" {
 				emitCurrent()
 			}
