@@ -11,6 +11,7 @@ import {
   EyeOff,
   Filter,
   Loader2,
+  RotateCcw,
   Search,
   X,
   Zap,
@@ -18,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  browserReindexCards,
   browserSearchCards,
   type CardItem,
 } from "@/lib/api";
@@ -213,6 +215,31 @@ export function CardsSearch() {
     }
   };
 
+  const [isReindexing, setIsReindexing] = useState(false);
+
+  const handleReindex = async () => {
+    if (isReindexing) return;
+    setIsReindexing(true);
+    try {
+      const res = await browserReindexCards();
+      if (res.ok) {
+        toast.success("Card re-indexing started across all archives in the vault.");
+        setTimeout(() => void executeSearch(qRef.current), 2000);
+        setTimeout(() => void executeSearch(qRef.current), 5000);
+        setTimeout(() => {
+          void executeSearch(qRef.current);
+          setIsReindexing(false);
+        }, 10000);
+      } else {
+        toast.error(res.error?.message ?? "Failed to start card re-indexing.");
+        setIsReindexing(false);
+      }
+    } catch {
+      toast.error("Failed to start card re-indexing.");
+      setIsReindexing(false);
+    }
+  };
+
   return (
     <div className="flex min-w-0 w-full flex-1 flex-col gap-4">
       {/* Telemetry Ribbon */}
@@ -325,6 +352,19 @@ export function CardsSearch() {
               <Search className="size-3.5" />
             )}
             Search
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void handleReindex()}
+            disabled={isReindexing}
+            title="Re-extract cards from all archives in the vault"
+            aria-label="Reindex cards across vault"
+            className="h-9 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-3 text-xs text-[#c8ccd4] transition-colors duration-150 hover:bg-white/[0.05] hover:text-white hover:scale-100 active:scale-100 transform-none select-none"
+          >
+            <RotateCcw className={`size-3.5 ${isReindexing ? "animate-spin text-[#10b981]" : "text-[#8b909a]"}`} />
+            {isReindexing ? "Reindexing..." : "Reindex"}
           </Button>
         </div>
 
@@ -491,9 +531,22 @@ export function CardsSearch() {
                           Clear filter and show all cards
                         </button>
                       ) : (
-                        <p className="text-[#5c606a]">
-                          Cards are indexed automatically from Cards.txt and autofill dumps in ingested archives.
-                        </p>
+                        <div className="flex flex-col items-center gap-2">
+                          <p className="text-[#5c606a]">
+                            No cards indexed yet. Click Reindex to scan all existing archives in your vault.
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void handleReindex()}
+                            disabled={isReindexing}
+                            className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-4 text-xs text-[#c8ccd4] transition-colors hover:bg-white/[0.04] hover:text-white hover:scale-100 active:scale-100 transform-none"
+                          >
+                            <RotateCcw className={`size-3.5 ${isReindexing ? "animate-spin text-[#10b981]" : "text-[#8b909a]"}`} />
+                            {isReindexing ? "Scanning vault archives..." : "Reindex Vault Cards"}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </td>

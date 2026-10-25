@@ -125,3 +125,51 @@ func TestExtractCards_ZipFastPath(t *testing.T) {
 		t.Errorf("extracted chunk mismatch: %+v", chunks[0])
 	}
 }
+
+func TestParseCardFileBytes_UnicodeBoxDrawingFormat(t *testing.T) {
+	raw := []byte(`
+════════════════════════════════════════════════════
+  Card 3 of 7
+════════════════════════════════════════════════════
+  Browser: Chrome
+  Profile: Default
+
+  Number: 5396890411561678
+  Expiry: 12/2030
+  CVC: 968
+  Holder: 
+  Nickname:  
+`)
+	chunks := parseCardFileBytes("Autofill/Default.txt", "Default.txt", raw)
+	if len(chunks) != 1 {
+		t.Fatalf("expected 1 chunk, got %d: %+v", len(chunks), chunks)
+	}
+	c := chunks[0]
+	if c.Number != "5396890411561678" || c.Brand != "Mastercard" || c.ExpMonth != "12" || c.ExpYear != "2030" || c.CVV != "968" {
+		t.Errorf("chunk mismatch: %+v", c)
+	}
+}
+
+func TestParseCardFileBytes_RegexLuhnScanner(t *testing.T) {
+	raw := []byte("Unstructured stealer output with valid card 5396 8904 1156 1678 exp: 12/2030 cvc 968 and extra noise.")
+	chunks := parseCardFileBytes("dump.txt", "dump.txt", raw)
+	if len(chunks) != 1 {
+		t.Fatalf("expected 1 regex-scanned card, got %d: %+v", len(chunks), chunks)
+	}
+	if chunks[0].Number != "5396890411561678" || chunks[0].Brand != "Mastercard" {
+		t.Errorf("regex card mismatch: %+v", chunks[0])
+	}
+}
+
+func TestCheckLuhn(t *testing.T) {
+	if !checkLuhn("5396890411561678") {
+		t.Error("expected 5396890411561678 to pass Luhn")
+	}
+	if !checkLuhn("4111111111111111") {
+		t.Error("expected 4111111111111111 to pass Luhn")
+	}
+	// Invalid checksum
+	if checkLuhn("5396890411561679") {
+		t.Error("expected 5396890411561679 to fail Luhn")
+	}
+}

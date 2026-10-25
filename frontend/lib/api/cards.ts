@@ -36,3 +36,10 @@ export function browserSearchCards(
     signal: options?.signal,
   });
 }
+
+export function browserReindexCards() {
+  return request<{ status: string; message: string }>(
+    "/api/settings/reindex-cards",
+    { method: "POST" },
+  );
+}
