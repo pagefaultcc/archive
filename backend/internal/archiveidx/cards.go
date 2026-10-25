@@ -308,14 +308,17 @@ func extractZipCardsToDir(filePath, tmpDir string) {
 	if err != nil {
 		return
 	}
-	defer zr.Close()
+	defer func() { _ = zr.Close() }()
 	cleanTmp := filepath.Clean(tmpDir) + string(filepath.Separator)
 	for _, f := range zr.File {
 		if f.FileInfo().IsDir() {
 			continue
 		}
 		np := normalizePath(f.Name)
-		if np == "" || !isCandidateCardFile(np, filepath.Base(np), int64(f.UncompressedSize64)) {
+		if np == "" || f.UncompressedSize64 == 0 || f.UncompressedSize64 > 15*1024*1024 {
+			continue
+		}
+		if !isCandidateCardFile(np, filepath.Base(np), int64(f.UncompressedSize64)) {
 			continue
 		}
 		dest := filepath.Join(tmpDir, filepath.FromSlash(np))
@@ -327,7 +330,7 @@ func extractZipCardsToDir(filePath, tmpDir string) {
 		if err != nil {
 			continue
 		}
-		_ = os.MkdirAll(filepath.Dir(cleanDest), 0o755)
+		_ = os.MkdirAll(filepath.Dir(cleanDest), 0o750)
 		out, err := os.Create(cleanDest)
 		if err == nil {
 			_, _ = io.Copy(out, io.LimitReader(rc, 15*1024*1024))
@@ -346,7 +349,7 @@ func extractRarCardsToDir(filePath, password, tmpDir string) {
 	if err != nil {
 		return
 	}
-	defer rr.Close()
+	defer func() { _ = rr.Close() }()
 	cleanTmp := filepath.Clean(tmpDir) + string(filepath.Separator)
 	for {
 		header, err := rr.Next()
@@ -365,7 +368,7 @@ func extractRarCardsToDir(filePath, password, tmpDir string) {
 		if !strings.HasPrefix(cleanDest, cleanTmp) {
 			continue
 		}
-		_ = os.MkdirAll(filepath.Dir(cleanDest), 0o755)
+		_ = os.MkdirAll(filepath.Dir(cleanDest), 0o750)
 		out, err := os.Create(cleanDest)
 		if err == nil {
 			_, _ = io.Copy(out, io.LimitReader(rr, 15*1024*1024))
@@ -379,7 +382,7 @@ func extractZipCandidateCards(filePath string, candidates []Entry) ([]CardChunk,
 	if err != nil {
 		return nil, false
 	}
-	defer zr.Close()
+	defer func() { _ = zr.Close() }()
 
 	candidateMap := make(map[string]string)
 	for _, c := range candidates {
@@ -398,7 +401,7 @@ func extractZipCandidateCards(filePath string, candidates []Entry) ([]CardChunk,
 			continue
 		}
 		np := normalizePath(f.Name)
-		if np == "" {
+		if np == "" || f.UncompressedSize64 == 0 || f.UncompressedSize64 > 15*1024*1024 {
 			continue
 		}
 		if _, ok := candidateMap[np]; ok {
@@ -641,15 +644,15 @@ func parseCardFileBytes(entryPath, entryName string, raw []byte) []CardChunk {
 			key := strings.ToLower(strings.TrimSpace(line[:colonIdx]))
 			val := strings.TrimSpace(line[colonIdx+1:])
 
-			switch {
-			case key == "card number" || key == "number" || key == "card" || key == "card_number" || key == "cc" || key == "cc number":
+			switch key {
+			case "card number", "number", "card", "card_number", "cc", "cc number":
 				if curNumber != "" {
 					emitCurrent()
 				}
 				curNumber = cleanCardDigits(val)
-			case key == "cardholder" || key == "holder" || key == "card holder" || key == "cardholder name" || key == "name" || key == "name on card" || key == "holder name":
+			case "cardholder", "holder", "card holder", "cardholder name", "name", "name on card", "holder name":
 				curHolder = cleanField(val)
-			case key == "expiration" || key == "expiration date" || key == "expire" || key == "exp" || key == "expiry" || key == "exp date":
+			case "expiration", "expiration date", "expire", "exp", "expiry", "exp date":
 				m, y := parseExpiration(val)
 				if m != "" {
 					curExpMonth = m
@@ -657,21 +660,21 @@ func parseCardFileBytes(entryPath, entryName string, raw []byte) []CardChunk {
 				if y != "" {
 					curExpYear = y
 				}
-			case key == "exp month" || key == "expiration month" || key == "month":
+			case "exp month", "expiration month", "month":
 				m := cleanCardDigits(val)
 				if len(m) == 1 {
 					m = "0" + m
 				}
 				curExpMonth = m
-			case key == "exp year" || key == "expiration year" || key == "year":
+			case "exp year", "expiration year", "year":
 				y := cleanCardDigits(val)
 				if len(y) == 2 {
 					y = "20" + y
 				}
 				curExpYear = y
-			case key == "cvv" || key == "cvc" || key == "security code" || key == "code" || key == "cvv2":
+			case "cvv", "cvc", "security code", "code", "cvv2":
 				curCVV = cleanCardDigits(val)
-			case key == "type" || key == "brand" || key == "card type":
+			case "type", "brand", "card type":
 				curBrand = cleanField(val)
 			}
 			continue
