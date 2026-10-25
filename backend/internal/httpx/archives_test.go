@@ -644,3 +644,41 @@ func TestCredentialSearchByEmailDomain(t *testing.T) {
 		t.Fatalf("expected slash@esc\\domain.io, got %q", slashResp.Results[0].Login)
 	}
 }
+
+func TestCardSearch(t *testing.T) {
+	a := newArchiveEnv(t)
+	content := makeZip(t, map[string]string{
+		"CreditCards/Cards.txt": "Card Number: 4111222233334444\nHolder: John Doe\nExpiration: 12/26\nCVV: 123\n\n" +
+			"Cardholder: Jane Smith\nCard: 5500000000000004\nExp Month: 05\nExp Year: 2028\nCVC: 456\n",
+	})
+
+	res := a.upload(t, "cards_archive.zip", content, "")
+	if res.status != 201 {
+		t.Fatalf("upload status %d: %s", res.status, res.body)
+	}
+
+	r := do(t, a.srv, "GET", "/api/cards?q=John", "", origin, a.cookie)
+	if r.status != 200 {
+		t.Fatalf("cards search status %d: %s", r.status, r.body)
+	}
+	var got struct {
+		Results []struct {
+			Number   string `json:"number"`
+			Holder   string `json:"holder"`
+			Brand    string `json:"brand"`
+			ExpMonth string `json:"expMonth"`
+			ExpYear  string `json:"expYear"`
+			CVV      string `json:"cvv"`
+		} `json:"results"`
+		TotalCount int64 `json:"totalCount"`
+	}
+	if err := json.Unmarshal(r.body, &got); err != nil {
+		t.Fatalf("%s: %v", r.body, err)
+	}
+	if got.TotalCount != 1 || len(got.Results) != 1 {
+		t.Fatalf("expected 1 card for John, got %d", got.TotalCount)
+	}
+	if got.Results[0].Number != "4111222233334444" || got.Results[0].Brand != "Visa" {
+		t.Errorf("card details mismatch: %+v", got.Results[0])
+	}
+}

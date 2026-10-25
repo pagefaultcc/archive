@@ -402,6 +402,9 @@ func (s *Store) DeleteArchive(ctx context.Context, id, actorID string) (storageP
 	if _, err := tx.Exec(ctx, `DELETE FROM archive_credentials WHERE archive_id = $1`, id); err != nil {
 		return "", fmt.Errorf("deleting archive credentials: %w", err)
 	}
+	if _, err := tx.Exec(ctx, `DELETE FROM archive_cards WHERE archive_id = $1`, id); err != nil {
+		return "", fmt.Errorf("deleting archive cards: %w", err)
+	}
 	if _, err := tx.Exec(ctx, `DELETE FROM archive_entries WHERE archive_id = $1`, id); err != nil {
 		return "", fmt.Errorf("deleting archive entries: %w", err)
 	}
