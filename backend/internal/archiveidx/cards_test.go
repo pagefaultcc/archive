@@ -173,3 +173,37 @@ func TestCheckLuhn(t *testing.T) {
 		t.Error("expected 5396890411561679 to fail Luhn")
 	}
 }
+
+func TestParseCardFileBytes_UTF16LEFormat(t *testing.T) {
+	rawText := `
+════════════════════════════════════════════════════
+  Card 3 of 7
+════════════════════════════════════════════════════
+  Browser: Chrome
+  Profile: Default
+
+  Number: 5396890411561678
+  Expiry: 12/2030
+  CVC: 968
+  Holder: 
+  Nickname:  
+`
+	var buf bytes.Buffer
+	buf.Write([]byte{0xff, 0xfe}) // UTF-16LE BOM
+	for _, r := range rawText {
+		buf.WriteByte(byte(r))
+		buf.WriteByte(byte(r >> 8))
+	}
+
+	if !hasCardSignatures(buf.Bytes()) {
+		t.Fatal("expected hasCardSignatures to accept UTF-16LE file")
+	}
+
+	chunks := parseCardFileBytes("Autofill/Default.txt", "Default.txt", buf.Bytes())
+	if len(chunks) != 1 {
+		t.Fatalf("expected 1 chunk from UTF-16LE, got %d: %+v", len(chunks), chunks)
+	}
+	if chunks[0].Number != "5396890411561678" || chunks[0].Brand != "Mastercard" {
+		t.Errorf("chunk mismatch: %+v", chunks[0])
+	}
+}
