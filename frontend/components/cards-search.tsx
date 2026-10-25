@@ -18,7 +18,7 @@ import {
   browserSearchCards,
   type CardItem,
 } from "@/lib/api";
-import { cn, copyToClipboard } from "@/lib/utils";
+import { copyToClipboard } from "@/lib/utils";
 
 const PAGE_SIZE = 200;
 

@@ -3,6 +3,7 @@ package archiveidx
 import (
 	"archive/zip"
 	"bytes"
+	"os"
 	"testing"
 )
 

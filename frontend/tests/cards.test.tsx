@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CardsSearch } from "@/components/cards-search";
 import { CardSection } from "@/components/ui/card";
+import { browserSearchCards } from "@/lib/api";
 import type * as ApiModule from "@/lib/api";
 
 vi.mock("@/lib/api", async (importOriginal) => {
