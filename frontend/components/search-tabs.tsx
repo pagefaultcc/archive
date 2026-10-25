@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, KeyRound } from "lucide-react";
+import { CreditCard, FileText, KeyRound } from "lucide-react";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { GlobalSearchVault } from "@/components/global-search-vault";
 import { PasswordsSearch } from "@/components/passwords-search";
+import { CardsSearch } from "@/components/cards-search";
 
 export function SearchTabs() {
-  const [tab, setTab] = useState<"files" | "passwords">("files");
+  const [tab, setTab] = useState<"files" | "passwords" | "cards">("files");
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -15,10 +16,11 @@ export function SearchTabs() {
         <SegmentedControl
           label="Search mode"
           value={tab}
-          onValueChange={(value) => setTab(value as "files" | "passwords")}
+          onValueChange={(value) => setTab(value as "files" | "passwords" | "cards")}
           options={[
             { value: "files", label: "File Index", icon: <FileText /> },
             { value: "passwords", label: "Credential Index", icon: <KeyRound /> },
+            { value: "cards", label: "Card Index", icon: <CreditCard /> },
           ]}
           className="w-full sm:w-fit"
         />
@@ -32,6 +34,9 @@ export function SearchTabs() {
       </div>
       <div className={tab === "passwords" ? "block" : "hidden"}>
         <PasswordsSearch />
+      </div>
+      <div className={tab === "cards" ? "block" : "hidden"}>
+        <CardsSearch />
       </div>
     </div>
   );

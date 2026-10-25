@@ -55,6 +55,28 @@ export default async function HomePage() {
                 />
               </Link>
             </Magnetic>
+            <Magnetic strength={0.18}>
+              <Link
+                href="/cards"
+                className="group flex items-center justify-between gap-3 rounded-[8px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-3.5 py-2.5 transition-[transform,background-color,border-color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.015] hover:border-[rgba(255,255,255,0.14)] hover:bg-[rgba(255,255,255,0.05)] active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-3">
+                  <Icon3D name="key" size="sm" />
+                  <div className="flex flex-col">
+                    <span className="text-[14px] font-[510] text-[#f7f8f8]">
+                      Cards ledger
+                    </span>
+                    <span className="text-[12px] text-[#8a8f98]">
+                      Credit cards, expiration, CVV &amp; holder names
+                    </span>
+                  </div>
+                </div>
+                <ArrowUpRight
+                  aria-hidden
+                  className="size-4 text-[#62666d] transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#ffffff]"
+                />
+              </Link>
+            </Magnetic>
             {canReadUsers ? (
               <Magnetic strength={0.18}>
                 <Link
