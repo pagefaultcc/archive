@@ -88,7 +88,7 @@ describe("AddUserDialog", () => {
     render(<AddUserDialog />);
 
     await user.click(screen.getByRole("button", { name: /add user/i }));
-    await user.type(screen.getByLabelText("Username"), "playersclub");
+    await user.type(screen.getByLabelText("Username"), "admin");
     await user.type(screen.getByLabelText("Password", { selector: "#create-password" }), "ArchiveUser!2026");
     await user.type(screen.getByLabelText("Confirm password"), "ArchiveUser!2026");
     await user.click(screen.getByRole("button", { name: /create user/i }));
@@ -96,7 +96,7 @@ describe("AddUserDialog", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveAttribute("aria-live", "polite");
     expect(alert).toHaveTextContent("That username is already in use.");
-    expect(screen.getByLabelText("Username")).toHaveValue("playersclub");
+    expect(screen.getByLabelText("Username")).toHaveValue("admin");
     expect(mockedToast).not.toHaveBeenCalled();
   });
 
@@ -150,14 +150,14 @@ describe("LoginForm invalid credentials", () => {
     const user = userEvent.setup();
     render(<LoginForm />);
 
-    await user.type(screen.getByLabelText("Username"), "playersclub");
+    await user.type(screen.getByLabelText("Username"), "admin");
     await user.type(screen.getByLabelText("Password"), "wrong-password");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveAttribute("aria-live", "polite");
     expect(alert).toHaveTextContent("Invalid username or password.");
-    expect(screen.getByLabelText("Username")).toHaveValue("playersclub");
+    expect(screen.getByLabelText("Username")).toHaveValue("admin");
     expect(screen.getByLabelText("Password")).toHaveValue("wrong-password");
   });
 });

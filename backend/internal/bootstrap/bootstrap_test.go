@@ -34,7 +34,7 @@ func resetSchema(t *testing.T, url string) {
 
 func open(t *testing.T, url string) *sqlDB { return openDB(t, url) }
 
-const rootUser = "playersclub"
+const rootUser = "admin"
 const rootPass = "test-root-password"
 
 func TestFirstBootstrap(t *testing.T) {

@@ -53,16 +53,16 @@ describe("loginSchema", () => {
   it("requires username and password presence with bounds", () => {
     expect(loginSchema.safeParse({ username: "ab", password: "x" }).success).toBe(false);
     expect(
-      loginSchema.safeParse({ username: "playersclub", password: "" }).success,
+      loginSchema.safeParse({ username: "admin", password: "" }).success,
     ).toBe(false);
     expect(
       loginSchema.safeParse({
-        username: "playersclub",
+        username: "admin",
         password: "x".repeat(129),
       }).success,
     ).toBe(false);
     expect(
-      loginSchema.safeParse({ username: "playersclub", password: "anything" })
+      loginSchema.safeParse({ username: "admin", password: "anything" })
         .success,
     ).toBe(true);
   });
