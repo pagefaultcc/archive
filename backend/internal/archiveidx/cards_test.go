@@ -3,8 +3,10 @@ package archiveidx
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
 	"os"
 	"testing"
+	"unicode/utf16"
 )
 
 func TestParseCardFileBytes_KeyValueFormat(t *testing.T) {
@@ -190,9 +192,9 @@ func TestParseCardFileBytes_UTF16LEFormat(t *testing.T) {
 `
 	var buf bytes.Buffer
 	buf.Write([]byte{0xff, 0xfe}) // UTF-16LE BOM
-	for _, r := range rawText {
-		buf.WriteByte(byte(r))
-		buf.WriteByte(byte(r >> 8))
+	u16 := utf16.Encode([]rune(rawText))
+	for _, v := range u16 {
+		_ = binary.Write(&buf, binary.LittleEndian, v)
 	}
 
 	if !hasCardSignatures(buf.Bytes()) {
