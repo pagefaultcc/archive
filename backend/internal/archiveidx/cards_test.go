@@ -152,7 +152,6 @@ func TestParseCardFileBytes_UnicodeBoxDrawingFormat(t *testing.T) {
 	}
 }
 
-
 func TestCheckLuhn(t *testing.T) {
 	if !checkLuhn("5396890411561678") {
 		t.Error("expected 5396890411561678 to pass Luhn")
