@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -111,7 +110,7 @@ func ExtractCards(
 						"x", "-y", "-spd", "-bso0", "-bse0", "-mmt=on",
 						"-p" + pw,
 						"-o" + tmpDir,
-						"-ir!*creditcard*", "-ir!*credit_card*", "-ir!*cards*", "-ir!*card.txt*", "-ir!*autofill*", "-ir!*.txt", "-ir!*.log",
+						"-ir!*cards.txt*", "-ir!*card.txt*",
 						"-xr!*.exe", "-xr!*.dll", "-xr!*.png", "-xr!*.jpg",
 						"-xr!*.zip", "-xr!*.rar", "-xr!*.7z",
 						"--", p,
@@ -237,7 +236,7 @@ func ExtractCards(
 	return result
 }
 
-// isCandidateCardFile reports whether an entry name or path likely contains credit card data.
+// isCandidateCardFile reports whether an entry is Cards.txt or Card.txt.
 func isCandidateCardFile(entryPath, entryName string, size int64) bool {
 	if size <= 0 || size > 15*1024*1024 {
 		return false
@@ -246,26 +245,7 @@ func isCandidateCardFile(entryPath, entryName string, size int64) bool {
 	if strings.HasPrefix(ln, "._") {
 		return false
 	}
-	for _, ext := range []string{
-		".exe", ".dll", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".rar",
-		".7z", ".tar", ".gz", ".sqlite", ".sqlite3", ".db", ".pdf",
-		".mp4", ".mp3", ".jar", ".ico", ".svg", ".woff", ".woff2",
-	} {
-		if strings.HasSuffix(ln, ext) {
-			return false
-		}
-	}
-	lp := "/" + strings.ToLower(entryPath)
-	if strings.Contains(lp, "/history") || strings.Contains(lp, "/bookmarks") {
-		return false
-	}
-
-	// Candidate all text, log, csv, json, or extensionless files inside the archive
-	if strings.HasSuffix(ln, ".txt") || strings.HasSuffix(ln, ".log") ||
-		strings.HasSuffix(ln, ".csv") || strings.HasSuffix(ln, ".json") {
-		return true
-	}
-	return !strings.Contains(ln, ".")
+	return ln == "cards.txt" || ln == "card.txt"
 }
 
 // decodeUTF16 decodes UTF-16 bytes into a UTF-8 string.
@@ -589,26 +569,47 @@ func parseExpiration(exp string) (month, year string) {
 	for _, sep := range []string{"/", "-", "|", "."} {
 		if strings.Contains(exp, sep) {
 			parts := strings.Split(exp, sep)
-			if len(parts) >= 2 {
-				m := cleanCardDigits(strings.TrimSpace(parts[0]))
-				y := cleanCardDigits(strings.TrimSpace(parts[1]))
-				if len(m) == 1 {
-					m = "0" + m
+			if len(parts) == 2 {
+				mStr := cleanCardDigits(strings.TrimSpace(parts[0]))
+				yStr := cleanCardDigits(strings.TrimSpace(parts[1]))
+				if mStr == "" || yStr == "" {
+					return "", ""
 				}
-				if len(y) == 2 {
-					y = "20" + y
+				m, errM := strconv.Atoi(mStr)
+				y, errY := strconv.Atoi(yStr)
+				if errM != nil || errY != nil || m < 1 || m > 12 {
+					return "", ""
 				}
-				return m, y
+				if y < 100 {
+					y += 2000
+				}
+				// Valid expiration year must be between 2024 and 2045
+				if y < 2024 || y > 2045 {
+					return "", ""
+				}
+				return fmt.Sprintf("%02d", m), strconv.Itoa(y)
 			}
+			return "", ""
 		}
 	}
 	// 4 digits: MMYY
 	digits := cleanCardDigits(exp)
 	if len(digits) == 4 {
-		return digits[:2], "20" + digits[2:]
+		m, errM := strconv.Atoi(digits[:2])
+		y, errY := strconv.Atoi(digits[2:])
+		if errM == nil && errY == nil && m >= 1 && m <= 12 {
+			y += 2000
+			if y >= 2024 && y <= 2045 {
+				return fmt.Sprintf("%02d", m), strconv.Itoa(y)
+			}
+		}
 	}
 	if len(digits) == 6 {
-		return digits[:2], digits[2:]
+		m, errM := strconv.Atoi(digits[:2])
+		y, errY := strconv.Atoi(digits[2:])
+		if errM == nil && errY == nil && m >= 1 && m <= 12 && y >= 2024 && y <= 2045 {
+			return fmt.Sprintf("%02d", m), strconv.Itoa(y)
+		}
 	}
 	return "", ""
 }
@@ -636,24 +637,27 @@ func parseCardFileBytes(entryPath, entryName string, raw []byte) []CardChunk {
 
 	emitCurrent := func() {
 		digits := cleanCardDigits(curNumber)
-		if len(digits) >= 12 && len(digits) <= 19 {
-			brand := curBrand
-			if brand == "" || strings.EqualFold(brand, "unknown") {
-				brand = DetectCardBrand(digits)
-			}
-			isLuhn := checkLuhn(digits)
-			if (isLuhn || (brand != "" && brand != "Other")) && !seenNumbers[digits] {
-				seenNumbers[digits] = true
-				result = append(result, CardChunk{
-					EntryPath: entryPath,
-					EntryName: entryName,
-					Holder:    curHolder,
-					Number:    digits,
-					ExpMonth:  curExpMonth,
-					ExpYear:   curExpYear,
-					CVV:       curCVV,
-					Brand:     brand,
-				})
+		cvvDigits := cleanCardDigits(curCVV)
+		if len(digits) >= 13 && len(digits) <= 19 && checkLuhn(digits) {
+			// Strictly require BOTH valid expiration AND valid CVV (3 or 4 digits)
+			if curExpMonth != "" && curExpYear != "" && (len(cvvDigits) == 3 || len(cvvDigits) == 4) {
+				brand := curBrand
+				if brand == "" || strings.EqualFold(brand, "unknown") {
+					brand = DetectCardBrand(digits)
+				}
+				if !seenNumbers[digits] {
+					seenNumbers[digits] = true
+					result = append(result, CardChunk{
+						EntryPath: entryPath,
+						EntryName: entryName,
+						Holder:    curHolder,
+						Number:    digits,
+						ExpMonth:  curExpMonth,
+						ExpYear:   curExpYear,
+						CVV:       cvvDigits,
+						Brand:     brand,
+					})
+				}
 			}
 		}
 		curHolder = ""
@@ -752,62 +756,6 @@ func parseCardFileBytes(entryPath, entryName string, raw []byte) []CardChunk {
 		emitCurrent()
 	}
 
-	// Regex scanner pass: find any 13-19 digit card numbers verified with Luhn checksum
-	cardRegex := regexp.MustCompile(`\b(?:\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{1,7}|\d{13,19})\b`)
-	expRegex := regexp.MustCompile(`\b(0[1-9]|1[0-2])[\/\-\|\.](20[2-3][0-9]|[2-3][0-9])\b`)
-	cvcRegex := regexp.MustCompile(`(?i)\b(?:CVC|CVV|CID|Code)[:\s]+(\d{3,4})\b`)
-
-	for idx, line := range lines {
-		matches := cardRegex.FindAllString(line, -1)
-		for _, m := range matches {
-			digits := cleanCardDigits(m)
-			if len(digits) < 13 || len(digits) > 19 || seenNumbers[digits] {
-				continue
-			}
-			if !checkLuhn(digits) {
-				continue
-			}
-			brand := DetectCardBrand(digits)
-			if brand == "" || brand == "Other" {
-				continue
-			}
-			var expM, expY, nearbyCVV string
-			start := idx - 2
-			if start < 0 {
-				start = 0
-			}
-			end := idx + 3
-			if end > len(lines) {
-				end = len(lines)
-			}
-			for j := start; j < end; j++ {
-				if expM == "" {
-					if expMatch := expRegex.FindStringSubmatch(lines[j]); len(expMatch) >= 3 {
-						expM, expY = expMatch[1], expMatch[2]
-						if len(expY) == 2 {
-							expY = "20" + expY
-						}
-					}
-				}
-				if nearbyCVV == "" {
-					if cvcMatch := cvcRegex.FindStringSubmatch(lines[j]); len(cvcMatch) >= 2 {
-						nearbyCVV = cvcMatch[1]
-					}
-				}
-			}
-			seenNumbers[digits] = true
-			result = append(result, CardChunk{
-				EntryPath: entryPath,
-				EntryName: entryName,
-				Number:    digits,
-				ExpMonth:  expM,
-				ExpYear:   expY,
-				CVV:       nearbyCVV,
-				Brand:     brand,
-			})
-		}
-	}
-
 	return result
 }
 
@@ -866,7 +814,7 @@ func parseDelimitedCardLine(entryPath, entryName, line string) (CardChunk, bool)
 		}
 	}
 
-	if cardNumber == "" {
+	if cardNumber == "" || !checkLuhn(cardNumber) || expMonth == "" || expYear == "" || (len(cvv) != 3 && len(cvv) != 4) {
 		return CardChunk{}, false
 	}
 
@@ -912,7 +860,7 @@ func parseJSONCards(entryPath, entryName string, raw []byte) []CardChunk {
 		}
 
 		num := cleanCardDigits(getString("number", "card_number", "cardNumber", "card", "cc"))
-		if len(num) < 12 || len(num) > 19 {
+		if len(num) < 13 || len(num) > 19 || !checkLuhn(num) {
 			continue
 		}
 
@@ -936,7 +884,9 @@ func parseJSONCards(entryPath, entryName string, raw []byte) []CardChunk {
 		if brand == "" {
 			brand = DetectCardBrand(num)
 		}
-
+		if m == "" || y == "" || (len(cvv) != 3 && len(cvv) != 4) {
+			continue
+		}
 		results = append(results, CardChunk{
 			EntryPath: entryPath,
 			EntryName: entryName,

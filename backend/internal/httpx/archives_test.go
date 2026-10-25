@@ -648,7 +648,7 @@ func TestCredentialSearchByEmailDomain(t *testing.T) {
 func TestCardSearch(t *testing.T) {
 	a := newArchiveEnv(t)
 	content := makeZip(t, map[string]string{
-		"CreditCards/Cards.txt": "Card Number: 4111222233334444\nHolder: John Doe\nExpiration: 12/26\nCVV: 123\n\n" +
+		"CreditCards/Cards.txt": "Card Number: 4111111111111111\nHolder: John Doe\nExpiration: 12/26\nCVV: 123\n\n" +
 			"Cardholder: Jane Smith\nCard: 5500000000000004\nExp Month: 05\nExp Year: 2028\nCVC: 456\n",
 	})
 
@@ -679,12 +679,12 @@ func TestCardSearch(t *testing.T) {
 	if got.TotalCount != 1 || len(got.Results) != 1 {
 		t.Fatalf("expected 1 card for John, got %d", got.TotalCount)
 	}
-	if got.Results[0].Number != "4111222233334444" || got.Results[0].Brand != "Visa" {
+	if got.Results[0].Number != "4111111111111111" || got.Results[0].Brand != "Visa" {
 		t.Errorf("card details mismatch: %+v", got.Results[0])
 	}
 
-	// Test BIN filtering (e.g. 411122)
-	rBIN := do(t, a.srv, "GET", "/api/cards?q=411122", "", origin, a.cookie)
+	// Test BIN filtering (e.g. 411111)
+	rBIN := do(t, a.srv, "GET", "/api/cards?q=411111", "", origin, a.cookie)
 	if rBIN.status != 200 {
 		t.Fatalf("BIN search status %d", rBIN.status)
 	}
@@ -695,8 +695,8 @@ func TestCardSearch(t *testing.T) {
 		TotalCount int64 `json:"totalCount"`
 	}
 	_ = json.Unmarshal(rBIN.body, &gotBIN)
-	if gotBIN.TotalCount != 1 || gotBIN.Results[0].Number != "4111222233334444" {
-		t.Fatalf("expected 1 match for BIN 411122, got %+v", gotBIN)
+	if gotBIN.TotalCount != 1 || gotBIN.Results[0].Number != "4111111111111111" {
+		t.Fatalf("expected 1 match for BIN 411111, got %+v", gotBIN)
 	}
 
 	// Test partial card number with spaces (e.g. 5500 0000)
