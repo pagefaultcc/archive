@@ -4,12 +4,15 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+  Check,
   Copy,
   CreditCard,
   Eye,
   EyeOff,
+  Filter,
   Loader2,
   Search,
+  X,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,15 +59,26 @@ function formatExpiration(month: string, year: string): string {
   return month ? `${month}/—` : `—/${year}`;
 }
 
+const BIN_PRESETS = [
+  { label: "All Cards", query: "" },
+  { label: "BIN 515462", query: "515462" },
+  { label: "BIN 542432", query: "542432" },
+  { label: "BIN 411122", query: "411122" },
+  { label: "Visa (4)", query: "4" },
+  { label: "Mastercard (5)", query: "5" },
+];
+
 export function CardsSearch() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<CardItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [vaultTotal, setVaultTotal] = useState<number | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchDurationMs, setSearchDurationMs] = useState<number | null>(null);
   const [showCards, setShowCards] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const searchTimerRef = useRef<number | undefined>(undefined);
   const searchAbortRef = useRef<AbortController | null>(null);
@@ -101,6 +115,11 @@ export function CardsSearch() {
       if (res.ok) {
         setResults(res.data.results);
         setTotalCount(res.data.totalCount);
+        if (res.data.vaultTotal !== undefined) {
+          setVaultTotal(res.data.vaultTotal);
+        } else if (!query) {
+          setVaultTotal(res.data.totalCount);
+        }
         setHasMore(res.data.hasMore);
         offsetRef.current = res.data.results.length;
       } else {
@@ -130,6 +149,9 @@ export function CardsSearch() {
       if (res.ok) {
         setResults((prev) => [...prev, ...res.data.results]);
         setTotalCount(res.data.totalCount);
+        if (res.data.vaultTotal !== undefined) {
+          setVaultTotal(res.data.vaultTotal);
+        }
         setHasMore(res.data.hasMore);
         offsetRef.current += res.data.results.length;
       } else {
@@ -148,6 +170,12 @@ export function CardsSearch() {
     searchTimerRef.current = window.setTimeout(() => {
       void executeSearch(val);
     }, 250);
+  };
+
+  const applyPreset = (presetQuery: string) => {
+    setQ(presetQuery);
+    clearTimeout(searchTimerRef.current);
+    void executeSearch(presetQuery);
   };
 
   useEffect(() => {
@@ -172,14 +200,69 @@ export function CardsSearch() {
       .join(" | ");
     const ok = await copyToClipboard(text);
     if (ok) {
-      toast.success("Card data copied to clipboard.");
+      setCopiedId(item.id);
+      setTimeout(() => setCopiedId(null), 1500);
+      toast.success("Card record copied.");
+    }
+  };
+
+  const copyNumberOnly = async (num: string) => {
+    const ok = await copyToClipboard(num);
+    if (ok) {
+      toast.success("Card number copied.");
     }
   };
 
   return (
     <div className="flex min-w-0 w-full flex-1 flex-col gap-4">
+      {/* Telemetry Ribbon */}
+      <section className="obsidian-panel grid grid-cols-1 divide-y divide-white/[0.06] overflow-hidden sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <div className="flex flex-col justify-between gap-2 p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs text-[#8b909a]">
+            <span className="font-medium">Total Vault Cards</span>
+            <CreditCard className="size-3.5 text-[#5c606a]" />
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#f3f4f6]">
+              {(vaultTotal ?? totalCount).toLocaleString()}
+            </span>
+            <span className="text-[11px] text-[#6b707b]">indexed cards</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-between gap-2 p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs text-[#8b909a]">
+            <span className="font-medium">Matching Filter</span>
+            <Filter className="size-3.5 text-[#5c606a]" />
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#f3f4f6]">
+              {totalCount.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-[#6b707b]">
+              {q.trim() ? "matching cards" : "all displayed"}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-between gap-2 p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs text-[#8b909a]">
+            <span className="font-medium">Query Latency</span>
+            <span className="obsidian-pill font-mono text-[10px] text-[#10b981]">
+              Zero-Extraction
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#10b981]">
+              {searchDurationMs !== null ? `${searchDurationMs} ms` : "—"}
+            </span>
+            <span className="text-[11px] text-[#6b707b]">Trigram index</span>
+          </div>
+        </div>
+      </section>
+
       {/* Card Search Command Bar */}
-      <section className="obsidian-panel flex flex-col gap-2.5 p-4">
+      <section className="obsidian-panel flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex h-9 min-w-0 basis-full items-center gap-2.5 rounded-lg border border-white/[0.08] bg-[#101216] px-3 focus-within:border-white/20 sm:flex-1 sm:basis-0">
             <Search className="size-3.5 shrink-0 text-[#6b707b]" />
@@ -193,11 +276,21 @@ export function CardsSearch() {
                   void executeSearch(q);
                 }
               }}
-              aria-label="Search cards by holder name, card number, or brand"
+              aria-label="Filter cards by BIN or card number"
               aria-describedby="card-search-hint"
-              placeholder="Filter by card number, cardholder, or brand..."
+              placeholder="Filter by BIN (e.g. 515462) or partial card number (e.g. 5424322339)..."
               className="min-w-0 w-full bg-transparent font-mono text-xs text-[#f3f4f6] outline-none placeholder:text-[#5c606a]"
             />
+            {q ? (
+              <button
+                type="button"
+                onClick={() => applyPreset("")}
+                aria-label="Clear search"
+                className="text-[#6b707b] hover:text-[#f3f4f6] cursor-pointer"
+              >
+                <X className="size-3.5" />
+              </button>
+            ) : null}
           </div>
 
           <Button
@@ -206,7 +299,7 @@ export function CardsSearch() {
             size="sm"
             onClick={() => setShowCards((s) => !s)}
             aria-pressed={showCards}
-            className="h-9 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-3 text-xs text-[#c8ccd4] hover:bg-white/[0.04] hover:text-white"
+            className="h-9 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-3 text-xs text-[#c8ccd4] transition-colors duration-150 hover:bg-white/[0.05] hover:text-white hover:scale-100 active:scale-100 transform-none select-none"
           >
             {showCards ? (
               <EyeOff className="size-3.5" />
@@ -224,7 +317,7 @@ export function CardsSearch() {
               void executeSearch(q);
             }}
             disabled={isSearching}
-            className="h-9 gap-1.5 rounded-lg bg-[#f3f4f6] px-4 text-xs font-medium text-[#050506] hover:bg-white"
+            className="h-9 gap-1.5 rounded-lg bg-[#f3f4f6] px-4 text-xs font-medium text-[#050506] hover:bg-white hover:scale-100 active:scale-100 transform-none select-none"
           >
             {isSearching ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -234,8 +327,33 @@ export function CardsSearch() {
             Search
           </Button>
         </div>
+
+        {/* Quick BIN Preset Chips */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          <span className="text-[11px] font-medium text-[#6b707b] mr-1">
+            Presets:
+          </span>
+          {BIN_PRESETS.map((preset) => {
+            const isSelected = q === preset.query;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => applyPreset(preset.query)}
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[11px] transition-colors cursor-pointer ${
+                  isSelected
+                    ? "border border-white/20 bg-white/10 text-white font-medium"
+                    : "border border-white/[0.06] bg-[#101216] text-[#8b909a] hover:border-white/10 hover:text-[#f3f4f6]"
+                }`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+
         <p id="card-search-hint" className="text-xs text-[#8b909a]">
-          Indexed from stealer logs across Cards.txt, CreditCards, and autofill stores.
+          Indexed from stealer logs (Cards.txt, CreditCards, and autofill stores). Normally shows all cards; search filters by 6-digit BIN or partial card number.
         </p>
 
         <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] text-[#8b909a]">
@@ -248,7 +366,7 @@ export function CardsSearch() {
             <strong className="text-[#f3f4f6]">
               {totalCount.toLocaleString()}
             </strong>{" "}
-            cards
+            {q.trim() ? "matching cards" : "cards"}
           </span>
           <span className="inline-flex items-center gap-1">
             <Zap className="size-3 text-[#10b981]" />
@@ -263,13 +381,13 @@ export function CardsSearch() {
           <table className="w-full min-w-[820px] border-collapse text-left text-xs">
             <thead>
               <tr className="border-b border-white/[0.06] bg-[#101216]/70 text-[11px] font-medium text-[#8b909a]">
-                <th className="py-2.5 px-4 font-medium w-[120px]">Brand</th>
-                <th className="py-2.5 px-4 font-medium min-w-[200px]">Card Number</th>
+                <th className="py-2.5 px-4 font-medium w-[130px]">Brand</th>
+                <th className="py-2.5 px-4 font-medium min-w-[210px]">Card Number</th>
                 <th className="py-2.5 px-4 font-medium min-w-[160px]">Cardholder</th>
                 <th className="py-2.5 px-4 font-medium w-[90px]">Exp</th>
                 <th className="py-2.5 px-4 font-medium w-[80px]">CVV</th>
                 <th className="py-2.5 px-4 font-medium min-w-[180px]">Source Archive</th>
-                <th className="py-2.5 px-4 font-medium w-[60px] text-right">Actions</th>
+                <th className="py-2.5 px-4 font-medium w-[70px] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
@@ -292,6 +410,15 @@ export function CardsSearch() {
                       <span className="font-mono text-xs font-semibold tracking-wide text-[#f3f4f6]">
                         {formatCardNumber(item.number, showCards)}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => void copyNumberOnly(item.number)}
+                        title="Copy card number"
+                        aria-label="Copy card number"
+                        className="text-[#6b707b] hover:text-[#f3f4f6] cursor-pointer"
+                      >
+                        <Copy className="size-3" />
+                      </button>
                     </div>
                   </td>
                   <td className="py-2.5 px-4">
@@ -331,9 +458,13 @@ export function CardsSearch() {
                       onClick={() => void copyRow(item)}
                       title="Copy card record"
                       aria-label="Copy card record"
-                      className="size-7 text-[#8b909a] hover:bg-white/[0.06] hover:text-white"
+                      className="size-7 text-[#8b909a] hover:bg-white/[0.06] hover:text-white hover:scale-100 active:scale-100 transform-none"
                     >
-                      <Copy className="size-3.5" />
+                      {copiedId === item.id ? (
+                        <Check className="size-3.5 text-[#10b981]" />
+                      ) : (
+                        <Copy className="size-3.5" />
+                      )}
                     </Button>
                   </td>
                 </tr>
@@ -342,9 +473,29 @@ export function CardsSearch() {
                 <tr>
                   <td
                     colSpan={7}
-                    className="py-12 text-center text-xs text-[#5c606a]"
+                    className="py-14 text-center text-xs text-[#8b909a]"
                   >
-                    No credit card records found.
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <CreditCard className="size-6 text-[#5c606a]" />
+                      <p className="font-medium text-[#f3f4f6]">
+                        {q.trim()
+                          ? `No cards found matching BIN "${q}".`
+                          : "No credit cards indexed in vault."}
+                      </p>
+                      {q.trim() ? (
+                        <button
+                          type="button"
+                          onClick={() => applyPreset("")}
+                          className="mt-1 text-xs text-[#c8ccd4] underline hover:text-white cursor-pointer"
+                        >
+                          Clear filter and show all cards
+                        </button>
+                      ) : (
+                        <p className="text-[#5c606a]">
+                          Cards are indexed automatically from Cards.txt and autofill dumps in ingested archives.
+                        </p>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : null}
@@ -360,7 +511,7 @@ export function CardsSearch() {
               size="sm"
               onClick={() => void loadMore()}
               disabled={isLoadingMore}
-              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-4 text-xs text-[#c8ccd4] hover:bg-white/[0.04] hover:text-white"
+              className="h-8 gap-1.5 rounded-lg border-white/[0.08] bg-[#101216] px-4 text-xs text-[#c8ccd4] transition-colors hover:bg-white/[0.04] hover:text-white hover:scale-100 active:scale-100 transform-none"
             >
               {isLoadingMore ? (
                 <Loader2 className="size-3.5 animate-spin" />

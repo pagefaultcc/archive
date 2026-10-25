@@ -17,6 +17,7 @@ export type CardItem = {
 export type CardsSearchResponse = {
   results: CardItem[];
   totalCount: number;
+  vaultTotal?: number;
   limit: number;
   offset: number;
   hasMore: boolean;
