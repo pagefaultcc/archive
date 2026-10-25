@@ -11,6 +11,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
   return {
     ...actual,
     browserSearchCards: vi.fn(),
+    browserReindexCards: vi.fn().mockResolvedValue({ ok: true, data: { status: "started", message: "ok" } }),
   };
 });
 
@@ -71,6 +72,10 @@ describe("CardsSearch", () => {
       expect.objectContaining({ q: "515462" }),
       expect.anything(),
     );
+
+    // Clicks Reindex button in command bar
+    const reindexBtn = screen.getByRole("button", { name: /reindex cards across vault/i });
+    await userEvent.click(reindexBtn);
   });
   it("renders CardSection primitive with data-slot", () => {
     render(<CardSection className="custom-section">Section Content</CardSection>);
