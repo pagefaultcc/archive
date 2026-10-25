@@ -224,12 +224,15 @@ export function CardsSearch() {
       const res = await browserReindexCards();
       if (res.ok) {
         toast.success("Card re-indexing started across all archives in the vault.");
-        setTimeout(() => void executeSearch(qRef.current), 2000);
-        setTimeout(() => void executeSearch(qRef.current), 5000);
-        setTimeout(() => {
-          void executeSearch(qRef.current);
-          setIsReindexing(false);
-        }, 10000);
+        let attempts = 0;
+        const intervalId = window.setInterval(async () => {
+          attempts++;
+          await executeSearch(qRef.current);
+          if (attempts >= 15) {
+            clearInterval(intervalId);
+            setIsReindexing(false);
+          }
+        }, 2000);
       } else {
         toast.error(res.error?.message ?? "Failed to start card re-indexing.");
         setIsReindexing(false);

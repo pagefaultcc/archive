@@ -3,8 +3,10 @@ package archiveidx
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
 	"os"
 	"testing"
+	"unicode/utf16"
 )
 
 func TestParseCardFileBytes_KeyValueFormat(t *testing.T) {
@@ -171,5 +173,39 @@ func TestCheckLuhn(t *testing.T) {
 	// Invalid checksum
 	if checkLuhn("5396890411561679") {
 		t.Error("expected 5396890411561679 to fail Luhn")
+	}
+}
+
+func TestParseCardFileBytes_UTF16LEFormat(t *testing.T) {
+	rawText := `
+════════════════════════════════════════════════════
+  Card 3 of 7
+════════════════════════════════════════════════════
+  Browser: Chrome
+  Profile: Default
+
+  Number: 5396890411561678
+  Expiry: 12/2030
+  CVC: 968
+  Holder: 
+  Nickname:  
+`
+	var buf bytes.Buffer
+	buf.Write([]byte{0xff, 0xfe}) // UTF-16LE BOM
+	u16 := utf16.Encode([]rune(rawText))
+	for _, v := range u16 {
+		_ = binary.Write(&buf, binary.LittleEndian, v)
+	}
+
+	if !hasCardSignatures(buf.Bytes()) {
+		t.Fatal("expected hasCardSignatures to accept UTF-16LE file")
+	}
+
+	chunks := parseCardFileBytes("Autofill/Default.txt", "Default.txt", buf.Bytes())
+	if len(chunks) != 1 {
+		t.Fatalf("expected 1 chunk from UTF-16LE, got %d: %+v", len(chunks), chunks)
+	}
+	if chunks[0].Number != "5396890411561678" || chunks[0].Brand != "Mastercard" {
+		t.Errorf("chunk mismatch: %+v", chunks[0])
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"unicode/utf16"
 
 	"github.com/nwaples/rardecode/v2"
 )
@@ -267,26 +268,59 @@ func isCandidateCardFile(entryPath, entryName string, size int64) bool {
 	return !strings.Contains(ln, ".")
 }
 
+// decodeUTF16 decodes UTF-16 bytes into a UTF-8 string.
+func decodeUTF16(b []byte, littleEndian bool) string {
+	if len(b)%2 != 0 {
+		b = b[:len(b)-1]
+	}
+	u16 := make([]uint16, len(b)/2)
+	for i := range u16 {
+		if littleEndian {
+			u16[i] = uint16(b[2*i]) | uint16(b[2*i+1])<<8
+		} else {
+			u16[i] = uint16(b[2*i])<<8 | uint16(b[2*i+1])
+		}
+	}
+	return string(utf16.Decode(u16))
+}
+
+// normalizeLogText detects UTF-16, UTF-8 BOM, or null-byte pollution and returns clean UTF-8 text.
+func normalizeLogText(raw []byte) string {
+	if len(raw) >= 2 && raw[0] == 0xff && raw[1] == 0xfe {
+		return decodeUTF16(raw[2:], true)
+	}
+	if len(raw) >= 2 && raw[0] == 0xfe && raw[1] == 0xff {
+		return decodeUTF16(raw[2:], false)
+	}
+	raw = bytes.TrimPrefix(raw, []byte{0xef, 0xbb, 0xbf})
+	if len(raw) >= 4 && raw[1] == 0 && raw[3] == 0 {
+		return decodeUTF16(raw, true)
+	}
+	if bytes.IndexByte(raw, 0) >= 0 {
+		raw = bytes.ReplaceAll(raw, []byte{0}, []byte{})
+	}
+	return strings.ToValidUTF8(string(raw), "")
+}
+
 // hasCardSignatures is a quick check to reject binary/irrelevant blobs.
 func hasCardSignatures(raw []byte) bool {
-	raw = bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf")) // Strip UTF-8 BOM
-	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) < 12 {
+	if len(raw) < 12 {
 		return false
 	}
-	if bytes.HasPrefix(trimmed, []byte("SQLite format 3\x00")) {
+	if bytes.HasPrefix(raw, []byte("SQLite format 3\x00")) {
 		return false
 	}
-	head := trimmed
+	head := raw
 	if len(head) > 4096 {
 		head = head[:4096]
 	}
-	if bytes.IndexByte(head, 0) >= 0 {
+	normHead := normalizeLogText(head)
+	trimmed := strings.TrimSpace(normHead)
+	if len(trimmed) < 12 {
 		return false
 	}
-	// File must contain some digit characters
-	for _, b := range head {
-		if b >= '0' && b <= '9' {
+	for _, r := range trimmed {
+		if r >= '0' && r <= '9' {
 			return true
 		}
 	}
@@ -581,20 +615,19 @@ func parseExpiration(exp string) (month, year string) {
 
 // parseCardFileBytes handles key-value blocks, delimited rows, and JSON dumps.
 func parseCardFileBytes(entryPath, entryName string, raw []byte) []CardChunk {
-	raw = bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf")) // Strip UTF-8 BOM
-	trimmed := bytes.TrimSpace(raw)
+	text := normalizeLogText(raw)
+	trimmed := strings.TrimSpace(text)
 	if len(trimmed) == 0 {
 		return nil
 	}
 
 	// JSON format check
-	if (trimmed[0] == '[' || trimmed[0] == '{') && json.Valid(trimmed) {
-		if chunks := parseJSONCards(entryPath, entryName, trimmed); len(chunks) > 0 {
+	if (trimmed[0] == '[' || trimmed[0] == '{') && json.Valid([]byte(trimmed)) {
+		if chunks := parseJSONCards(entryPath, entryName, []byte(trimmed)); len(chunks) > 0 {
 			return chunks
 		}
 	}
 
-	text := string(raw)
 	lines := strings.Split(text, "\n")
 
 	var result []CardChunk
