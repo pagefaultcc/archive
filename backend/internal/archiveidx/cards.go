@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
 	"github.com/nwaples/rardecode/v2"
 )
 
