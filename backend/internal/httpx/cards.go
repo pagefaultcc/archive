@@ -58,7 +58,7 @@ func (h *archiveHandlers) listCards(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	results, totalCount, err := h.Store.SearchCards(r.Context(), q, limit, offset)
+	results, totalCount, vaultTotal, err := h.Store.SearchCards(r.Context(), q, limit, offset)
 	if err != nil {
 		h.logInternal(r.Context(), "searching cards failed", err)
 		WriteError(w, InternalServerError)
@@ -69,6 +69,7 @@ func (h *archiveHandlers) listCards(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]any{
 		"results":    results,
 		"totalCount": totalCount,
+		"vaultTotal": vaultTotal,
 		"limit":      limit,
 		"offset":     offset,
 		"hasMore":    hasMore,

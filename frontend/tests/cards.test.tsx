@@ -59,8 +59,19 @@ describe("CardsSearch", () => {
     await userEvent.click(revealBtn);
 
     expect(screen.getByText("4111 2222 3333 4444")).toBeInTheDocument();
-  });
 
+    // Checks telemetry ribbon
+    expect(screen.getByText("Total Vault Cards")).toBeInTheDocument();
+    expect(screen.getByText("Matching Filter")).toBeInTheDocument();
+
+    // Clicks BIN preset chip
+    const binBtn = screen.getByRole("button", { name: /BIN 515462/i });
+    await userEvent.click(binBtn);
+    expect(mockedSearchCards).toHaveBeenCalledWith(
+      expect.objectContaining({ q: "515462" }),
+      expect.anything(),
+    );
+  });
   it("renders CardSection primitive with data-slot", () => {
     render(<CardSection className="custom-section">Section Content</CardSection>);
     const section = screen.getByText("Section Content");
