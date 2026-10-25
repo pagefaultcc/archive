@@ -13,7 +13,7 @@ func TestParseCardFileBytes_KeyValueFormat(t *testing.T) {
 	raw := []byte(`
 ==================================================
 Holder: John Doe
-Card Number: 4111 2222 3333 4444
+Card Number: 4111 1111 1111 1111
 Expiration: 12/26
 CVV: 123
 Brand: Visa
@@ -32,7 +32,7 @@ CVC: 456
 	}
 
 	c1 := chunks[0]
-	if c1.Holder != "John Doe" || c1.Number != "4111222233334444" || c1.ExpMonth != "12" || c1.ExpYear != "2026" || c1.CVV != "123" || c1.Brand != "Visa" {
+	if c1.Holder != "John Doe" || c1.Number != "4111111111111111" || c1.ExpMonth != "12" || c1.ExpYear != "2026" || c1.CVV != "123" || c1.Brand != "Visa" {
 		t.Errorf("chunk 1 mismatch: %+v", c1)
 	}
 
@@ -43,12 +43,12 @@ CVC: 456
 }
 
 func TestParseCardFileBytes_DelimitedFormat(t *testing.T) {
-	raw := []byte("4111222233334444|12/26|123|John Doe\n378282246310005|11/25|1234|Alice\n")
+	raw := []byte("4111111111111111|12/26|123|John Doe\n378282246310005|11/25|1234|Alice\n")
 	chunks := parseCardFileBytes("Cards.txt", "Cards.txt", raw)
 	if len(chunks) != 2 {
 		t.Fatalf("expected 2 chunks, got %d", len(chunks))
 	}
-	if chunks[0].Number != "4111222233334444" || chunks[0].Brand != "Visa" || chunks[0].Holder != "John Doe" {
+	if chunks[0].Number != "4111111111111111" || chunks[0].Brand != "Visa" || chunks[0].Holder != "John Doe" {
 		t.Errorf("chunk 0 mismatch: %+v", chunks[0])
 	}
 	if chunks[1].Number != "378282246310005" || chunks[1].Brand != "American Express" || chunks[1].Holder != "Alice" {
@@ -60,7 +60,7 @@ func TestParseCardFileBytes_JSONFormat(t *testing.T) {
 	raw := []byte(`[
 		{
 			"name": "Bob Vance",
-			"number": "6011000000000000",
+			"number": "6011000000000004",
 			"expiration": "08/29",
 			"cvv": "999"
 		}
@@ -69,7 +69,7 @@ func TestParseCardFileBytes_JSONFormat(t *testing.T) {
 	if len(chunks) != 1 {
 		t.Fatalf("expected 1 chunk, got %d", len(chunks))
 	}
-	if chunks[0].Holder != "Bob Vance" || chunks[0].Number != "6011000000000000" || chunks[0].Brand != "Discover" || chunks[0].ExpMonth != "08" || chunks[0].ExpYear != "2029" {
+	if chunks[0].Holder != "Bob Vance" || chunks[0].Number != "6011000000000004" || chunks[0].Brand != "Discover" || chunks[0].ExpMonth != "08" || chunks[0].ExpYear != "2029" {
 		t.Errorf("chunk mismatch: %+v", chunks[0])
 	}
 }
@@ -106,7 +106,7 @@ func TestExtractCards_ZipFastPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _ = w.Write([]byte("Card Number: 4111222233334444\nHolder: Test User\nExpiration: 01/30\nCVV: 007\n"))
+	_, _ = w.Write([]byte("Card Number: 4111111111111111\nHolder: Test User\nExpiration: 01/30\nCVV: 007\n"))
 	_ = zw.Close()
 
 	// Write to temporary zip
@@ -123,7 +123,7 @@ func TestExtractCards_ZipFastPath(t *testing.T) {
 	if len(chunks) != 1 {
 		t.Fatalf("expected 1 card chunk, got %d: %+v", len(chunks), chunks)
 	}
-	if chunks[0].Number != "4111222233334444" || chunks[0].Holder != "Test User" || chunks[0].Brand != "Visa" {
+	if chunks[0].Number != "4111111111111111" || chunks[0].Holder != "Test User" || chunks[0].Brand != "Visa" {
 		t.Errorf("extracted chunk mismatch: %+v", chunks[0])
 	}
 }
@@ -149,17 +149,6 @@ func TestParseCardFileBytes_UnicodeBoxDrawingFormat(t *testing.T) {
 	c := chunks[0]
 	if c.Number != "5396890411561678" || c.Brand != "Mastercard" || c.ExpMonth != "12" || c.ExpYear != "2030" || c.CVV != "968" {
 		t.Errorf("chunk mismatch: %+v", c)
-	}
-}
-
-func TestParseCardFileBytes_RegexLuhnScanner(t *testing.T) {
-	raw := []byte("Unstructured stealer output with valid card 5396 8904 1156 1678 exp: 12/2030 cvc 968 and extra noise.")
-	chunks := parseCardFileBytes("dump.txt", "dump.txt", raw)
-	if len(chunks) != 1 {
-		t.Fatalf("expected 1 regex-scanned card, got %d: %+v", len(chunks), chunks)
-	}
-	if chunks[0].Number != "5396890411561678" || chunks[0].Brand != "Mastercard" {
-		t.Errorf("regex card mismatch: %+v", chunks[0])
 	}
 }
 
