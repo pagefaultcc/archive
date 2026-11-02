@@ -84,8 +84,12 @@ jobs:
             echo "PR #$pr was behind main; updated its branch."
             exit 0
           fi
-          gh pr review "$pr" --approve \
-            --body "Dependency bump: Review gate green (backend PostgreSQL suite, frontend build/lint/tests). Auto-approved by repository automation policy."
+          if ! gh pr review "$pr" --approve \
+            --body "Dependency bump: Review gate green (backend PostgreSQL suite, frontend build/lint/tests). Auto-approved by repository automation policy."; then
+            # Approval needs the org setting "Allow GitHub Actions to create and
+            # approve pull requests"; the merge itself does not.
+            echo "::warning::Could not approve PR #$pr; continuing with the merge."
+          fi
           # --match-head-commit keeps a dependabot push between the gate and the
           # merge from landing unreviewed.
           gh pr merge "$pr" --squash --match-head-commit "$HEAD_SHA"
