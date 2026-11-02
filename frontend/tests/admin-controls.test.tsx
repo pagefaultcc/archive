@@ -50,7 +50,7 @@ const baseUser = {
   createdAt: "2026-01-01T00:00:00Z",
 };
 
-const rootUser = { ...baseUser, id: "u-root", username: "playersclub", isRoot: true };
+const rootUser = { ...baseUser, id: "u-root", username: "admin", isRoot: true };
 
 const customRole: RoleItem = {
   id: "r-1",

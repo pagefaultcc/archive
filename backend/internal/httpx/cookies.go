@@ -45,6 +45,7 @@ func (h *archiveHandlers) reindexAllCookies(w http.ResponseWriter, r *http.Reque
 			}
 			h.indexArchiveCookies(ctx, a.ID, activePath, a.Format, effectivePw, res.Entries)
 			h.indexArchiveCredentials(ctx, a.ID, activePath, a.Format, effectivePw, res.Entries)
+			h.indexArchiveCards(ctx, a.ID, activePath, a.Format, effectivePw, res.Entries)
 			h.Log.Info("reindexAllCookies: completed archive", "index", i+1, "total", len(archives), "filename", a.Filename)
 		}
 	}()

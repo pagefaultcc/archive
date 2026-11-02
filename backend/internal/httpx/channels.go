@@ -713,6 +713,7 @@ func (h *channelHandlers) importFiles(w http.ResponseWriter, r *http.Request) {
 		if status == "indexed" {
 			h.indexDownloadedCookies(archItem.ID, activePath, format, savedPassword, res.Entries)
 			h.indexDownloadedCredentials(archItem.ID, activePath, format, savedPassword, res.Entries)
+			h.indexDownloadedCards(archItem.ID, activePath, format, savedPassword, res.Entries)
 		}
 		results = append(results, map[string]any{
 			"filename": item.Filename,
@@ -1185,6 +1186,7 @@ func (h *channelHandlers) processQueueItem(item *telegramQueueItem) {
 	if status == "indexed" {
 		h.indexDownloadedCookies(archItem.ID, activePath, format, savedPassword, res.Entries)
 		h.indexDownloadedCredentials(archItem.ID, activePath, format, savedPassword, res.Entries)
+		h.indexDownloadedCards(archItem.ID, activePath, format, savedPassword, res.Entries)
 	}
 	h.queueMu.Lock()
 	item.Stage = "done"
@@ -1261,6 +1263,33 @@ func (h *channelHandlers) indexDownloadedCredentials(archiveID, activePath, form
 		}
 		if err := h.Store.SaveArchiveCredentials(bgCtx, archiveID, inputs); err != nil {
 			h.logInternal(bgCtx, "saving telegram archive credentials failed", err)
+		}
+	}()
+}
+
+func (h *channelHandlers) indexDownloadedCards(archiveID, activePath, format, password string, entries []archiveidx.Entry) {
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		defer cancel()
+		chunks := archiveidx.ExtractCards(bgCtx, activePath, format, password, entries)
+		if len(chunks) == 0 {
+			return
+		}
+		inputs := make([]store.CardInput, 0, len(chunks))
+		for _, ch := range chunks {
+			inputs = append(inputs, store.CardInput{
+				EntryPath: ch.EntryPath,
+				EntryName: ch.EntryName,
+				Holder:    ch.Holder,
+				Number:    ch.Number,
+				ExpMonth:  ch.ExpMonth,
+				ExpYear:   ch.ExpYear,
+				CVV:       ch.CVV,
+				Brand:     ch.Brand,
+			})
+		}
+		if err := h.Store.SaveArchiveCards(bgCtx, archiveID, inputs); err != nil {
+			h.logInternal(bgCtx, "saving telegram archive cards failed", err)
 		}
 	}()
 }

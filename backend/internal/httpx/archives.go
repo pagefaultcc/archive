@@ -257,6 +257,7 @@ func (h *archiveHandlers) unlock(w http.ResponseWriter, r *http.Request) {
 	}
 	h.indexArchiveCookies(r.Context(), id, storagePath, format, req.Password, res.Entries)
 	h.indexArchiveCredentials(r.Context(), id, storagePath, format, req.Password, res.Entries)
+	h.indexArchiveCards(r.Context(), id, storagePath, format, req.Password, res.Entries)
 	WriteJSON(w, http.StatusOK, map[string]store.ArchiveItem{"archive": item})
 }
 
@@ -559,6 +560,7 @@ func (h *archiveHandlers) upload(w http.ResponseWriter, r *http.Request) {
 	}
 	h.indexArchiveCookies(r.Context(), item.ID, activePath, format, savedPassword, res.Entries)
 	h.indexArchiveCredentials(r.Context(), item.ID, activePath, format, savedPassword, res.Entries)
+	h.indexArchiveCards(r.Context(), item.ID, activePath, format, savedPassword, res.Entries)
 	WriteJSON(w, http.StatusCreated, map[string]any{
 		"archive":      item,
 		"autoUnlocked": res.MatchedPassword != "",
@@ -660,6 +662,7 @@ func (h *archiveHandlers) reindexAll(w http.ResponseWriter, r *http.Request) {
 			if len(archives) <= 3 {
 				h.indexArchiveCookies(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
 				h.indexArchiveCredentials(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
+				h.indexArchiveCards(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
 			} else {
 				bgJobs = append(bgJobs, bgJob{
 					id:          a.ID,
@@ -680,6 +683,7 @@ func (h *archiveHandlers) reindexAll(w http.ResponseWriter, r *http.Request) {
 			for _, j := range jobs {
 				h.indexArchiveCookies(bgCtx, j.id, j.activePath, j.format, j.effectivePw, j.entries)
 				h.indexArchiveCredentials(bgCtx, j.id, j.activePath, j.format, j.effectivePw, j.entries)
+				h.indexArchiveCards(bgCtx, j.id, j.activePath, j.format, j.effectivePw, j.entries)
 			}
 		}(bgJobs)
 	}
@@ -738,6 +742,7 @@ func (h *archiveHandlers) reindexOne(w http.ResponseWriter, r *http.Request) {
 	if status == "indexed" {
 		h.indexArchiveCookies(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
 		h.indexArchiveCredentials(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
+		h.indexArchiveCards(r.Context(), a.ID, activePath, a.Format, effectivePw, res.Entries)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"archive": item})
 }

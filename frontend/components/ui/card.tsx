@@ -84,3 +84,19 @@ export function CardFooter({
     />
   );
 }
+
+export function CardSection({
+  className,
+  ...props
+}: React.ComponentProps<"section">) {
+  return (
+    <section
+      data-slot="card-section"
+      className={cn(
+        "rounded-[8px] border border-[rgba(255,255,255,0.05)] bg-[#0f1011] p-4 text-[#f7f8f8]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}

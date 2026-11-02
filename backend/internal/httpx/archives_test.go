@@ -644,3 +644,82 @@ func TestCredentialSearchByEmailDomain(t *testing.T) {
 		t.Fatalf("expected slash@esc\\domain.io, got %q", slashResp.Results[0].Login)
 	}
 }
+
+func TestCardSearch(t *testing.T) {
+	a := newArchiveEnv(t)
+	content := makeZip(t, map[string]string{
+		"CreditCards/Cards.txt": "Card Number: 4111111111111111\nHolder: John Doe\nExpiration: 12/26\nCVV: 123\n\n" +
+			"Cardholder: Jane Smith\nCard: 5500000000000004\nExp Month: 05\nExp Year: 2028\nCVC: 456\n",
+	})
+
+	res := a.upload(t, "cards_archive.zip", content, "")
+	if res.status != 201 {
+		t.Fatalf("upload status %d: %s", res.status, res.body)
+	}
+
+	r := do(t, a.srv, "GET", "/api/cards?q=John", "", origin, a.cookie)
+	if r.status != 200 {
+		t.Fatalf("cards search status %d: %s", r.status, r.body)
+	}
+	var got struct {
+		Results []struct {
+			Number   string `json:"number"`
+			Holder   string `json:"holder"`
+			Brand    string `json:"brand"`
+			ExpMonth string `json:"expMonth"`
+			ExpYear  string `json:"expYear"`
+			CVV      string `json:"cvv"`
+		} `json:"results"`
+		TotalCount int64 `json:"totalCount"`
+		VaultTotal int64 `json:"vaultTotal"`
+	}
+	if err := json.Unmarshal(r.body, &got); err != nil {
+		t.Fatalf("%s: %v", r.body, err)
+	}
+	if got.TotalCount != 1 || len(got.Results) != 1 {
+		t.Fatalf("expected 1 card for John, got %d", got.TotalCount)
+	}
+	if got.Results[0].Number != "4111111111111111" || got.Results[0].Brand != "Visa" {
+		t.Errorf("card details mismatch: %+v", got.Results[0])
+	}
+
+	// Test BIN filtering (e.g. 411111)
+	rBIN := do(t, a.srv, "GET", "/api/cards?q=411111", "", origin, a.cookie)
+	if rBIN.status != 200 {
+		t.Fatalf("BIN search status %d", rBIN.status)
+	}
+	var gotBIN struct {
+		Results []struct {
+			Number string `json:"number"`
+		} `json:"results"`
+		TotalCount int64 `json:"totalCount"`
+	}
+	_ = json.Unmarshal(rBIN.body, &gotBIN)
+	if gotBIN.TotalCount != 1 || gotBIN.Results[0].Number != "4111111111111111" {
+		t.Fatalf("expected 1 match for BIN 411111, got %+v", gotBIN)
+	}
+
+	// Test partial card number with spaces (e.g. 5500 0000)
+	rPartial := do(t, a.srv, "GET", "/api/cards?q=5500+0000", "", origin, a.cookie)
+	var gotPartial struct {
+		Results []struct {
+			Number string `json:"number"`
+		} `json:"results"`
+		TotalCount int64 `json:"totalCount"`
+	}
+	_ = json.Unmarshal(rPartial.body, &gotPartial)
+	if gotPartial.TotalCount != 1 || gotPartial.Results[0].Number != "5500000000000004" {
+		t.Fatalf("expected 1 match for partial 5500 0000, got %+v", gotPartial)
+	}
+
+	// Test empty query normally returns all cards
+	rAll := do(t, a.srv, "GET", "/api/cards", "", origin, a.cookie)
+	var gotAll struct {
+		TotalCount int64 `json:"totalCount"`
+		VaultTotal int64 `json:"vaultTotal"`
+	}
+	_ = json.Unmarshal(rAll.body, &gotAll)
+	if gotAll.TotalCount != 2 || gotAll.VaultTotal != 2 {
+		t.Fatalf("expected all 2 cards for blank query, got %+v", gotAll)
+	}
+}

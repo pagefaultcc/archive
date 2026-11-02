@@ -21,8 +21,8 @@ Administrators manage access to the same research environment through users, rol
 ## Core Workflows
 
 1. **Ingest:** upload supported archives, provide an archive password when necessary, or import archive attachments through configured Telegram channels.
-2. **Index and categorize:** enumerate archive members and extract supported cookie and password records. Retain the source archive and member path; normalize website domains for lookup.
-3. **Investigate:** browse archive contents, search files across the collection, explore cookie records by website, or search password records by URL/domain or login email domain (`@example.com`). Inspect the source rather than relying on an aggregate count alone.
+2. **Index and categorize:** enumerate archive members and extract supported cookie, password, and credit card records. Retain the source archive and member path; normalize website domains for lookup.
+3. **Investigate:** browse archive contents, search files across the collection, explore cookie records by website, search password records by URL/domain or login email domain (`@example.com`), or inspect indexed credit card records. Inspect the source rather than relying on an aggregate count alone.
 4. **Retrieve:** preview files and download relevant files, archives, or supported exports for further research.
 5. **Maintain:** reindex existing collections when parsers improve, manage queued imports, remove unwanted archives, and administer access.
 
@@ -30,7 +30,7 @@ Administrators manage access to the same research environment through users, rol
 
 - **Archive:** an ingested ZIP, RAR, or 7z container with its own identity, indexing state, and source metadata. Matching filenames do not necessarily mean matching content.
 - **Archive entry:** a file or directory inside an archive, identified by its member path.
-- **Artifact:** indexed material extracted from a source file, such as a domain-specific cookie record or a URL/login/password record.
+- **Artifact:** indexed material extracted from a source file, such as a domain-specific cookie record, a URL/login/password record, or a credit card record.
 - **Website/domain:** a normalized root domain used to group or find supported artifacts. Preserve the original URL and source attribution where available.
 - **Archive password:** a password used to unlock a container; it is distinct from password records found inside that container.
 - **Validation:** a separate, service-specific check. It is not the same as parsing, indexing, categorization, or establishing the accuracy of a source log.
@@ -41,8 +41,8 @@ Current categorization is based on archive/source paths, artifact type, and webs
 
 - Supports ZIP, RAR, and 7z archive workflows, including supported password-protected archives and multipart RAR handling. Extraction depends on the archive format and available tooling.
 - Provides archive browsing, file previews, downloads, and cross-archive file-name/path search. The Files search is not arbitrary full-text search inside every archived document.
-- Extracts supported text-based cookie and password formats. Password search queries indexed URL/domain records; prefix a query with `@` to match the exact login email domain, case-insensitively (for example, `@example.com` excludes `@sub.example.com`). It does not search only for files named `passwords.txt`. Email-domain search works on already indexed logins without reindexing archives.
-- Keeps source archive/file attribution alongside extracted records. Password values are masked by default in the search UI and can be revealed or copied explicitly.
+- Extracts supported text-based cookie, password, and credit card formats. Password search queries indexed URL/domain records; prefix a query with `@` to match the exact login email domain, case-insensitively (for example, `@example.com` excludes `@sub.example.com`). Credit card search indexes cardholder, number, expiration, and CVV across stealer-log `Cards.txt` and autofill files.
+- Keeps source archive/file attribution alongside extracted records. Password and card values are masked by default in the UI and can be revealed or copied explicitly.
 - Supports reindexing to backfill existing archives after indexing changes. A parser improvement does not imply that all previously ingested data has already been reprocessed.
 - Provides configured Telegram-channel imports and a concurrent download queue. This is an ingestion source, not an infostealer deployed on endpoints.
 - Includes a limited OpenAI cookie/session validator. The Password Validator mode is marked work in progress; do not present it as implemented or imply general support for every service.

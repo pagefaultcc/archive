@@ -6,6 +6,7 @@ import {
   Archive,
   CheckCircle2,
   Cookie,
+  CreditCard,
   Layers,
   Radio,
   ScrollText,
@@ -50,6 +51,7 @@ export function AppSidebar({
 
   const intelligenceItems: NavItem[] = [
     { href: "/cookies", label: "Cookies", icon: Cookie },
+    { href: "/cards", label: "Cards", icon: CreditCard },
     { href: "/validator", label: "Validator", icon: CheckCircle2 },
     { href: "/channels", label: "Channels", icon: Radio },
   ];
