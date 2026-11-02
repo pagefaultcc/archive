@@ -1,10 +1,16 @@
 name: dependabot-automerge
 
-# Machine-authored dependency bumps are approved and queued for merge only
-# after the review workflow (backend PostgreSQL suite + frontend build/tests)
-# has fully succeeded. Human-authored PRs are never touched by this workflow;
-# their approval stays a human decision. Major version bumps are left for
-# manual review: a broken major can pass tests and still hurt production.
+# Machine-authored dependency bumps are approved and squash-merged only after
+# the review workflow (backend PostgreSQL suite + frontend build/lint/tests)
+# has fully succeeded for the pull request's current head commit. Human-authored
+# PRs are never touched; their approval stays a human decision. Major version
+# bumps are left for manual review: a broken major can pass tests and still hurt
+# production.
+#
+# GitHub Free blocks branch protection and rulesets on private repositories, so
+# no server-side rule enforces the Review gate; this workflow is the gate
+# keeper and merges directly. Required reviews are still recorded, so the
+# behaviour is unchanged if the repository is moved to a plan with rulesets.
 
 on:
   workflow_run:
@@ -20,18 +26,23 @@ concurrency:
 
 jobs:
   automerge:
-    name: Approve and queue Dependabot bump
+    name: Approve and merge Dependabot bump
     if: >-
+      github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success' &&
       startsWith(github.event.workflow_run.head_branch, 'dependabot/') &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: read
-      pull-requests: write
+      contents: write      # squash merge, branch update
+      pull-requests: write # approve
     steps:
-      - name: Approve and queue auto-merge
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Approve and merge
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -39,43 +50,43 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          pr_json="$(gh pr list --head "$HEAD_BRANCH" --state open \
-            --json number,author,baseRefName,headRefOid,labels --limit 5)"
-          out="$(mktemp)"
-          python3 - "$pr_json" <<'PY' > "$out"
-          import json, os, sys
-          prs = json.loads(sys.argv[1])
-          candidates = [p for p in prs
-                        if p["author"]["login"] in ("dependabot[bot]", "app/dependabot")
-                        and p["baseRefName"] == "main"]
-          if len(candidates) != 1:
-              raise SystemExit(0)
-          pr = candidates[0]
-          labels = {label["name"] for label in pr.get("labels", [])}
-          if "semver:major" in labels:
-              print(f"major={pr['number']}")
-          elif pr["headRefOid"] != os.environ["HEAD_SHA"]:
-              # A newer push exists; its own review run handles approval.
-              print(f"stale={pr['number']}")
-          else:
-              print(f"pr={pr['number']}")
-          PY
-          decision="$(sed -n 's/^\(major\|pr\|stale\)=//p' "$out" | tail -1)"
+          pr_json="$(gh pr list --head "$HEAD_BRANCH" --state open --limit 5 \
+            --json number,author,baseRefName,headRefOid,labels,title,body)"
+          decision="$(printf '%s' "$pr_json" \
+            | python3 .github/scripts/dependabot-decision.py)"
+          if [[ -z "$decision" ]]; then
+            echo "No eligible Dependabot PR for this run."
+            exit 0
+          fi
           kind="${decision%%=*}"; pr="${decision#*=}"
           if [[ "$kind" == "stale" ]]; then
             echo "Skipping run for $HEAD_SHA; a newer push re-triggers this workflow."
             exit 0
           fi
           if [[ "$kind" == "major" ]]; then
-            gh pr comment "$pr" --body "Major version bump: left for manual review per repository policy — minor and patch bumps merge automatically once checks pass."
+            if ! gh pr view "$pr" --json comments --jq '.comments[].body' \
+                 | grep -qF 'Major version bump: left for manual review'; then
+              gh pr comment "$pr" --body "Major version bump: left for manual review per repository policy — minor and patch bumps merge automatically once checks pass."
+            fi
             echo "PR #$pr is a major bump; skipped auto-merge."
             exit 0
           fi
-          if [[ -z "$pr" ]]; then
-            echo "No eligible Dependabot PR for this run."
+          read -r state mergeable < <(gh pr view "$pr" \
+            --json mergeStateStatus,mergeable --jq '"\(.mergeStateStatus) \(.mergeable)"')
+          if [[ "$mergeable" == "CONFLICTING" ]]; then
+            echo "PR #$pr conflicts with main; Dependabot rebases it and the next review run merges."
+            exit 0
+          fi
+          if [[ "$state" == "BEHIND" ]]; then
+            # Only reachable when a ruleset requires an up-to-date branch: the
+            # update pushes a new head, whose own review run merges.
+            gh pr update-branch "$pr"
+            echo "PR #$pr was behind main; updated its branch."
             exit 0
           fi
           gh pr review "$pr" --approve \
-            --body "Dependency bump: Review gate green (backend PostgreSQL suite, frontend build/tests). Auto-approved by repository automation policy; merge queued behind required checks."
-          gh pr merge "$pr" --squash --auto
-          echo "PR #$pr approved and queued for auto-merge."
+            --body "Dependency bump: Review gate green (backend PostgreSQL suite, frontend build/lint/tests). Auto-approved by repository automation policy."
+          # --match-head-commit keeps a dependabot push between the gate and the
+          # merge from landing unreviewed.
+          gh pr merge "$pr" --squash --match-head-commit "$HEAD_SHA"
+          echo "PR #$pr approved and merged."

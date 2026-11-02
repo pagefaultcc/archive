@@ -30,17 +30,17 @@ Use one short-lived branch per feature/fix and open a PR into `main`; do not pus
 
 Every PR runs `.github/workflows/review.yml`: **Backend review** enforces `gofmt`, `go vet` and `golangci-lint` (new-code issues) and includes PostgreSQL integration tests, **Frontend review** builds Next.js and runs Vitest, **Lint review** gates on ESLint, and **Review gate** fails unless all pass. These checks do not publish images. Local git hooks (`.githooks/`) catch formatting and lint while you work — enable them once with `git config core.hooksPath .githooks`. A different person reviews the PR; after approval and passing checks, squash merge and delete the branch. Production image publishing remains main-only, including manual image-workflow dispatch.
 
-Dependency upkeep is automated: `.github/dependabot.yml` opens **weekly grouped** version-update PRs per ecosystem (backend Go modules, frontend npm, GitHub Actions), and Dependabot security fixes still arrive immediately per alert. When the full review workflow passes, Dependabot PRs are auto-approved and squash-merged by automation — **except major version bumps**, which wait for a human review.
+Dependency upkeep is automated: `.github/dependabot.yml` opens **weekly grouped** version-update PRs per ecosystem (backend Go modules, frontend npm, GitHub Actions), and Dependabot security fixes still arrive immediately per alert. When the full review workflow passes, Dependabot PRs are auto-approved and squash-merged by automation — **except major version bumps**, which wait for a human review. The bump size comes from the versions named in the PR itself, because Dependabot does not apply `semver:*` labels.
 
-### Enable protected merges (repository admin)
-The desired policy is checked in as `.github/main-protection.json`, but GitHub does not apply that file automatically. After the first PR has registered `Review gate`, an administrator with suitable repository permissions can apply it:
+### Merge policy and protected merges
+The repository is **private** and the org is on GitHub Free, which does not offer branch protection or rulesets for private repositories — GitHub rejects those API calls with "Upgrade to GitHub Pro". `main` is therefore unprotected server-side: never push directly to it, keep review a human decision, and rely on `.github/workflows/review.yml` to evaluate every PR. `.github/main-protection.json` records the desired protection for when the org upgrades to GitHub Team; after the first PR has registered `Review gate`, an administrator can apply it:
 
 ```sh
 gh api --method PUT repos/pagefaultcc/archive/branches/main/protection \
   --input .github/main-protection.json
 ```
 
-This requires an up-to-date branch, `Review gate` from GitHub Actions, one other person's approval after the last push, dismissal of stale approvals, linear history, and no force-push or branch deletion; administrators are included. The repository is public, so protected branches are available on the free plan. Repository policy changes can replace existing rules: inspect the current protection before applying this file.
+That policy requires an up-to-date branch, `Review gate` from GitHub Actions, one other person's approval after the last push, dismissal of stale approvals, linear history, and no force-push or branch deletion; administrators are included. Repository policy changes can replace existing rules: inspect the current protection before applying this file.
 
 ## Production
 
@@ -76,7 +76,7 @@ Previews run on a **separate dedicated Linux amd64 VPS**, never the production h
 
 The gateway binds only to the preview host's loopback interface. Reviewers connect through SSH; there is no public preview endpoint or production-data connection. Hostnames such as `pr-42.localhost` separate browser sessions between previews, which different ports alone cannot do. Runtime networks have no normal external egress; do not use previews for real Telegram imports or account/service validation.
 
-The configured preview host details live with the operators (not in this public repository): `archive-preview@<preview-host>` with a separate administrator identity, kept apart from production. Its rootless service account has an aggregate 6 GiB memory, 3.5 CPU, and 4096-task ceiling. The initial reviewer identity is the administrator's existing SSH key, distinct from the Actions deployment key. Additional reviewers need their own public key installed with the same restricted review role.
+The configured preview host details live with the operators (not in this repository): `archive-preview@<preview-host>` with a separate administrator identity, kept apart from production. Its rootless service account has an aggregate 6 GiB memory, 3.5 CPU, and 4096-task ceiling. The initial reviewer identity is the administrator's existing SSH key, distinct from the Actions deployment key. Additional reviewers need their own public key installed with the same restricted review role.
 
 ### Prepare and install the preview host
 
