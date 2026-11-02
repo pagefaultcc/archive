@@ -138,7 +138,8 @@ Read [PRODUCT.md](PRODUCT.md) for the research purpose, users, workflows, curren
 ├── .github/
 │   ├── workflows/                  # docker.yml (main-only publish), review.yml (PR gates),
 │   │                               # preview.yml (private per-PR previews), release.yml (tags)
-│   ├── scripts/image-changes.sh    # Selective image detector (NUL-safe diff)
+│   ├── scripts/image-changes.sh       # Selective image detector (NUL-safe diff)
+│   ├── scripts/dependabot-decision.py # Dependabot PR classification (merge / major / stale)
 │   ├── main-protection.json        # Desired branch protection; plan-blocked on private Free repos
 │   ├── pull_request_template.md    # PR summary/verification checklist
 │   └── CODEOWNERS                  # Auto-requested reviewers
