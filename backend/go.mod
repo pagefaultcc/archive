@@ -3,8 +3,8 @@ module archive/backend
 go 1.26.0
 
 require (
-	github.com/jackc/pgx/v5 v5.11.0
-	github.com/nwaples/rardecode/v2 v2.4.5
+	github.com/jackc/pgx/v5 v5.12.0
+	github.com/nwaples/rardecode/v2 v2.4.6
 	github.com/pressly/goose/v3 v3.29.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/sys v0.49.0
